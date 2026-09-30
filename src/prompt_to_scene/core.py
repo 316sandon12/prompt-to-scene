@@ -202,6 +202,8 @@ def build(
     request_id: str | None = None,
     recipe: dict | None = None,
     preview_only: bool = False,
+    preparation: dict | None = None,
+    provenance: dict | None = None,
 ) -> dict:
     """Run a trusted AI/user-authored script in a separate Blender process, then queue import."""
     target = resolve_target(project, engine)
@@ -234,7 +236,15 @@ def build(
             raise ValueError("Invalid request ID")
         work = root / "work" / name / revision
         work.mkdir(parents=True)
+        if source and source.with_name("asset.json").is_file():
+            # A published preview/revision retains the untouched source for later reprocessing.
+            for retained in ("original.blend", "before.png"):
+                previous = source.with_name(retained)
+                if previous.is_file():
+                    shutil.copy2(previous, work / retained)
         (work / "model.py").write_text(script, encoding="utf-8")
+        if preparation:
+            atomic_json(work / "preparation-config.json", preparation)
         # Retain the exact drivers with the source. A detached packaged worker uses a
         # fresh extraction directory, and the submitting MCP process may already be gone.
         for helper in (
@@ -242,6 +252,8 @@ def build(
             "blender_recipe.py",
             "blender_surfaces.py",
             "blender_preview.py",
+            "blender_ingest.py",
+            "blender_prepare.py",
         ):
             shutil.copy2(Path(__file__).with_name(helper), work / helper)
         driver = work / "blender_export.py"
@@ -288,7 +300,11 @@ def build(
         exported = json.loads(export_file.read_text())
         files = []
         for path in sorted(work.glob("*")):
-            if path.name == "model.fbx" or path.name.startswith("tex_"):
+            if (
+                path.name == "model.fbx"
+                or re.fullmatch(r"lod_[1-3]\.fbx", path.name)
+                or path.name.startswith("tex_")
+            ):
                 files.append(
                     {"name": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                 )
@@ -304,6 +320,8 @@ def build(
             "collider": collider,
             "materials": exported["materials"],
             "files": files,
+            "lods": exported.get("lods", []),
+            "collision_mode": exported.get("collision_mode") or ("box" if collider else "none"),
         }
         atomic_json(work / "request.json", request)
         atomic_json(
@@ -316,6 +334,8 @@ def build(
                 "collider": collider,
                 "report": exported.get("report"),
                 "previews": exported.get("previews", []),
+                "provenance": provenance,
+                "preparation": exported.get("preparation"),
             },
         )
         if source and not script.strip():

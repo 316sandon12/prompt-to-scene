@@ -18,6 +18,13 @@ namespace PromptToScene.Editor
         public string scene;
         public SceneObject anchor;
         public Placement[] placements;
+        public string view, frame_id, review_stage;
+    }
+    [Serializable] public class PreviewFrame
+    {
+        public string scene, asset_id, view;
+        public float[] position, rotation;
+        public float size;
     }
     [Serializable] public class RendererState { public string path; public string[] materials; }
     [Serializable] public class SceneObject
@@ -161,7 +168,7 @@ namespace PromptToScene.Editor
             if (a.operation == "preview")
             {
                 result.preview = "previews/" + a.request_id + ".png";
-                Capture(targets, Path.Combine(Root, result.preview));
+                Capture(targets, Path.Combine(Root, result.preview), a);
                 return result;
             }
             if (a.operation != "transform" && a.operation != "tint") throw new Exception("Unknown action");
@@ -246,7 +253,7 @@ namespace PromptToScene.Editor
             }
         }
 
-        static void Capture(AssetIdentity[] objects, string path)
+        static void Capture(AssetIdentity[] objects, string path, SceneAction action)
         {
             var renderers = objects.SelectMany(o => o.GetComponentsInChildren<Renderer>()).ToArray();
             Bounds bounds = renderers[0].bounds;
@@ -259,8 +266,29 @@ namespace PromptToScene.Editor
             {
                 var camera = cameraObject.AddComponent<Camera>();
                 float size = Mathf.Max(bounds.extents.magnitude, .2f);
-                camera.transform.position = bounds.center + new Vector3(1.8f, 1.25f, -2.2f) * size;
+                string view = string.IsNullOrEmpty(action.view) ? "studio" : action.view;
+                if (!new[] { "studio", "front", "back" }.Contains(view)) throw new Exception("Invalid preview view");
+                var direction = view == "front" ? new Vector3(0, .25f, -3) : view == "back" ? new Vector3(-1.8f, 1.25f, 2.2f) : new Vector3(1.8f, 1.25f, -2.2f);
+                camera.transform.position = bounds.center + direction * size;
                 camera.transform.LookAt(bounds.center);
+                if (!string.IsNullOrEmpty(action.frame_id))
+                {
+                    if (!Id(action.frame_id) || !new[] { "before", "after" }.Contains(action.review_stage)) throw new Exception("Invalid comparison");
+                    string framePath = Path.Combine(Root, "preview-frames", action.frame_id + ".json");
+                    if (File.Exists(framePath))
+                    {
+                        var frame = JsonUtility.FromJson<PreviewFrame>(File.ReadAllText(framePath));
+                        if (frame.scene != SceneKey || frame.asset_id != action.asset_id || frame.view != view) throw new Exception("Comparison scene or asset changed");
+                        camera.transform.position = Vec(frame.position);
+                        camera.transform.rotation = Quaternion.Euler(Vec(frame.rotation)); size = frame.size;
+                    }
+                    else
+                    {
+                        if (action.review_stage != "before") throw new Exception("Capture before first");
+                        AssetBridge.WriteJson(framePath, new PreviewFrame { scene = SceneKey, asset_id = action.asset_id, view = view,
+                            position = Vec(camera.transform.position), rotation = Vec(camera.transform.eulerAngles), size = size });
+                    }
+                }
                 camera.nearClipPlane = .01f; camera.farClipPlane = Mathf.Max(100, size * 20);
                 camera.clearFlags = CameraClearFlags.SolidColor;
                 camera.backgroundColor = new Color(.07f, .09f, .13f);

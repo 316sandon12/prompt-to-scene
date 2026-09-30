@@ -172,6 +172,17 @@ def main():
     meshes = [obj for obj in collection.all_objects if obj.type == "MESH"]
     if not meshes:
         raise ValueError("Export collection has no meshes")
+    scene = bpy.context.scene
+    config_path = folder / "preparation-config.json"
+    prep = json.loads(scene.get("pts_preparation_report", "null"))
+    config = (
+        json.loads(config_path.read_text())
+        if config_path.exists()
+        else (prep["settings"] if prep else None)
+    )
+    preparer = runpy.run_path(str(Path(__file__).with_name("blender_prepare.py")))
+    if config_path.exists():
+        prep = preparer["prepare"](meshes, folder, config)
     if bpy.context.scene.get("pts_bake_needed"):
         runpy.run_path(str(Path(__file__).with_name("blender_surfaces.py")))["bake"](
             meshes, folder, int(bpy.context.scene.get("pts_texture_size", 512))
@@ -231,9 +242,12 @@ def main():
         row["materials"] = sorted(set(row["materials"]))
     recipe = json.loads(scene.get("pts_recipe", "{}"))
     quality = recipe.get("style", {}).get("quality", "custom")
-    budget = {"draft": 12000, "mobile": 18000, "desktop": 50000, "hero": 100000}.get(
-        quality, 200000
-    )
+    budget = (config or {}).get("triangle_budget") or {
+        "draft": 12000,
+        "mobile": 18000,
+        "desktop": 50000,
+        "hero": 100000,
+    }.get(quality, 200000)
     if triangles > budget:
         raise ValueError(f"Triangle budget exceeded: {triangles} > {budget} for {quality}")
     report = {
@@ -249,6 +263,15 @@ def main():
         "warnings": [],
         "visual_review": "Human review required for appearance; no aesthetic score is fabricated",
     }
+    levels = preparer["make_lods"](meshes, config, prep) if config else []
+    if prep:
+        report["preparation"] = prep
+        report["warnings"] += prep["warnings"]
+        scene["pts_preparation_report"] = json.dumps(prep)
+        (folder / "preparation.json").write_text(json.dumps(prep))
+    for objects, _ in levels:
+        for obj in objects:
+            obj.hide_render = True
     (folder / "report.json").write_text(json.dumps(report))
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1
@@ -259,32 +282,40 @@ def main():
         if bpy.data.materials.get(info["fbx_name"]):
             raise ValueError("Reserved FBX material name collision: " + info["fbx_name"])
         bpy.data.materials[name].name = info["fbx_name"]
-    bpy.ops.object.select_all(action="DESELECT")
-    for obj in meshes:
-        obj.select_set(True)
-    bpy.context.view_layer.objects.active = meshes[0]
-    bpy.ops.export_scene.fbx(
-        filepath=str(folder / "model.fbx"),
-        use_selection=True,
-        object_types={"MESH"},
-        axis_forward="-Z",
-        axis_up="Y",
-        apply_unit_scale=True,
-        apply_scale_options="FBX_SCALE_UNITS",
-        bake_anim=False,
-        add_leaf_bones=False,
-        use_mesh_modifiers=False,
-        path_mode="STRIP",
-        mesh_smooth_type="FACE",
-    )
+
+    def fbx(objects, filename):
+        bpy.ops.object.select_all(action="DESELECT")
+        for obj in objects:
+            obj.select_set(True)
+        bpy.context.view_layer.objects.active = objects[0]
+        bpy.ops.export_scene.fbx(
+            filepath=str(folder / filename),
+            use_selection=True,
+            object_types={"MESH"},
+            axis_forward="-Z",
+            axis_up="Y",
+            apply_unit_scale=True,
+            apply_scale_options="FBX_SCALE_UNITS",
+            bake_anim=False,
+            add_leaf_bones=False,
+            use_mesh_modifiers=False,
+            path_mode="STRIP",
+            mesh_smooth_type="FACE",
+        )
+
+    fbx(meshes, "model.fbx")
+    for objects, info in levels:
+        fbx(objects, info["file"])
     preview_views = []
     # Restore the original material names before rendering retained source previews.
     for name, info in materials.items():
         bpy.data.materials[info["fbx_name"]].name = name
-    if recipe:
+    if recipe or config:
         preview_views = runpy.run_path(str(Path(__file__).with_name("blender_preview.py")))[
             "render"
         ](meshes, folder)
+    if (folder / "before.png").exists():
+        preview_views.insert(0, "before.png")
     (folder / "export.json").write_text(
         json.dumps(
             {
@@ -292,6 +323,9 @@ def main():
                 "triangles": triangles,
                 "report": report,
                 "previews": preview_views,
+                "preparation": prep,
+                "lods": [info for _, info in levels],
+                "collision_mode": config["collision"] if config else None,
             }
         )
     )

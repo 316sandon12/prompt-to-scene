@@ -42,7 +42,7 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 26
+                    assert len((await client.list_tools()).tools) == 34
                     response = await client.call_tool(
                         "connect_project", {"project_path": str(project)}
                     )
@@ -86,6 +86,39 @@ def main():
             assert report["texture_count"] >= 10, report
             assert (work / "studio.png").stat().st_size > 5000
             assert (work / "blender_recipe.py").is_file()
+            assert (work / "blender_prepare.py").is_file()
+            assert (work / "lod_1.fbx").is_file()
+
+            async def intake():
+                parameters = StdioServerParameters(command=binary, args=["--mcp"], env=environment)
+                async with stdio_client(parameters) as (read, write):
+                    async with ClientSession(read, write) as client:
+                        await client.initialize()
+                        response = await client.call_tool(
+                            "import_asset",
+                            {
+                                "asset_id": "packaged_external",
+                                "source": {"path": str(work / "source.blend")},
+                                "settings": {"texture_size": 256},
+                                "preview_only": True,
+                            },
+                        )
+                        assert not response.isError, response
+                        return response.structuredContent or json.loads(response.content[0].text)
+
+            task = anyio.run(intake)
+            state_file = project / ".prompt-to-scene/jobs" / task["request_id"] / "state.json"
+            deadline = time.monotonic() + 600
+            while True:
+                state = json.loads(state_file.read_text())
+                if state["status"] != "building":
+                    assert state["status"] == "completed", state
+                    assert "before.png" in state["previews"]
+                    assert state["report"]["preparation"]["budget_passed"]
+                    break
+                if time.monotonic() > deadline:
+                    raise RuntimeError("Packaged external intake did not finish")
+                time.sleep(0.1)
         child = subprocess.Popen([binary, "--setup", "--no-browser"], env=environment)
         try:
             deadline = time.monotonic() + 30
@@ -96,6 +129,9 @@ def main():
             origin, token = (home / "url.txt").read_text().split("/#")
             with urllib.request.urlopen(origin) as response:
                 assert b"Prompt-to-Scene" in response.read()
+            with urllib.request.urlopen(origin + "/workshop.js") as response:
+                assert response.headers["Content-Type"].startswith("text/javascript")
+                assert b"importSource" in response.read()
             request = urllib.request.Request(origin + "/api/state", headers={"X-PTS-Token": token})
             with urllib.request.urlopen(request) as response:
                 assert json.load(response)["active"] == str(project.resolve())

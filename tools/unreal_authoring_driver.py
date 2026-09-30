@@ -65,6 +65,22 @@ def tick(_delta):
                     assert len(textures) >= 4, "Baked PBR map missing in UE"
                     linear = [t for t in textures if not t.get_editor_property("srgb")]
                     assert len(linear) >= 3, "PBR data texture color spaces incorrect"
+        if command["operation"] == "check_preparation":
+            mesh = selected[0].static_mesh_component.static_mesh
+            subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+            receipt = json.loads((root / "receipts" / (command["asset_id"] + ".json")).read_text())
+            count = subsystem.get_lod_count(mesh)
+            assert count == receipt["lod_count"]
+            triangles = [mesh.get_num_triangles(i) for i in range(count)]
+            assert triangles[0] == receipt["triangles"]
+            assert all(a > b for a, b in zip(triangles, triangles[1:]))
+            collisions = subsystem.get_simple_collision_count(
+                mesh
+            ) + subsystem.get_convex_collision_count(mesh)
+            assert collisions == receipt["collision_count"]
+            (root / "preparation-native.json").write_text(
+                json.dumps({"triangles": triangles, "colliders": collisions})
+            )
         if command["operation"] == "capture_material":
             material = next(
                 m

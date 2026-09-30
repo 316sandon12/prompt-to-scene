@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 — 2026-09-30
+
+- Local GLB/glTF, FBX and Blender intake; Poly Haven CC0 search, credited downloads, bounded dependency packages and retained provenance.
+- Retained original files, dimension/axis normalization, seam-aware simplification and bidirectional sampled geometry checks. Failed budgets queue no import.
+- Common opaque PBR baking, source-to-reduced tangent normals, original/prepared studio views and optional preview-before-publication.
+- Real reduced FBX levels mapped to Unity LODGroup and UE native Static Mesh LODs. Convex/box/none collision, with an explicit native 26-DOP fallback when UE decomposition produces no hulls. Reimport removes obsolete LOD/collision configuration.
+- Three matching kits and stronger structural variants for all nine recipes; selected-asset part editing and persisted native before/after camera comparisons.
+- Workshop controls, shared client instructions and 34 MCP tools, including import/search/prepare/publish, kits, selected edits and review capture.
+
+Update the core, client plugin and engine bridge together. Saved source revisions remain restorable. Revising older recipes adopts the updated structures; review before publishing substantial design changes. These tools prepare static opaque assets; they do not integrate a paid text-to-3D service.
+
 ## 0.4.0 — 2026-09-30
 
 - Persistent project art direction: three palettes/styles, quality budgets, reference recipe adoption and read-only binding to existing engine materials.

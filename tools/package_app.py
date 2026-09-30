@@ -55,7 +55,10 @@ def main():
         ("src/prompt_to_scene/blender_recipe.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_surfaces.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_preview.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_ingest.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_prepare.py", "prompt_to_scene"),
         ("src/prompt_to_scene/setup.html", "prompt_to_scene"),
+        ("src/prompt_to_scene/workshop.js", "prompt_to_scene"),
     ):
         data += ["--add-data", str(REPO / source) + ":" + target]
     freeze("prompt-to-scene-core", "app_entry.py", data)

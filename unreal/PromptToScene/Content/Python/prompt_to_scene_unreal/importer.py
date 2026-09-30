@@ -19,6 +19,7 @@ def is_playing():
 
 
 def import_asset(request, source):
+    warnings = []
     if is_commandlet() or "-nullrhi" in unreal.SystemLibrary.get_command_line().lower():
         raise RuntimeError("Scene placement requires the full Unreal Editor with graphics enabled")
     static_meshes = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
@@ -75,6 +76,23 @@ def import_asset(request, source):
     mesh = meshes[0]
     if mesh.get_path_name() != target + "/SM_" + asset_id + ".SM_" + asset_id:
         raise RuntimeError("Importer changed the managed mesh path")
+    if static_meshes.get_lod_count(mesh) > 1 and not static_meshes.remove_lods(mesh):
+        raise RuntimeError("Could not replace the previous LOD chain")
+    try:
+        unreal.SystemLibrary.execute_console_command(world, setting + " 0")
+        for index, lod in enumerate(request.get("lods", []), 1):
+            if static_meshes.import_lod(mesh, index, str(source / lod["file"])) != index:
+                raise RuntimeError(f"Could not import LOD {index}")
+            if mesh.get_num_triangles(index) != lod["triangles"]:
+                raise RuntimeError(f"LOD {index} geometry differs from the prepared mesh")
+        if request.get("lods"):
+            # The subsystem disables automatic sizing; that mesh property is not Python-exposed.
+            if not static_meshes.set_lod_screen_sizes(
+                mesh, [1.0] + [lod["screen_height"] for lod in request["lods"]]
+            ):
+                raise RuntimeError("Could not set LOD screen sizes")
+    finally:
+        unreal.SystemLibrary.execute_console_command(world, setting + (" 1" if enabled else " 0"))
     materials = {m["fbx_name"]: build_material(m, source, target) for m in request["materials"]}
     slots = mesh.get_editor_property("static_materials")
     if not slots:
@@ -87,7 +105,32 @@ def import_asset(request, source):
     if not static_meshes.remove_collisions(mesh):
         raise RuntimeError("Could not clear generated collision")
     if request["collider"]:
-        if static_meshes.add_simple_collisions(mesh, unreal.ScriptCollisionShapeType.BOX) < 0:
+        if request.get("collision_mode") == "convex":
+            # FBX with auto_generate_collision=False can leave section collision disabled.
+            # Convex decomposition only considers enabled sections and otherwise returns
+            # true with zero hulls. Enable them and verify the resulting native geometry.
+            for section in range(mesh.get_num_sections(0)):
+                static_meshes.enable_section_collision(mesh, True, 0, section)
+            static_meshes.set_convex_decomposition_collisions(mesh, 8, 32, 100000)
+            if static_meshes.get_convex_collision_count(mesh) == 0:
+                # Some meshes/builds produce no V-HACD hull. A native 26-DOP is a
+                # usable convex approximation, and the receipt makes this fallback explicit.
+                if (
+                    static_meshes.add_simple_collisions(
+                        mesh, unreal.ScriptCollisionShapeType.NDOP26
+                    )
+                    < 0
+                ):
+                    raise RuntimeError("Could not create native convex collision")
+                warnings.append(
+                    "Convex decomposition produced no hulls; used one native 26-DOP hull"
+                )
+            if static_meshes.get_convex_collision_count(mesh) == 0:
+                raise RuntimeError("Native collision creation produced no geometry")
+        elif (
+            request.get("collision_mode", "box") == "box"
+            and static_meshes.add_simple_collisions(mesh, unreal.ScriptCollisionShapeType.BOX) < 0
+        ):
             raise RuntimeError("Could not create box collision")
     unreal.EditorAssetLibrary.set_metadata_tag(mesh, "PromptToScene.AssetId", asset_id)
     unreal.EditorAssetLibrary.set_metadata_tag(
@@ -136,6 +179,10 @@ def import_asset(request, source):
     # Asset packages are saved; the user's level stays dirty until they save it.
     extent = mesh.get_bounds().box_extent
     triangles = mesh.get_num_triangles(0)
+    # UE counts primitive shapes and convex hulls separately.
+    collisions = static_meshes.get_simple_collision_count(
+        mesh
+    ) + static_meshes.get_convex_collision_count(mesh)
     if triangles <= 0:
         raise RuntimeError("Imported mesh has no triangles")
     return {
@@ -153,6 +200,9 @@ def import_asset(request, source):
         "triangles": triangles,
         "bounds_size": [extent.x / 50, extent.y / 50, extent.z / 50],
         "bounds_unit": "meters",
+        "lod_count": static_meshes.get_lod_count(mesh),
+        "collision_count": collisions,
+        "warnings": warnings,
         "scene_instances": len(instances),
-        "collision_shapes": static_meshes.get_simple_collision_count(mesh),
+        "collision_shapes": collisions,
     }

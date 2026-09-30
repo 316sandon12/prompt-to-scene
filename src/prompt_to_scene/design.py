@@ -27,6 +27,17 @@ PARTS = {
     "cabinet": ["body", "doors", "legs", "top", "hardware"],
     "shelf": ["frame", "shelves", "back", "hardware"],
 }
+VARIANTS = {
+    "crate": ["经典金属包边", "交叉加固运输箱", "彩漆板式储物箱"],
+    "table": ["四腿长桌", "横梁双脚桌", "中央立柱桌"],
+    "chair": ["竖条靠背椅", "交叉靠背椅", "板式扶手椅"],
+    "sign": ["单柱木牌", "双柱告示牌", "悬臂指示牌"],
+    "stool": ["圆面四腿凳", "方凳", "中央立柱圆凳"],
+    "bench": ["轻巧板凳", "横梁长凳", "带靠背长凳"],
+    "barrel": ["经典四箍木桶", "双箍提手木桶", "彩漆加强桶"],
+    "cabinet": ["双门柜", "抽屉柜", "开放展示柜"],
+    "shelf": ["竖条背板架", "交叉支撑架", "格子展示架"],
+}
 
 
 def primitives(kind, p, style):
@@ -55,6 +66,16 @@ def primitives(kind, p, style):
 
     def legs(top, count=4):
         leg = min(w, d) * (0.115 + 0.012 * variant)
+        if variant == 1 and kind in {"table", "bench"}:
+            for x in (-w * 0.32, w * 0.32):
+                box("legs", (x, 0, top / 2), (leg * 1.7, leg * 1.7, top), support)
+                box("legs", (x, 0, leg / 2), (leg * 2.4, d * 0.9, leg), support)
+            box("frame", (0, 0, top * 0.28), (w * 0.75, leg, leg), support)
+            return
+        if variant == 2 and kind in {"table", "stool"}:
+            add("legs", "cylinder", (0, 0, top / 2), (w * 0.23, d * 0.23, top), support)
+            add("frame", "cylinder", (0, 0, leg / 2), (w * 0.68, d * 0.85, leg), support)
+            return
         for x in (-w / 2 + leg, w / 2 - leg):
             for y in (-d / 2 + leg, d / 2 - leg):
                 add("legs", "taper", (x, y, top / 2), (leg, leg, top), support, taper=taper)
@@ -133,6 +154,38 @@ def primitives(kind, p, style):
                     "paint" if style["preset"] == "cozy" else "wood",
                 )
             box("backrest", (0, d * 0.37, h - post / 2), (w * 0.9, post * 1.1, post))
+            if variant == 1:
+                result[:] = [
+                    v for v in result if not (v["part"] == "backrest" and v["size"][1] < post)
+                ]
+                length = math.hypot(w * 0.6, (h - top) * 0.65)
+                angle = math.atan2(w * 0.6, (h - top) * 0.65)
+                for sign in (-1, 1):
+                    box(
+                        "backrest",
+                        (0, d * 0.37, top + (h - top) * 0.53),
+                        (post * 0.7, post * 0.6, length),
+                        rotation=[0, sign * angle, 0],
+                    )
+            elif variant == 2:
+                result[:] = [
+                    v for v in result if not (v["part"] == "backrest" and v["size"][1] < post)
+                ]
+                box(
+                    "backrest",
+                    (0, d * 0.37, top + (h - top) * 0.58),
+                    (w * 0.7, post * 0.7, (h - top) * 0.62),
+                    "paint",
+                )
+                for x in (-w * 0.43, w * 0.43):
+                    box("frame", (x, 0, top + (h - top) * 0.4), (post, d * 0.87, post), "paint")
+                    box(
+                        "frame", (x, -d * 0.3, top + (h - top) * 0.2), (post, post, (h - top) * 0.4)
+                    )
+        elif kind == "bench" and variant == 2:
+            for x in (-w * 0.4, w * 0.4):
+                box("frame", (x, d * 0.36, h * 1.2), (thick, thick, h * 0.65))
+            box("seat", (0, d * 0.36, h * 1.4), (w, thick, h * 0.22), "paint")
         screws(
             "hardware",
             [
@@ -231,6 +284,79 @@ def primitives(kind, p, style):
             [(x, -d / 2, z) for x in (-w * 0.45, w * 0.45) for z in (0.12, h - 0.08)],
             min(w, d) * 0.025,
         )
+    # Large structural differences, while retaining the same semantic part vocabulary.
+    if kind == "crate" and variant == 1:
+        length = math.hypot(w * 0.83, h * 0.78)
+        for sign in (-1, 1):
+            box(
+                "straps",
+                (0, -d / 2 - 0.025, h / 2),
+                (w * 0.06, 0.025, length),
+                "wood",
+                rotation=[0, sign * math.atan2(w * 0.83, h * 0.78), 0],
+            )
+    if kind == "crate" and variant == 2:
+        for item in result:
+            if item["part"] == "body":
+                item["material"] = "paint"
+        box("hardware", (0, -d / 2 - 0.025, h * 0.62), (w * 0.28, 0.05, h * 0.065), "metal")
+    if kind == "sign" and variant == 1:
+        result[:] = [v for v in result if v["part"] != "post"]
+        for x in (-w * 0.38, w * 0.38):
+            box("post", (x, 0, h / 2), (w * 0.09, d * 0.8, h))
+    if kind == "sign" and variant == 2:
+        for item in result:
+            if item["part"] == "post":
+                item["center"][0] = -w * 0.43
+        box("frame", (0, 0, h + d * 0.4), (w * 1.05, d, d * 0.6), support)
+    if kind == "barrel" and variant == 1:
+        result[:] = [
+            v for v in result if v["part"] != "hoops" or v["center"][2] in (h * 0.24, h * 0.76)
+        ]
+        for x in (-w * 0.5, w * 0.5):
+            add(
+                "hardware",
+                "ring",
+                (x, 0, h * 0.72),
+                (w * 0.26, w * 0.26, w * 0.035),
+                "metal",
+                thickness=w * 0.035,
+                rotation=[math.pi / 2, 0, 0],
+            )
+    if kind == "barrel" and variant == 2:
+        for item in result:
+            if item["part"] == "body":
+                item["material"] = "paint"
+        for x in (-w * 0.26, w * 0.26):
+            box("hoops", (x, -d * 0.46, h / 2), (w * 0.065, d * 0.065, h * 0.9), "metal")
+    if kind == "cabinet" and variant in {1, 2}:
+        result[:] = [v for v in result if v["part"] not in {"doors", "hardware"}]
+        if variant == 1:
+            for i in range(3):
+                z = h * (0.28 + i * 0.28)
+                box("doors", (0, -d / 2, z), (w * 0.88, panel, h * 0.25), "paint")
+                box("hardware", (0, -d / 2 - panel, z), (w * 0.22, panel, panel * 0.65), "metal")
+        else:
+            box("doors", (-w * 0.27, -d / 2, h * 0.57), (w * 0.35, panel, h * 0.72), "paint")
+            box(
+                "hardware",
+                (-w * 0.15, -d / 2 - panel, h * 0.57),
+                (panel * 0.7, panel, panel * 2),
+                "metal",
+            )
+    if kind == "shelf" and variant == 1:
+        result[:] = [v for v in result if v["part"] != "back"]
+        for sign in (-1, 1):
+            box(
+                "back",
+                (0, d / 2, h / 2),
+                (w * 0.055, panel * 0.6, math.hypot(w * 0.87, h * 0.93)),
+                "metal",
+                rotation=[0, sign * math.atan2(w * 0.87, h * 0.93), 0],
+            )
+    if kind == "shelf" and variant == 2:
+        box("back", (0, d / 2, h / 2), (w * 0.9, panel * 0.5, h * 0.94), "paint")
+        box("shelves", (0, 0, h / 2), (panel, d * 0.94, h * 0.94))
     return result
 
 

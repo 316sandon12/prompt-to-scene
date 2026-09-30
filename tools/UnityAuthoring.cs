@@ -12,6 +12,8 @@ public static class UnityAuthoring
 {
     [Serializable] class Command { public string operation, asset_id; }
     [Serializable] class MaterialReference { public string path, file; }
+    [Serializable] class GeometryEvidence { public int[] triangles; public int colliders; }
+    [Serializable] class GeometryReceipt { public int triangles, lod_count, collision_count; }
     static string Root => AssetBridge.StateRoot;
     static double deadline,next;
     public static void Run()
@@ -46,6 +48,26 @@ public static class UnityAuthoring
                     var texture=material.GetTexture("_MetallicGlossMap");
                     if(((TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(texture))).sRGBTexture)throw new Exception("Unity mask is incorrectly sRGB");
                 }
+            }
+            if(command.operation=="check_preparation")
+            {
+                var receipt=JsonUtility.FromJson<GeometryReceipt>(File.ReadAllText(Path.Combine(Root,"receipts",command.asset_id+".json")));
+                var group=targets[0].GetComponentInChildren<LODGroup>();
+                var levels=group ? group.GetLODs() : new[]{new LOD(0,targets[0].GetComponentsInChildren<Renderer>())};
+                if(levels.Length!=receipt.lod_count)throw new Exception("Native LOD count mismatch");
+                var counts=levels.Select(l=>l.renderers.Sum(r=>r.GetComponent<MeshFilter>().sharedMesh.triangles.Length/3)).ToArray();
+                if(counts[0]!=receipt.triangles)throw new Exception("LOD0 geometry mismatch");
+                for(int i=1;i<counts.Length;i++)if(counts[i]>=counts[i-1])throw new Exception("Native LOD does not reduce geometry");
+                var collisions=targets[0].GetComponentsInChildren<Collider>();
+                if(collisions.Length!=receipt.collision_count)throw new Exception("Native collision count mismatch");
+                Physics.SyncTransforms();
+                foreach(var collider in collisions)
+                {
+                    var center=collider.bounds.center;
+                    var ray=new Ray(center+Vector3.up*(collider.bounds.extents.y+1),Vector3.down);
+                    if(!collider.Raycast(ray,out _,100))throw new Exception("Cooked collider cannot be hit");
+                }
+                File.WriteAllText(Path.Combine(Root,"preparation-native.json"),JsonUtility.ToJson(new GeometryEvidence{triangles=counts,colliders=collisions.Length}));
             }
             if(command.operation=="capture_material")
             {

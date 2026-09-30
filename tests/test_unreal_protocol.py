@@ -99,3 +99,24 @@ def test_rejects_symlink_transfer(request_and_root, tmp_path):
     file.symlink_to(outside)
     with pytest.raises(ValueError, match="symlink"):
         protocol.validate(request, "crate", root)
+
+
+def test_lod_files_are_hashed_and_screen_sizes_must_decrease(request_and_root):
+    request, root = request_and_root
+    work = root / request["work_dir"]
+    for i, size in enumerate((0.5, 0.2), 1):
+        name = f"lod_{i}.fbx"
+        (work / name).write_bytes(bytes([i]))
+        request["files"].append({"name": name, "sha256": hashlib.sha256(bytes([i])).hexdigest()})
+        request.setdefault("lods", []).append(
+            {"file": name, "screen_height": size, "triangles": 100 // i}
+        )
+    request["collision_mode"] = "convex"
+    assert protocol.validate(request, "crate", root) == work
+    request["lods"][1]["screen_height"] = 0.8
+    with pytest.raises(ValueError):
+        protocol.validate(request, "crate", root)
+    request["lods"][1]["screen_height"] = 0.2
+    (work / "lod_1.fbx").write_bytes(b"modified")
+    with pytest.raises(ValueError, match="hash mismatch"):
+        protocol.validate(request, "crate", root)

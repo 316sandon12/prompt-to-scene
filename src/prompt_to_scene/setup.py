@@ -12,7 +12,18 @@ from pathlib import Path
 from socketserver import TCPServer
 from urllib.parse import urlsplit
 
-from . import __version__, authoring, clients, core, registry, studies, workflow
+from . import (
+    __version__,
+    authoring,
+    clients,
+    core,
+    kits,
+    registry,
+    reviews,
+    sources,
+    studies,
+    workflow,
+)
 
 
 def pick(kind="project"):
@@ -20,7 +31,11 @@ def pick(kind="project"):
         script = (
             'POSIX path of (choose folder with prompt "Choose your Unity or Unreal project")'
             if kind == "project"
-            else 'POSIX path of (choose file with prompt "Choose the application or executable")'
+            else (
+                'POSIX path of (choose file with prompt "Choose a GLB, glTF, FBX or Blender model")'
+                if kind == "asset"
+                else 'POSIX path of (choose file with prompt "Choose Blender or its executable")'
+            )
         )
         result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
         value = result.stdout.strip()
@@ -85,6 +100,12 @@ def state():
             workflow.job_status(str(target.project_file or target.root), p.parent.name)
             for p in jobs
         ]
+        result["reviews"] = [
+            reviews.read(None, p.stem)
+            for p in sorted(
+                (root / "reviews").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+            )[:3]
+        ]
     except (ValueError, OSError) as error:
         result["connection_message"] = str(error)
     return result
@@ -119,7 +140,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header(
             "Content-Security-Policy",
             "default-src 'self'; script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; img-src 'self' blob:; frame-ancestors 'none'",
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' blob: https://cdn.polyhaven.com; frame-ancestors 'none'",
         )
         self.end_headers()
         self.wfile.write(body)
@@ -134,6 +156,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
+        if path == "/workshop.js" and self.headers.get("Host") == "127.0.0.1:" + str(
+            self.server.server_port
+        ):
+            self.reply(
+                Path(__file__).with_name("workshop.js").read_bytes(),
+                content_type="text/javascript; charset=utf-8",
+            )
+            return
         if path == "/" and self.headers.get("Host") == "127.0.0.1:" + str(self.server.server_port):
             page = Path(__file__).with_name("setup.html").read_bytes()
             self.reply(page, content_type="text/html; charset=utf-8")
@@ -190,6 +220,18 @@ class Handler(BaseHTTPRequestHandler):
                 result = authoring.set_style(None, **data)
             elif operation == "/api/create":
                 result = authoring.create(None, **data)
+            elif operation == "/api/search":
+                result = sources.search(**data)
+            elif operation == "/api/import":
+                result = sources.submit(None, **data)
+            elif operation == "/api/prepare":
+                result = authoring.optimize(None, **data)
+            elif operation == "/api/kit":
+                result = kits.create(None, **data)
+            elif operation == "/api/review":
+                result = reviews.capture(None, **data)
+            elif operation == "/api/publish-prepared":
+                result = sources.publish(None, **data)
             elif operation == "/api/part":
                 result = authoring.edit_part(None, **data)
             elif operation == "/api/revise":

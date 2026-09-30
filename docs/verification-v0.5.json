@@ -1,0 +1,235 @@
+{
+  "release": "0.5.0",
+  "date": "2026-09-30",
+  "environment": {
+    "os": "macOS 15.8",
+    "cpu": "Apple M3 Pro",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2",
+    "codex_cli": "0.159.0",
+    "harness": "0.2.0-rc.1"
+  },
+  "python": {
+    "tests_passed": 100,
+    "ruff": "passed"
+  },
+  "blender": {
+    "normal-transfer": {
+      "triangles_before": 14976,
+      "triangles_after": 3358,
+      "lod_triangles": [
+        1678,
+        838
+      ],
+      "checks": {
+        "geometry": "passed",
+        "materials": "passed",
+        "uv": "passed",
+        "budget": "passed"
+      },
+      "normal_bake": "source-to-reduced, paired-object tangent-space projection",
+      "sampled_max_deviation_percent": 0.2870949172014528
+    },
+    "external_fbx": {
+      "triangles_before": 14976,
+      "triangles_after": 7678,
+      "lod_triangles": [
+        3838,
+        1918
+      ],
+      "checks": {
+        "geometry": "passed",
+        "materials": "passed",
+        "uv": "passed",
+        "budget": "passed"
+      },
+      "normal_bake": "source-to-reduced, paired-object tangent-space projection",
+      "sampled_max_deviation_percent": 0.08442085738884886
+    },
+    "external_blend": {
+      "triangles_before": 14976,
+      "triangles_after": 7678,
+      "lod_triangles": [
+        3838,
+        1918
+      ],
+      "checks": {
+        "geometry": "passed",
+        "materials": "passed",
+        "uv": "passed",
+        "budget": "passed"
+      },
+      "normal_bake": "source-to-reduced, paired-object tangent-space projection",
+      "sampled_max_deviation_percent": 0.0821331085731579
+    },
+    "polyhaven_live": {
+      "triangles_before": 11136,
+      "triangles_after": 7680,
+      "lod_triangles": [
+        3840,
+        1920
+      ],
+      "checks": {
+        "geometry": "passed",
+        "materials": "passed",
+        "uv": "passed",
+        "budget": "passed"
+      },
+      "normal_bake": "source-to-reduced, paired-object tangent-space projection",
+      "sampled_max_deviation_percent": 0.0030478377768733463
+    },
+    "strict_budget_rejection": "real Blender: rejected reductions restored source, original retained, no inbox request",
+    "structural_drafts": {
+      "count": 27,
+      "views_each": 3,
+      "engine_publication": false
+    }
+  },
+  "native": {
+    "unity_builtin": {
+      "result": "passed",
+      "tool_calls": {
+        "set_project_style": 1,
+        "import_asset": 1,
+        "get_task_status": 9,
+        "inspect_scene": 3,
+        "publish_prepared": 1,
+        "inspect_asset": 3,
+        "edit_scene": 1,
+        "capture_review": 2,
+        "prepare_asset": 1,
+        "get_review": 1,
+        "create_style_kit": 1,
+        "edit_selected_prop": 1
+      },
+      "native_geometry": {
+        "triangles": [
+          3358,
+          1678,
+          838
+        ],
+        "colliders": 2
+      },
+      "checks": [
+        "exact native LOD triangle counts",
+        "PBR texture presence and data color spaces",
+        "1.5-meter bounds",
+        "reprepare from original, 7678 triangles",
+        "remove old LODs and collision",
+        "preserve native identity and existing position",
+        "fixed camera before/after PNGs returned through MCP",
+        "reading-corner kit",
+        "selected backrest edit leaves other part hashes unchanged"
+      ],
+      "existing_authoring_regression": "material reuse, instance tint, contextual placement, undo and native preview passed",
+      "collision_raycast": "passed"
+    },
+    "unity_urp": {
+      "result": "passed",
+      "tool_calls": {
+        "set_project_style": 1,
+        "import_asset": 1,
+        "get_task_status": 9,
+        "inspect_scene": 3,
+        "publish_prepared": 1,
+        "inspect_asset": 3,
+        "edit_scene": 1,
+        "capture_review": 2,
+        "prepare_asset": 1,
+        "get_review": 1,
+        "create_style_kit": 1,
+        "edit_selected_prop": 1
+      },
+      "native_geometry": {
+        "triangles": [
+          3358,
+          1678,
+          838
+        ],
+        "colliders": 2
+      },
+      "checks": [
+        "exact native LOD triangle counts",
+        "PBR texture presence and data color spaces",
+        "1.5-meter bounds",
+        "reprepare from original, 7678 triangles",
+        "remove old LODs and collision",
+        "preserve native identity and existing position",
+        "fixed camera before/after PNGs returned through MCP",
+        "reading-corner kit",
+        "selected backrest edit leaves other part hashes unchanged"
+      ],
+      "collision_raycast": "passed"
+    },
+    "unreal": {
+      "result": "passed",
+      "tool_calls": {
+        "set_project_style": 1,
+        "import_asset": 1,
+        "get_task_status": 9,
+        "inspect_scene": 3,
+        "publish_prepared": 1,
+        "inspect_asset": 3,
+        "edit_scene": 1,
+        "capture_review": 2,
+        "prepare_asset": 1,
+        "get_review": 1,
+        "create_style_kit": 1,
+        "edit_selected_prop": 1
+      },
+      "native_geometry": {
+        "triangles": [
+          3358,
+          1678,
+          838
+        ],
+        "colliders": 1
+      },
+      "checks": [
+        "exact native LOD triangle counts",
+        "PBR texture presence and data color spaces",
+        "1.5-meter bounds",
+        "reprepare from original, 7678 triangles",
+        "remove old LODs and collision",
+        "preserve native identity and existing position",
+        "fixed camera before/after PNGs returned through MCP",
+        "reading-corner kit",
+        "selected backrest edit leaves other part hashes unchanged"
+      ],
+      "existing_authoring_regression": "material reuse, instance tint, contextual placement, undo and native preview passed",
+      "collision_raycast": "not exercised"
+    }
+  },
+  "hosts": {
+    "codex": "native app-server discovered 34 tools and invoked list_projects",
+    "harness": "native isolated bundle registration and ToolRuntime invocation passed"
+  },
+  "portable": {
+    "macos_local": "frozen app: 34 tools, embedded bridges and new JavaScript, detached recipe and external .blend intake after MCP parent exit passed",
+    "windows_engine": "not tested",
+    "github_actions": {
+      "result": "pending release build"
+    }
+  },
+  "workshop_browser": {
+    "result": "passed",
+    "actions": [
+      "Poly Haven search with credited result cards",
+      "live catalog model download and isolated prepared preview",
+      "before/after studio images",
+      "publish reviewed model; Unity receipt imported with 3 native LODs",
+      "source three-view images and persisted native review gallery"
+    ],
+    "browser_warnings_errors": 0
+  },
+  "boundaries": [
+    "Static opaque PBR only; no rigs, transparency, mixed shaders or paid generation API",
+    "Shape metric is bidirectional sampled distance, not a maximum-distance guarantee or aesthetics score",
+    "Collisions are approximations; UE can report a 26-DOP fallback",
+    "Native project lighting differs from source studio lighting",
+    "Older recipe revisions adopt current structural designs; saved source remains restorable",
+    "Windows native engine tests have not been run"
+  ]
+}

@@ -70,7 +70,7 @@ def targets(request):
     ]
 
 
-def focus(selected):
+def focus(selected, view="studio"):
     actors().set_selected_level_actors(selected)
     bounds = [a.get_actor_bounds(False) for a in selected]
     low = [min(getattr(c, k) - getattr(e, k) for c, e in bounds) for k in ("x", "y", "z")]
@@ -78,7 +78,8 @@ def focus(selected):
     center = unreal.Vector(*((a + b) / 2 for a, b in zip(low, high)))
     extent = unreal.Vector(*((b - a) / 2 for a, b in zip(low, high)))
     distance = max(extent.x, extent.y, extent.z, 30) * 4
-    location = center + unreal.Vector(distance, -distance, distance * 0.7)
+    direction = {"studio": (1, -1, 0.7), "front": (1.4, 0, 0.1), "back": (-1, 1, 0.7)}[view]
+    location = center + unreal.Vector(*(v * distance for v in direction))
     rotation = unreal.MathLibrary.find_look_at_rotation(location, center)
     unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).set_level_viewport_camera_info(
         location, rotation
@@ -203,11 +204,48 @@ def execute(request, root):
         focus(selected)
         return {"objects": [describe(a) for a in selected]}
     if operation == "preview":
-        focus(selected)
+        view = request.get("view", "studio")
+        if view not in {"studio", "front", "back"}:
+            raise ValueError("Invalid preview view")
+        editor = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
+        old_camera = editor.get_level_viewport_camera_info()
+        frame_id = request.get("frame_id")
+        if frame_id:
+            if not re.fullmatch(r"[a-f0-9]{32}", frame_id):
+                raise ValueError("Invalid comparison ID")
+            frame_path = root / "preview-frames" / (frame_id + ".json")
+            if frame_path.exists():
+                frame = json.loads(frame_path.read_text())
+                if (
+                    frame["scene"] != scene()
+                    or frame["asset_id"] != request["asset_id"]
+                    or frame["view"] != view
+                ):
+                    raise ValueError("Comparison scene or asset changed")
+                editor.set_level_viewport_camera_info(
+                    unreal.Vector(*frame["position"]), unreal.Rotator(**frame["rotation"])
+                )
+            else:
+                if request.get("review_stage") != "before":
+                    raise ValueError("Capture before first")
+                focus(selected, view)
+                pos, rot = editor.get_level_viewport_camera_info()
+                write_json(
+                    frame_path,
+                    {
+                        "scene": scene(),
+                        "asset_id": request["asset_id"],
+                        "view": view,
+                        "position": [pos.x, pos.y, pos.z],
+                        "rotation": {"pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll},
+                    },
+                )
+        else:
+            focus(selected, view)
         path = root / "previews" / (revision + ".png")
         path.parent.mkdir(exist_ok=True)
         task = unreal.AutomationLibrary.take_high_res_screenshot(1024, 768, str(path), delay=0.3)
-        _captures[revision] = (path, time.monotonic(), task)
+        _captures[revision] = (path, time.monotonic(), task, old_camera)
         return None
     if operation not in {"transform", "tint"}:
         raise ValueError("Unknown editor action")
@@ -287,7 +325,7 @@ def execute(request, root):
 
 
 def process(root):
-    for revision, (path, started, task) in list(_captures.items()):
+    for revision, (path, started, task, old_camera) in list(_captures.items()):
         if path.is_file() and path.stat().st_size > 8:
             write_json(
                 root / "action-receipts" / (revision + ".json"),
@@ -298,6 +336,9 @@ def process(root):
                     "engine": "unreal",
                 },
             )
+            unreal.get_editor_subsystem(
+                unreal.UnrealEditorSubsystem
+            ).set_level_viewport_camera_info(*old_camera)
             del _captures[revision]
         elif time.monotonic() - started > 30:
             write_json(
@@ -308,6 +349,9 @@ def process(root):
                     "error": "Screenshot timed out; open a visible level viewport and retry",
                 },
             )
+            unreal.get_editor_subsystem(
+                unreal.UnrealEditorSubsystem
+            ).set_level_viewport_camera_info(*old_camera)
             del _captures[revision]
     for path in sorted((root / "actions").glob("*.json")):
         receipt = {"status": "error", "request_id": path.stem, "engine": "unreal"}
@@ -316,6 +360,8 @@ def process(root):
                 raise ValueError("Invalid action file")
             request = json.loads(path.read_text())
             validate(request, path.stem)
+            if request.get("operation") == "preview" and _captures:
+                continue  # The editor has one viewport: preserve each queued capture's camera.
             if (root / "cancel" / path.stem).exists():
                 receipt["status"] = "cancelled"
             else:

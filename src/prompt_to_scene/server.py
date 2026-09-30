@@ -7,7 +7,19 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import authoring, core, layout, recipes, registry, studies, styles, workflow
+from . import (
+    authoring,
+    core,
+    kits,
+    layout,
+    recipes,
+    registry,
+    reviews,
+    sources,
+    studies,
+    styles,
+    workflow,
+)
 from .core import inspect_project, wait_for_status
 
 mcp = FastMCP(
@@ -16,6 +28,14 @@ mcp = FastMCP(
 Create static opaque PBR assets in Blender, then publish to the configured Unity or Unreal project.
 If no project is connected, use list_projects then connect_project with the user's chosen project.
 Use inspect_library for nine designed recipes, semantic parts, styles and quality budgets.
+Use search_assets to find credited CC0 Poly Haven models, or import_asset for a local GLB/glTF,
+FBX or Blender model produced by another AI tool. Import automatically prepares static opaque PBR,
+measured simplification, native LODs and collision. Use preview_only then publish_prepared when
+the user wants to review first. Check the preparation report and before/studio views: sampled
+shape error is not an aesthetic guarantee. prepare_asset reprocesses the retained original.
+Use create_style_kit for coherent curated sets. edit_selected_prop resolves the editor selection
+before changing a recipe; do not guess which asset the user means. capture_review before/after
+reuses an engine camera frame so the user can compare actual engine results.
 New props inherit get_project_style. set_project_style remembers concrete art direction; reference
 images can inform palette/shape through the client's own vision, not hidden image-to-3D claims.
 Prefer create_prop/create_prop_set with saved style. edit_prop_part edits or locks named parts;
@@ -83,6 +103,7 @@ async def publish_blend(
 
     Use this after another Blender tool has modeled and saved an asset. Same material contract
     and queued/result semantics as build_asset. Blender file auto-execution is disabled.
+    Use publish_prepared for a reviewed import_asset preview to retain preparation/provenance.
     """
     return workflow.submit(str(project()["project"]), asset_id, "", position, collider, blend_file)
 
@@ -189,6 +210,120 @@ def revise_prop(
 def inspect_library() -> dict:
     """List curated styles, quality budgets, recipe parameters and semantic part names."""
     return authoring.catalog(str(project()["project"]))
+
+
+@mcp.tool()
+async def search_assets(query: str = "", limit: int = 12, offset: int = 0) -> dict:
+    """Search CC0 Poly Haven models by English tags; returns credited sources and thumbnails.
+
+    Uses a cached catalog, no API key. Choose a result and import_asset with
+    source={provider: polyhaven, id: returned_id}. Search never downloads model files.
+    """
+    return await asyncio.to_thread(sources.search, query, limit, offset)
+
+
+@mcp.tool()
+def import_asset(
+    asset_id: str,
+    source: dict,
+    settings: dict | None = None,
+    position: list[float] | None = None,
+    preview_only: bool = False,
+) -> dict:
+    """Prepare and import local GLB/glTF/FBX/BLEND or a selected Poly Haven model.
+
+    source={provider: local, path: absolute_file} or {provider: polyhaven, id: catalog_id}.
+    settings: triangle_budget, texture_size (256/512/1024/2048), max_deviation_percent,
+    lod_ratios (decreasing list), collision (convex/box/none), target_size (largest dimension
+    in meters), unit_scale, up_axis (auto or +/-X/Y/Z), ground. File importers honor format
+    axes; up_axis is an explicit correction AFTER that conversion. Original file is unchanged.
+    Common opaque Principled PBR graphs and glTF ORM inputs are baked; rigs/transparency/mixed
+    shaders fail explicitly. preview_only makes an isolated prepared draft; use its source
+    with publish_prepared when accepted. Poll the exact request, inspect report and before/studio
+    views. Poly Haven downloads retain CC0 provenance. No generation service is billed.
+    """
+    return sources.submit(
+        str(project()["project"]), asset_id, source, settings, position, preview_only
+    )
+
+
+@mcp.tool()
+def publish_prepared(asset_id: str, request_id: str) -> dict:
+    """Send an accepted isolated import_asset preview to the engine, retaining its original.
+
+    Pass the completed preview's asset_id and request_id. Materials, LOD settings and source
+    attribution survive publication; the retained original remains available for reprocessing.
+    """
+    return sources.publish(str(project()["project"]), asset_id, request_id)
+
+
+@mcp.tool()
+def prepare_asset(asset_id: str, settings: dict | None = None) -> dict:
+    """Reprocess an imported asset from retained source with measured simplification and LODs.
+
+    Uses import_asset settings. A failed error/budget check queues nothing. Existing engine
+    identities/instances survive successful reimport. Geometry locks apply to recipe edits;
+    explicit preparation may reduce geometry. Review source before/studio and engine captures.
+    """
+    return authoring.optimize(str(project()["project"]), asset_id, settings)
+
+
+@mcp.tool()
+def create_style_kit(kit: str, prefix: str, quality: str | None = None) -> dict:
+    """Create a curated reading_corner, village_market or makers_workshop set.
+
+    Each uses matching art direction and purpose-designed structures, placed in a spaced row.
+    A new prefix is required. Does not change project-wide defaults. Poll each task to imported.
+    """
+    return kits.create(str(project()["project"]), kit, prefix, quality)
+
+
+@mcp.tool()
+async def edit_selected_prop(
+    part: str,
+    changes: dict | None = None,
+    lock_geometry: bool | None = None,
+    lock_material: bool | None = None,
+    inspection_request_id: str | None = None,
+) -> dict:
+    """Resolve the engine selection and edit a named recipe part without typing an asset ID.
+
+    Changes the selected asset's shared recipe (all its instances). Requires exactly one
+    selected managed asset. If inspection is queued, resume with inspection_request_id.
+    External models support native transform/tint via edit_scene, not recipe part editing.
+    """
+    task = (
+        await get_task_status(inspection_request_id, 10)
+        if inspection_request_id
+        else await inspect_scene()
+    )
+    if task.get("status") != "completed":
+        return {**task, "inspection_request_id": task["request_id"]}
+    selected = {obj["asset_id"] for obj in task.get("selected", []) if obj.get("asset_id")}
+    if len(selected) != 1:
+        raise ValueError("Select exactly one managed asset in the engine")
+    return authoring.edit_part(
+        str(project()["project"]), selected.pop(), part, changes, lock_geometry, lock_material
+    )
+
+
+@mcp.tool()
+def capture_review(
+    asset_id: str, review_id: str | None = None, stage: str = "before", view: str = "studio"
+) -> dict:
+    """Capture a native before/after comparison with identical saved camera framing.
+
+    Capture before, wait for completion, modify asset, then capture after with the same
+    review_id and view. get_review lists capture tasks; get_preview(request_id) returns images.
+    Engine project lighting remains visible; Blender source previews use the studio rig.
+    """
+    return reviews.capture(str(project()["project"]), asset_id, review_id, stage, view)
+
+
+@mcp.tool()
+def get_review(review_id: str) -> dict:
+    """Return before/after native capture task states without creating another capture."""
+    return reviews.read(str(project()["project"]), review_id)
 
 
 @mcp.tool()
@@ -389,7 +524,9 @@ def restore_asset(asset_id: str, revision: str | None = None) -> dict:
 
 
 @mcp.tool()
-async def get_preview(asset_id: str | None = None, request_id: str | None = None):
+async def get_preview(
+    asset_id: str | None = None, request_id: str | None = None, view: str = "studio"
+):
     """Return an engine PNG of selected props or asset. If queued, retry with request_id."""
     if request_id is None:
         task = workflow.action(
@@ -397,6 +534,7 @@ async def get_preview(asset_id: str | None = None, request_id: str | None = None
             "preview",
             asset_id=asset_id,
             scope="asset" if asset_id else "selected",
+            values={"view": view},
         )
         request_id = task["request_id"]
     result = await get_task_status(request_id, 30)

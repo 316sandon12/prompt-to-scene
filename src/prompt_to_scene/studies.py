@@ -1,9 +1,10 @@
 """Isolated, real-geometry candidate studies and explicit final publication."""
 
+import json
 import uuid
 from copy import deepcopy
 
-from . import core, recipes, registry, styles, workflow
+from . import core, design, recipes, registry, styles, workflow
 
 
 def create(project, kind, asset_id, parameters=None, count=3):
@@ -19,6 +20,20 @@ def create(project, kind, asset_id, parameters=None, count=3):
             "seed": int((parameters or {}).get("seed", 0)) + i * 71,
         }
         script, recipe = recipes.prepare(kind, values, style=art, quality="draft")
+        p = recipe["parameters"]
+        frame = [
+            [-p["width"] * 0.65, -p["depth"] * 0.65, 0],
+            [
+                p["width"] * 0.65,
+                p["depth"] * 0.65,
+                p["height"] * (1.7 if kind == "bench" else 1.15),
+            ],
+        ]
+        script += (
+            '\nimport bpy\nbpy.context.scene["pts_preview_frame"] = '
+            + repr(json.dumps(frame))
+            + "\n"
+        )
         prepared.append((script, recipe))
     root = core.state_root(registry.resolve(project).root)
     study_id = uuid.uuid4().hex
@@ -41,6 +56,7 @@ def create(project, kind, asset_id, parameters=None, count=3):
                     "asset_id": name,
                     "request_id": task["request_id"],
                     "recipe": recipe,
+                    "label": design.VARIANTS[kind][i],
                 }
             )
             core.atomic_json(root / "studies" / (study_id + ".json"), record)
@@ -103,7 +119,9 @@ def choose(project, study_id, index, quality=None, position=None):
             return state
     recipe = record["candidates"][index - 1]["recipe"]
     script, recipe = recipes.revise(recipe, quality=final_quality)
-    task = workflow.submit(project, record["asset_id"], script, position, recipe=recipe)
+    from .authoring import submit_recipe
+
+    task = submit_recipe(project, record["asset_id"], script, recipe, position)
     record["chosen"] = {"index": index, "quality": final_quality, "request_id": task["request_id"]}
     core.atomic_json(path, record)
     return task
@@ -112,8 +130,8 @@ def choose(project, study_id, index, quality=None, position=None):
 def preview_path(project, asset_id, revision, view="studio"):
     core.asset_id(asset_id)
     workflow.identifier(revision)
-    if view not in {"studio", "front", "back"}:
-        raise ValueError("View must be studio, front or back")
+    if view not in {"studio", "front", "back", "before"}:
+        raise ValueError("View must be studio, front, back or before")
     root = core.state_root(registry.resolve(project).root)
     path = root / "work" / asset_id / revision / (view + ".png")
     if (

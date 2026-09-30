@@ -13,7 +13,7 @@ The MCP client is the planner. Blender builds the asset. The target editor is th
 - Metallic and roughness are scalar constants in [0,1] or direct Non-Color image textures. Base color is scene-linear RGBA.
 - Base color can be a direct sRGB Image Texture. Normals can be a Non-Color Image Texture through a tangent-space Normal Map node.
 - Textured meshes need exactly one UV map. Connect the Image Texture's Color output; use default UV coordinates, flat projection, linear filtering and repeat. Texture transforms and named UV overrides are unsupported.
-- No rigs, shape keys, animation, unbaked procedural texture nodes, HDRP-specific features or transparent surfaces. Built-in recipes bake their curated procedural surfaces before validation; this is not a general shader-graph conversion service.
+- No rigs, shape keys, animation, unbaked procedural texture nodes, HDRP-specific features or transparent surfaces. Recipes bake their surfaces before validation; import_asset additionally bakes common opaque Principled PBR inputs. This final transport contract stays strict.
 
 `build_asset` starts from Blender factory startup. Delete its default objects in your script. A script must fully construct the asset on each invocation. `publish_blend` opens a saved file without overwriting it; save changes in your other Blender tool first.
 
@@ -31,7 +31,10 @@ All work is rooted at the explicitly configured Unity or Unreal project:
     studio.png        # actual Blender source views
     front.png
     back.png
-    source.blend      # editable source revision
+    original.blend    # retained pre-preparation source, when prepared
+    before.png        # aligned source view for external assets
+    source.blend      # editable prepared source revision
+    lod_1.fbx         # optional; up to three reduced levels
     model.fbx
     tex_<hash>.png    # optional normalized image files
     export.json
@@ -59,6 +62,14 @@ The current Unity package also accepts existing schema 1 requests (Unity-only, n
 
 `reuse_path` optionally references an existing engine Material/MaterialInterface inside `Assets/` (Unity) or `/Game/` (UE). The adapter checks the path and object type, reuses it and does not update its properties. A missing or incompatible path fails the import. The source studio view uses recipe surfaces, so it does not reproduce arbitrary reused engine shaders.
 
+## Optional v0.5 geometry fields
+
+`lods` contains up to three entries with `file` (`lod_1.fbx` through `lod_3.fbx`, in order), positive `triangles` and strictly decreasing `screen_height` values between 0 and 1. Each FBX is included in the SHA-256 manifest. `model.fbx` is LOD0. Files use the same material aliases, units and axes. The new Unity adapter creates native LODGroup children; UE imports additional Static Mesh levels. Both clear obsolete generated levels on revision.
+
+`collision_mode` is `none`, `box` or `convex`; `collider=false` always disables it. Missing mode preserves old box behavior. UE primitive and convex counts use separate APIs; `collision_count` reports their sum, and warnings disclose a 26-DOP convex fallback if decomposition produces no hulls. Source metadata includes preparation settings, measured reductions, LOD counts and provenance. Update both server and bridge: older schema-2 adapters do not know LOD file names.
+
+External intake allows at most two million source triangles and 256 MiB per local model. Provider packages are bounded to 100 files / 512 MiB. Final export remains at most 200,000 triangles and 20 materials. Supported external materials must have a direct opaque Principled surface; shader displacement, mixed surfaces, unsupported lobes, emission and missing textures fail before import. Simplification error is sampled bidirectionally and does not certify all geometry or texture quality.
+
 ## Success semantics
 
 The editor writes `imported` only after native import, material mapping, prefab/mesh creation or update, and placement in the active scene/level. Receipts identify the request and include engine-native identity, triangle counts, asset bounds and scene path. Unity returns prefab GUIDs; Unreal returns Static Mesh paths and Actor GUIDs. A blank Unity scene path means the active scene has not been saved.
@@ -69,7 +80,7 @@ Preview-only candidate builds end with `completed` and never enter the inbox. Th
 
 ## Ownership on revisions
 
-Stable asset ID + stable material names preserve imported asset paths and their Unity metadata. Prefab root components and existing instance transforms survive. The generated `Visual` subtree is replaced; do not attach user scripts or scene overrides there. The root BoxCollider and mapped material properties belong to the bridge. Extra old textures/materials are retained for reference safety.
+Stable asset ID + stable material names preserve imported asset paths and their Unity metadata. Prefab root components and existing instance transforms survive. The generated `Visual` subtree is replaced; do not attach user scripts or scene overrides there. Generated root BoxCollider / Visual convex colliders, LODGroup and mapped material properties belong to the bridge. Extra old textures/materials are retained for reference safety.
 
 Each active scene gets at most one automatically placed instance for an asset if none already exists; manually duplicated instances are not deleted. Position is used only for first placement. `inspect_scene` reports actual selection; `edit_scene` modifies native instances and `arrange_props` manages contextual placement/copies with undo.
 

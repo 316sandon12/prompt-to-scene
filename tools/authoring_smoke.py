@@ -23,6 +23,7 @@ def main():
     parser.add_argument("--project", type=Path, required=True)
     parser.add_argument("--editor", required=True)
     parser.add_argument("--variants", action="store_true")
+    parser.add_argument("--preparation", action="store_true")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     target = registry.resolve(str(args.project))
@@ -119,6 +120,18 @@ def main():
 
                 def position(x, y):
                     return [x, 0, y] if target.engine == "unity" else [x, y, 0]
+
+                if args.preparation:
+                    from preparation_checks import exercise_preparation
+
+                    await exercise_preparation(
+                        client, call, wait, fixture, scene, position, target, prefix
+                    )
+                    (project / "preparation-evidence.json").write_text(
+                        json.dumps(evidence, indent=2)
+                    )
+                    await fixture("stop", prefix)
+                    return
 
                 lib = await call("inspect_library", {})
                 assert len(lib["recipes"]) == 9

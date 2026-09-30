@@ -4,6 +4,7 @@
     name="viewport"
     content="width=device-width,initial-scale=1"
   /><title>Prompt-to-Scene · Setup</title>
+  <script src="/workshop.js" defer></script>
   <style>
     :root {
       color-scheme: dark;
@@ -289,6 +290,89 @@
         <div id="tasks"></div>
       </details>
     </section>
+    <section id="assetSources">
+      <h2>从模型文件或素材库开始</h2>
+      <p class="muted">
+        导入现有模型，自动整理尺寸、PBR 材质和 LOD，放进当前项目。
+      </p>
+      <div class="row">
+        <input
+          id="sourcePath"
+          class="grow"
+          placeholder="GLB / glTF / FBX / Blender 文件路径"
+        /><button id="pickSource">选择模型…</button>
+      </div>
+      <details>
+        <summary>游戏资产设置（通常保留默认即可）</summary>
+        <div class="grid">
+          <div>
+            <label for="sourceSize">最长边（米，留空保留原尺寸）</label
+            ><input
+              id="sourceSize"
+              type="number"
+              min="0.001"
+              step="0.1"
+              placeholder="使用模型原尺寸"
+            />
+          </div>
+          <div>
+            <label for="sourceBudget">三角形预算（留空使用项目精度）</label
+            ><input
+              id="sourceBudget"
+              type="number"
+              min="12"
+              max="200000"
+              placeholder="跟随项目精度"
+            />
+          </div>
+          <div>
+            <label for="sourceCollision">碰撞体</label
+            ><select id="sourceCollision">
+              <option value="convex">自动凸包</option>
+              <option value="box">简单包围盒</option>
+              <option value="none">不需要</option>
+            </select>
+          </div>
+          <div>
+            <label for="sourceAxis">导入后的朝上轴</label
+            ><select id="sourceAxis">
+              <option value="auto">自动读取文件约定</option>
+              <option value="Z">Z</option>
+              <option value="Y">Y</option>
+              <option value="X">X</option>
+              <option value="-Z">-Z</option>
+              <option value="-Y">-Y</option>
+              <option value="-X">-X</option>
+            </select>
+          </div>
+        </div>
+        <label
+          ><input id="sourceLods" type="checkbox" checked style="width: auto" />
+          自动生成 LOD</label
+        >
+        <p class="muted">
+          原文件保留。采样形状误差超限时停止导入，可调整预算后重试。
+        </p>
+      </details>
+      <div class="row">
+        <button id="importSource" class="primary">整理并放进项目</button
+        ><button id="previewSource">先整理并预览</button>
+      </div>
+      <hr style="border: 0; border-top: 1px solid #304153; margin: 24px 0" />
+      <h3>Poly Haven · 免费 CC0 模型</h3>
+      <div class="row">
+        <input
+          id="assetQuery"
+          class="grow"
+          placeholder="用英文搜索，例如 chair、vase、barrel"
+        /><button id="searchAssets">搜索素材</button>
+      </div>
+      <p id="catalogStatus" class="muted">
+        Powered by Poly Haven · 选择后才下载模型
+      </p>
+      <div id="assetResults" class="grid"></div>
+      <button id="moreAssets" class="hidden">下一页</button>
+    </section>
     <section id="workshop">
       <h2>创作工作台</h2>
       <p class="muted">
@@ -339,6 +423,13 @@
       </div>
       <div id="candidateGallery"></div>
       <hr style="border: 0; border-top: 1px solid #304153; margin: 24px 0" />
+      <h3>制作一套搭配好的道具</h3>
+      <div class="row">
+        <select id="styleKit" class="grow"></select
+        ><button id="createKit">制作这套道具</button>
+      </div>
+      <p id="kitDescription" class="muted"></p>
+      <hr style="border: 0; border-top: 1px solid #304153; margin: 24px 0" />
       <div class="grid">
         <div>
           <h3>修改一个部件</h3>
@@ -347,6 +438,8 @@
             <option value="">先生成一个道具…</option>
           </select>
           <label for="editPart">部件</label
+          ><button id="loadSelection" style="margin-top: 10px">
+            从引擎选中对象载入</button
           ><select id="editPart"></select>
           <div id="partState" class="muted"></div>
           <label for="partOperation">想怎样修改</label
@@ -382,6 +475,13 @@
             部件修改会更新同款道具的所有实例。仅修改一个实例时，在 AI
             客户端里说“只改我选中的这个”。
           </p>
+          <details>
+            <summary>重新整理此资产</summary>
+            <p class="muted">
+              使用上方游戏资产设置，重新生成减面、贴图和 LOD。
+            </p>
+            <button id="prepareCurrent">整理并更新</button>
+          </details>
         </div>
         <div>
           <h3>根据场景摆放</h3>
@@ -433,9 +533,23 @@
         </div>
       </div>
       <div id="sourceViews"></div>
+      <hr style="border: 0; border-top: 1px solid #304153; margin: 24px 0" />
+      <h3>引擎内 · 修改前后对比</h3>
+      <p class="muted">
+        使用上方选中的道具。先记录修改前，完成修改后再拍同一视角。场景光照会保留。
+      </p>
+      <div class="row">
+        <select id="reviewView" class="grow">
+          <option value="studio">斜前方</option>
+          <option value="front">正面</option>
+          <option value="back">背面</option></select
+        ><button id="reviewBefore">记录修改前</button
+        ><button id="reviewAfter" disabled>拍摄修改后</button>
+      </div>
+      <div id="reviewGallery"></div>
     </section>
     <footer>
-      v0.4 支持静态不透明道具。场景由你正常保存。关闭此页面不影响 AI
+      v0.5 支持静态不透明道具。场景由你正常保存。关闭此页面不影响 AI
       插件和已提交的任务。<br /><a
         href="https://github.com/316sandon12/prompt-to-scene"
         target="_blank"
@@ -455,7 +569,8 @@
   <script>
     const token = location.hash.slice(1),
       $ = (id) => document.getElementById(id);
-    let initial = true;
+    let initial = true,
+      timer;
     async function api(path, data) {
       const response = await fetch("/api/" + path, {
         method: data ? "POST" : "GET",
@@ -526,6 +641,7 @@
           notice("先连接项目，再安装你使用的 AI 客户端插件。");
         }
         await refreshWorkshop(s);
+        await refreshReviews(s);
         const tasks = $("tasks");
         tasks.replaceChildren();
         (s.tasks || []).forEach((t) => {
@@ -578,11 +694,56 @@
               el.append(b);
             }
           }
+          if (
+            t.status === "completed" &&
+            t.preview_only &&
+            !t.asset_id.startsWith("draft_")
+          ) {
+            for (const [label, action] of [
+              ["整理前后对比", () => preparedViews(t)],
+              [
+                "将此版本放进项目",
+                async () => {
+                  await api("publish-prepared", {
+                    asset_id: t.asset_id,
+                    request_id: t.request_id,
+                  });
+                  notice("已提交引擎导入，等待结果。");
+                },
+              ],
+            ]) {
+              const b = document.createElement("button");
+              b.textContent = label;
+              b.onclick = () => act(b, action);
+              el.append(b);
+            }
+          }
+          if (t.status === "imported" && t.previews?.includes("before.png")) {
+            const b = document.createElement("button");
+            b.textContent = "整理前后对比";
+            b.onclick = () => act(b, () => preparedViews(t));
+            el.append(b);
+          }
           if (t.report) {
             const report = document.createElement("p");
             report.className = "muted";
-            report.textContent = `${t.report.triangles} 三角面 / ${t.report.triangle_budget} 预算 · ${t.report.material_count} 材质 · ${t.report.texture_count} 贴图`;
+            const prep =
+              t.report.preparation ||
+              (t.report.triangles_before != null ? t.report : null);
+            report.textContent = prep
+              ? `${prep.triangles_before} → ${prep.triangles_after} 三角形 · ${prep.lods?.length || 0} 个附加 LOD · ${prep.budget_passed ? "符合预算" : "预算未通过"}`
+              : `${t.report.triangles} 三角形 · ${t.report.material_count} 材质 · ${t.report.texture_count} 贴图`;
             el.append(report);
+            for (const warning of [
+              ...(t.report.warnings || []),
+              ...(t.report.preparation?.warnings || []),
+              ...(t.warnings || []),
+            ]) {
+              const p = document.createElement("p");
+              p.className = "warn";
+              p.textContent = warning;
+              el.append(p);
+            }
           }
           tasks.append(el);
         });
@@ -879,6 +1040,11 @@
           $("propKind").add(new Option(kindNames[k] || k, k)),
         );
         dimensions();
+        $("styleKit").replaceChildren();
+        Object.entries(library.kits || {}).forEach(([key, kit]) =>
+          $("styleKit").add(new Option(kit.label, key)),
+        );
+        kitDescription();
       }
       const assets = [
         ...new Set(
@@ -945,6 +1111,8 @@
             label.textContent =
               "方案 " +
               c.index +
+              " · " +
+              (c.label || "") +
               " · " +
               ({
                 building: "正在制作",
@@ -1095,7 +1263,9 @@
         $("undoLayout").disabled = true;
       });
 
-    refresh();
-    const timer = setInterval(refresh, 3000);
+    document.addEventListener("DOMContentLoaded", () => {
+      refresh();
+      timer = setInterval(refresh, 3000);
+    });
   </script>
 </html>

@@ -58,7 +58,7 @@ def surface(name, data, textured):
     return mat
 
 
-def bake(meshes, folder, size):
+def bake(meshes, folder, size, unwrap=True, normal_sources=None):
     scene = bpy.context.scene
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
@@ -70,10 +70,22 @@ def bake(meshes, folder, size):
     for obj in meshes:
         obj.select_set(True)
     bpy.context.view_layer.objects.active = meshes[0]
-    bpy.ops.object.mode_set(mode="EDIT")
-    bpy.ops.mesh.select_all(action="SELECT")
-    bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.025)
-    bpy.ops.object.mode_set(mode="OBJECT")
+    if unwrap:
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.025)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    else:
+        for obj in meshes:
+            if not obj.data.uv_layers:
+                bpy.ops.object.select_all(action="DESELECT")
+                obj.select_set(True)
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.mode_set(mode="EDIT")
+                bpy.ops.mesh.select_all(action="SELECT")
+                bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.025)
+                bpy.ops.object.mode_set(mode="OBJECT")
+            obj.data.uv_layers.active_index = 0
     materials = {slot.material for obj in meshes for slot in obj.material_slots}
     for mat in materials:
         nodes, links = mat.node_tree.nodes, mat.node_tree.links
@@ -101,7 +113,34 @@ def bake(meshes, folder, size):
             nodes.active = target
             if field == "normal":
                 links.new(shader.outputs["BSDF"], output.inputs["Surface"])
-                bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
+                if normal_sources:
+                    # Transfer source shading to the reduced surface, including its normal map.
+                    # Pair objects so rays cannot land on an adjacent part of the asset.
+                    for index, obj in enumerate(selected):
+                        source = normal_sources[obj.name]
+                        bpy.ops.object.select_all(action="DESELECT")
+                        source.hide_render = False
+                        source.select_set(True)
+                        obj.select_set(True)
+                        bpy.context.view_layer.objects.active = obj
+                        distance = max(source.dimensions.length * 0.04, 0.0001)
+                        try:
+                            bpy.ops.object.bake(
+                                type="NORMAL",
+                                normal_space="TANGENT",
+                                use_selected_to_active=True,
+                                use_clear=index == 0,
+                                cage_extrusion=distance,
+                                max_ray_distance=distance * 2,
+                            )
+                        finally:
+                            source.hide_render = True
+                    bpy.ops.object.select_all(action="DESELECT")
+                    for obj in selected:
+                        obj.select_set(True)
+                    bpy.context.view_layer.objects.active = selected[0]
+                else:
+                    bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
             else:
                 socket = shader.inputs[socket_name]
                 for link in list(emission.inputs["Color"].links):
@@ -143,3 +182,6 @@ def bake(meshes, folder, size):
             else:
                 links.new(texture.outputs["Color"], shader.inputs[socket_name])
     scene["pts_bake_needed"] = False
+    for obj in meshes:
+        while len(obj.data.uv_layers) > 1:
+            obj.data.uv_layers.remove(obj.data.uv_layers[-1])

@@ -67,7 +67,9 @@ def validate(request, filename, root):
     names = set()
     for entry in files:
         name = entry.get("name")
-        if not isinstance(name, str) or not re.fullmatch(r"model\.fbx|tex_[a-f0-9]{16}\.png", name):
+        if not isinstance(name, str) or not re.fullmatch(
+            r"model\.fbx|lod_[1-3]\.fbx|tex_[a-f0-9]{16}\.png", name
+        ):
             raise ValueError("Invalid transfer filename")
         if name in names:
             raise ValueError("Duplicate transfer filename")
@@ -79,6 +81,21 @@ def validate(request, filename, root):
             raise ValueError("Transfer hash mismatch: " + name)
     if "model.fbx" not in names:
         raise ValueError("Missing model.fbx")
+    lods = request.get("lods", [])
+    if not isinstance(lods, list) or len(lods) > 3:
+        raise ValueError("Invalid LOD manifest")
+    previous = 1.0
+    for index, lod in enumerate(lods, 1):
+        if (
+            lod.get("file") != f"lod_{index}.fbx"
+            or lod["file"] not in names
+            or not finite(lod.get("screen_height"), 0.001, previous - 0.0001)
+            or not finite(lod.get("triangles"), 1, 200000)
+        ):
+            raise ValueError("Invalid LOD entry")
+        previous = lod["screen_height"]
+    if request.get("collision_mode", "box") not in {"none", "box", "convex"}:
+        raise ValueError("Invalid collision mode")
     materials = request.get("materials")
     if not isinstance(materials, list) or not 1 <= len(materials) <= 128:
         raise ValueError("Invalid materials")

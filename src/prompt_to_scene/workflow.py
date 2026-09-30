@@ -56,12 +56,15 @@ def submit(
     blend_file=None,
     recipe=None,
     preview_only=False,
+    source=None,
+    preparation=None,
+    provenance=None,
 ):
     target = registry.resolve(project)
     name = core.asset_id(name)
     core.position_values(position)
     core.blender_path()  # fail immediately with an actionable setup error
-    if not script.strip() and not blend_file:
+    if not script.strip() and not blend_file and not source:
         raise ValueError("Provide a model script or a saved .blend file")
     root = core.state_root(target.root)
     gate = root / "submission-locks" / name
@@ -92,6 +95,9 @@ def submit(
             "blend_file": blend_file,
             "recipe": recipe,
             "preview_only": preview_only,
+            "source": source,
+            "preparation": preparation,
+            "provenance": provenance,
         }
         state = {
             "request_id": revision,
@@ -131,6 +137,16 @@ def worker(spec_path):
     try:
         if (root / "cancel" / revision).exists():
             raise RuntimeError("Cancelled before Blender started")
+        provenance = spec.get("provenance")
+        if spec.get("source"):
+            from . import sources
+
+            state["stage"] = "Preparing source asset"
+            core.atomic_json(path.with_name("state.json"), state)
+            model, provenance = sources.resolve(
+                spec["source"], path.parent / "inputs", root / "cancel" / revision
+            )
+            spec["script"] = sources.script(model)
         previous = core.read_optional_json(root / "receipts" / (spec["asset_id"] + ".json"))
         if previous and previous.get("status") == "imported":
             core.atomic_json(
@@ -151,6 +167,8 @@ def worker(spec_path):
             recipe=spec["recipe"],
             preview_only=spec.get("preview_only", False),
             timeout=600,
+            preparation=spec.get("preparation"),
+            provenance=provenance,
         )
         state.update(
             result,
@@ -167,6 +185,9 @@ def worker(spec_path):
                 "An offline editor only needs to be opened."
             ),
             completed_utc=now(),
+            report=core.read_optional_json(
+                root / "work" / spec["asset_id"] / revision / "preparation.json"
+            ),
         )
     core.atomic_json(path.with_name("state.json"), state)
 
@@ -279,8 +300,17 @@ def action(project, operation, *, asset_id=None, scope="selected", values=None, 
         "scene",
         "anchor",
         "placements",
+        "view",
+        "frame_id",
+        "review_stage",
     }:
         raise ValueError("Unknown edit field")
+    if "view" in values and values["view"] not in {"studio", "front", "back"}:
+        raise ValueError("Unknown preview view")
+    if values.get("frame_id"):
+        identifier(values["frame_id"])
+        if values.get("review_stage") not in {"before", "after"}:
+            raise ValueError("Unknown comparison stage")
     for key in ("move", "rotate", "scale", "color"):
         if key in values:
             vector = core.position_values(values[key])
@@ -368,4 +398,5 @@ def restore(project, name, revision=None):
         blend_file=str(old / "source.blend"),
         collider=request.get("collider", True),
         recipe=metadata.get("recipe"),
+        provenance=metadata.get("provenance"),
     )

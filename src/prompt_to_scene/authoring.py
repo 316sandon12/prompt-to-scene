@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from . import core, design, recipes, styles, workflow
+from . import core, design, kits, preparation, recipes, styles, workflow
 
 
 def catalog(project=None):
@@ -13,6 +13,9 @@ def catalog(project=None):
             k: {"parameters": v, "parts": design.PARTS[k]} for k, v in recipes.DEFAULTS.items()
         },
         "project_style": styles.read(project),
+        "kits": kits.KITS,
+        "variants": design.VARIANTS,
+        "preparation_defaults": preparation.options(),
     }
 
 
@@ -37,7 +40,47 @@ def set_style(project=None, preset=None, quality=None, overrides=None, reference
 
 def create(project, kind, asset_id, parameters=None, position=None, collider=True, quality=None):
     script, recipe = recipes.prepare(kind, parameters, style=styles.read(project), quality=quality)
-    return workflow.submit(project, asset_id, script, position, collider, recipe=recipe)
+    return submit_recipe(project, asset_id, script, recipe, position, collider)
+
+
+def submit_recipe(project, asset_id, script, recipe, position=None, collider=True):
+    quality = recipe["style"]["quality"]
+    config = (
+        None
+        if quality == "draft"
+        else preparation.options(
+            {"ground": False, "collision": "convex" if collider else "none"}, quality
+        )
+    )
+    return workflow.submit(
+        project, asset_id, script, position, collider, recipe=recipe, preparation=config
+    )
+
+
+def optimize(project, asset_id, settings=None):
+    info = workflow.inspect_asset(project, asset_id)
+    if info["current"].get("status") != "imported":
+        raise ValueError("Wait for the current asset to be imported before preparing it")
+    from pathlib import Path
+
+    source = Path(info["source_blend"])
+    original = source.with_name("original.blend")
+    if original.exists():
+        source = original
+    retained_settings = (info["metadata"].get("preparation") or {}).get("settings", {})
+    config = preparation.options(
+        {**retained_settings, **(settings or {})}, styles.read(project)["quality"]
+    )
+    return workflow.submit(
+        project,
+        asset_id,
+        "",
+        blend_file=str(source),
+        collider=config["collision"] != "none",
+        preparation=config,
+        recipe=info["metadata"].get("recipe"),
+        provenance=info["metadata"].get("provenance"),
+    )
 
 
 def current_recipe(project, asset_id):
@@ -60,8 +103,8 @@ def revise(project, asset_id, parameters=None, apply_project_style=False, qualit
         style=styles.read(project) if apply_project_style else None,
         quality=quality,
     )
-    return workflow.submit(
-        project, asset_id, script, recipe=updated, collider=info["metadata"].get("collider", True)
+    return submit_recipe(
+        project, asset_id, script, updated, collider=info["metadata"].get("collider", True)
     )
 
 
@@ -75,8 +118,8 @@ def edit_part(project, asset_id, part, changes=None, lock_geometry=None, lock_ma
             )
     else:
         script, updated = recipes.edit_part(recipe, part, changes, lock_geometry, lock_material)
-    return workflow.submit(
-        project, asset_id, script, recipe=updated, collider=info["metadata"].get("collider", True)
+    return submit_recipe(
+        project, asset_id, script, updated, collider=info["metadata"].get("collider", True)
     )
 
 
@@ -109,13 +152,13 @@ def create_set(project, items):
     try:
         for item, script, recipe in prepared:
             tasks.append(
-                workflow.submit(
+                submit_recipe(
                     project,
                     item["asset_id"],
                     script,
+                    recipe,
                     item.get("position"),
                     item.get("collider", True),
-                    recipe=recipe,
                 )
             )
     except Exception as error:

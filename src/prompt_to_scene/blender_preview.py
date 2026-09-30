@@ -1,13 +1,17 @@
 """Actual source-geometry studio views; never presented as engine screenshots."""
 
+import json
+
 import bpy
 from mathutils import Vector
 
 
-def render(meshes, folder):
+def render(meshes, folder, views=None):
     points = [obj.matrix_world @ Vector(corner) for obj in meshes for corner in obj.bound_box]
     low = Vector([min(v[i] for v in points) for i in range(3)])
     high = Vector([max(v[i] for v in points) for i in range(3)])
+    if bpy.context.scene.get("pts_preview_frame"):
+        low, high = [Vector(v) for v in json.loads(bpy.context.scene["pts_preview_frame"])]
     center = (low + high) / 2
     size = max((high - low).length, 0.1)
     scene = bpy.context.scene
@@ -52,7 +56,7 @@ def render(meshes, folder):
     data.ortho_scale = size * 1.2
     names = []
     try:
-        for name, direction in (
+        for name, direction in views or (
             ("studio", (1.4, -2, 1.25)),
             ("front", (0, -3, 0.45)),
             ("back", (-1.5, 2, 1.1)),

@@ -1,5 +1,47 @@
 # Verification
 
+## v0.5 — recorded on 2026-09-30
+
+Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in and URP 14.0.11, Unreal Editor 5.7.2. These are real Blender/editor runs; no LLM was asked to simulate results.
+
+| Check | Result |
+| --- | --- |
+| Python/MCP/protocol | 100 tests passed, lint and formatting passed; includes external source checksums, dependency paths/redirects, catalog fallback, LOD manifests, comparison identity and partial kit submissions. |
+| External formats | Actual GLB, FBX and Blender fixture files imported, baked and exported. Live Poly Haven search/download and glTF with external textures passed. |
+| Measured simplification | Textured 14,976-triangle fixture reduced to 3,358, with 1,678/838-triangle LODs. Worst sampled base-mesh error was 0.2871% of that object's diagonal. A strict rejected budget retained the original geometry and published no inbox request. |
+| Unity Built-in / URP / UE | Real MCP external preview → publication, native LOD counts/triangle counts, PBR textures and color spaces, dimensions, collision, and revision identity passed. Unity cooked colliders were also raycast-tested. |
+| Repreparation | Increasing the budget recovered detail from the retained 14,976-triangle original, producing 7,678 triangles; removing LODs/collision produced one native LOD and zero collisions. Existing object identity and position survived. |
+| Native comparisons | Before/after PNGs returned through MCP with an unchanged saved camera frame, in all three engine paths. Project lighting differs between engines. |
+| Kits and selection | Reading-corner kit imported in all three paths; selecting its chair and editing the backrest preserved every other part's geometry hash. |
+| Structural alternatives | All 27 drafts (nine kinds × three variants) rendered three source views and remained outside engine imports. |
+| Hosts and portable app | Real isolated Codex app-server discovered 34 tools; Harness ToolRuntime invocation passed. Local frozen macOS app served MCP/setup/JS and completed detached recipe and external-model jobs after the MCP parent exited. |
+
+Actual images: [original fixture](images/prepared-model-before.png), [prepared fixture](images/prepared-model.png), [Poly Haven model](images/polyhaven-prepared.png), [Unity before](images/prepared-unity-before.png) / [after](images/prepared-unity-after.png), [UE before](images/prepared-unreal-before.png) / [after](images/prepared-unreal-after.png). The Poly Haven example is [Ceramic Vase 03 by James Ray Cock](https://polyhaven.com/a/ceramic_vase_03), CC0; Powered by Poly Haven. The native fixture uses sparse project lighting, not a final art presentation.
+
+| Chair structure 1 | Chair structure 2 | Chair structure 3 |
+| --- | --- | --- |
+| ![Slatted chair](images/chair_0.png) | ![Cross-back chair](images/chair_1.png) | ![Armchair](images/chair_2.png) |
+
+The sampled geometry check is not a formal maximum-distance or aesthetic guarantee. Colliders approximate shape. The external tests cover static opaque PBR, not arbitrary shaders, rigs or animation. The 27-draft run checks default parameters, not every possible dimension/style combination. Windows native Unity/UE remains untested; portable CI evidence is recorded separately in [the machine-readable results](verification-v0.5.json).
+
+### Reproduce v0.5
+
+Use the disposable `.local/*smoke-*` projects described below. The native driver starts a new test scene.
+
+```bash
+uv run pytest -q
+/path/to/blender --background --factory-startup --python tools/external_fixture.py -- .local/v05-fixtures
+uv run python tools/variants_smoke.py
+uv run python tools/authoring_smoke.py --project /repo/.local/unity-smoke-EXAMPLE --editor /path/to/Unity --preparation
+uv run python tools/authoring_smoke.py --project /repo/.local/unreal-smoke-EXAMPLE --editor /path/to/UnrealEditor --preparation
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /path/to/blender
+```
+
+The new editor scenario invokes import/publication/repreparation/review/kit/selection tools through real MCP. Native editor assertions independently read actual LOD geometry and collision counts. Omit `--preparation` to run the existing material reuse, tint, arrangement and undo regression; add `--variants` for candidate selection.
+
 ## v0.4 — recorded on 2026-09-30
 
 Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 (China build), URP 14.0.11, Unreal Editor 5.7.2. Native host versions: Codex CLI 0.159.0 and DeepSeek Harness 0.2.0-rc.1.
