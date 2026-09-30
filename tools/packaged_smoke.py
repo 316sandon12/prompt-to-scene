@@ -1,0 +1,96 @@
+"""Exercise the distributed executable without Python in the child's environment."""
+
+import argparse
+import json
+import os
+import subprocess
+import tempfile
+import time
+import urllib.request
+from pathlib import Path
+
+import anyio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("executable", type=Path)
+    parser.add_argument("--blender", help="Also verify a detached packaged Blender job locally")
+    args = parser.parse_args()
+    binary = str(args.executable.resolve())
+    with tempfile.TemporaryDirectory(prefix="pts package test ") as directory:
+        home = Path(directory)
+        project = home / "Unity Project"
+        (project / "Assets").mkdir(parents=True)
+        (project / "ProjectSettings").mkdir()
+        environment = {
+            **os.environ,
+            "PTS_HOME": str(home / "settings"),
+            "PTS_SETUP_URL_FILE": str(home / "url.txt"),
+        }
+        environment.pop("PTS_PROJECT", None)
+        environment.pop("PTS_UNITY_PROJECT", None)
+        environment.pop("PYTHONPATH", None)
+        if args.blender:
+            environment["PTS_BLENDER"] = args.blender
+        submitted = []
+
+        async def protocol():
+            parameters = StdioServerParameters(command=binary, args=["--mcp"], env=environment)
+            async with stdio_client(parameters) as (read, write):
+                async with ClientSession(read, write) as client:
+                    await client.initialize()
+                    assert len((await client.list_tools()).tools) == 16
+                    response = await client.call_tool(
+                        "connect_project", {"project_path": str(project)}
+                    )
+                    assert not response.isError, response
+                    assert (
+                        project / "Packages/com.prompttoscene.bridge/Editor/SceneActions.cs"
+                    ).is_file()
+                    if args.blender:
+                        response = await client.call_tool(
+                            "create_prop", {"kind": "chair", "asset_id": "packaged_chair"}
+                        )
+                        assert not response.isError, response
+                        submitted.append(
+                            response.structuredContent or json.loads(response.content[0].text)
+                        )
+
+        anyio.run(protocol)
+        if submitted:
+            # The MCP parent has exited. Its detached child must survive its extraction cleanup.
+            revision = submitted[0]["request_id"]
+            state_file = project / ".prompt-to-scene/jobs" / revision / "state.json"
+            deadline = time.monotonic() + 120
+            while True:
+                state = json.loads(state_file.read_text())
+                if state["status"] != "building":
+                    assert state["status"] == "queued", state
+                    break
+                if time.monotonic() > deadline:
+                    raise RuntimeError("Detached packaged worker did not finish")
+                time.sleep(0.1)
+        child = subprocess.Popen([binary, "--setup", "--no-browser"], env=environment)
+        try:
+            deadline = time.monotonic() + 30
+            while not (home / "url.txt").exists():
+                if child.poll() is not None or time.monotonic() > deadline:
+                    raise RuntimeError("Packaged setup failed to launch")
+                time.sleep(0.1)
+            origin, token = (home / "url.txt").read_text().split("/#")
+            with urllib.request.urlopen(origin) as response:
+                assert b"Prompt-to-Scene" in response.read()
+            request = urllib.request.Request(origin + "/api/state", headers={"X-PTS-Token": token})
+            with urllib.request.urlopen(request) as response:
+                assert json.load(response)["active"] == str(project.resolve())
+        finally:
+            child.terminate()
+            child.wait(timeout=20)
+    print("PASS: packaged stdio, tool discovery, embedded bridge and setup UI")
+
+
+if __name__ == "__main__":
+    main()

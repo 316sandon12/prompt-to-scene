@@ -1,0 +1,123 @@
+{
+  "version": "0.3.0",
+  "date": "2026-09-30",
+  "platform": "macOS 15.8 Apple M3 Pro",
+  "python_tests": 48,
+  "blender": "4.2.0",
+  "recipes": {
+    "crate": {
+      "status": "queued",
+      "triangles": 1404
+    },
+    "table": {
+      "status": "queued",
+      "triangles": 540
+    },
+    "chair": {
+      "status": "queued",
+      "triangles": 864
+    },
+    "sign": {
+      "status": "queued",
+      "triangles": 216
+    }
+  },
+  "engines": {
+    "Unity Built-in": {
+      "result": "PASS",
+      "tool_calls": 18,
+      "tools_used": [
+        "build_asset",
+        "cancel_task",
+        "create_prop",
+        "edit_scene",
+        "get_task_status",
+        "inspect_scene",
+        "restore_asset",
+        "revise_prop",
+        "undo_scene_edit"
+      ],
+      "checks": [
+        "ground at 1 meter",
+        "two-instance isolation",
+        "move/scale",
+        "undo",
+        "tint",
+        "parameter revision",
+        "identity",
+        "tint preservation",
+        "source restore",
+        "collider=false preservation",
+        "actual PNG",
+        "cancellation"
+      ]
+    },
+    "Unity URP 14.0.11": {
+      "result": "PASS",
+      "tool_calls": 18,
+      "tools_used": [
+        "build_asset",
+        "cancel_task",
+        "create_prop",
+        "edit_scene",
+        "get_task_status",
+        "inspect_scene",
+        "restore_asset",
+        "revise_prop",
+        "undo_scene_edit"
+      ],
+      "checks": [
+        "ground at 1 meter",
+        "two-instance isolation",
+        "move/scale",
+        "undo",
+        "tint",
+        "parameter revision",
+        "identity",
+        "tint preservation",
+        "source restore",
+        "collider=false preservation",
+        "actual PNG",
+        "cancellation"
+      ]
+    },
+    "Unreal 5.7.2": {
+      "result": "PASS",
+      "tool_calls": 18,
+      "tools_used": [
+        "build_asset",
+        "cancel_task",
+        "create_prop",
+        "edit_scene",
+        "get_task_status",
+        "inspect_scene",
+        "restore_asset",
+        "revise_prop",
+        "undo_scene_edit"
+      ],
+      "checks": [
+        "ground at 1 meter",
+        "two-instance isolation",
+        "move/scale",
+        "undo",
+        "tint",
+        "parameter revision",
+        "identity",
+        "tint preservation",
+        "source restore",
+        "collider=false preservation",
+        "actual PNG",
+        "cancellation"
+      ]
+    }
+  },
+  "hosts": {
+    "Codex CLI 0.159.0": "native plugin + app-server MCP call passed",
+    "DeepSeek Harness 0.2.0-rc.1": "native bundle + ToolRuntime call passed"
+  },
+  "limits": [
+    "No arbitrary natural-language modeling quality evaluation",
+    "Engine verification performed on macOS; Windows package checks are separate",
+    "Source restore and edit undo are not whole-project rollback"
+  ]
+}

@@ -9,7 +9,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -41,13 +40,14 @@ def position_values(value: list[float] | None) -> list[float]:
 
 def blender_path() -> str:
     override = os.environ.get("PTS_BLENDER")
-    candidates = [override] if override else [shutil.which("blender")]
-    if not override and sys.platform == "darwin":
-        candidates.append("/Applications/Blender.app/Contents/MacOS/Blender")
-    for candidate in candidates:
-        if candidate and Path(candidate).is_file():
-            return str(Path(candidate).resolve())
-    raise ValueError("Blender executable not found. Set PTS_BLENDER to its full path.")
+    if override and not Path(override).expanduser().is_file():
+        raise ValueError("PTS_BLENDER does not point to a Blender executable")
+    from .registry import find_blender
+
+    found = find_blender()
+    if found:
+        return found
+    raise ValueError("Blender is missing. Open Prompt-to-Scene setup and select Blender.")
 
 
 def atomic_json(path: Path, data: dict) -> None:
@@ -140,11 +140,14 @@ def build(
     blend_file: str | Path | None = None,
     timeout: int = 180,
     engine: str = "auto",
+    request_id: str | None = None,
+    recipe: dict | None = None,
 ) -> dict:
     """Run a trusted AI/user-authored script in a separate Blender process, then queue import."""
     target = resolve_target(project, engine)
     project = target.root
     name = asset_id(name)
+    automatic_placement = position is None
     position = position_values(position)
     if not script.strip() and blend_file is None:
         raise ValueError("Provide Blender Python or an existing .blend file")
@@ -166,7 +169,9 @@ def build(
             raise ValueError(
                 "Previous import is still queued; inspect the editor before rebuilding"
             )
-        revision = uuid.uuid4().hex
+        revision = request_id or uuid.uuid4().hex
+        if not re.fullmatch(r"[a-f0-9]{32}", revision):
+            raise ValueError("Invalid request ID")
         work = root / "work" / name / revision
         work.mkdir(parents=True)
         (work / "model.py").write_text(script, encoding="utf-8")
@@ -178,9 +183,23 @@ def build(
         log_path = work / "blender.log"
         with log_path.open("w") as log:
             try:
-                result = subprocess.run(
-                    command, stdout=log, stderr=subprocess.STDOUT, timeout=timeout
-                )
+                child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+                deadline = time.monotonic() + timeout
+                while child.poll() is None:
+                    if (root / "cancel" / revision).exists():
+                        child.terminate()
+                        try:
+                            child.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            child.kill()
+                            child.wait()
+                        raise RuntimeError("Cancelled before import")
+                    if time.monotonic() > deadline:
+                        child.kill()
+                        child.wait()
+                        raise subprocess.TimeoutExpired(command, timeout)
+                    time.sleep(0.1)
+                result = child
             except subprocess.TimeoutExpired as exc:
                 raise RuntimeError(f"Blender timed out after {timeout}s; log: {log_path}") from exc
         export_file = work / "export.json"
@@ -202,10 +221,28 @@ def build(
             "request_id": revision,
             "work_dir": work.relative_to(root).as_posix(),
             "position": position,
+            "auto_place": automatic_placement,
             "collider": collider,
             "materials": exported["materials"],
             "files": files,
         }
+        atomic_json(work / "request.json", request)
+        atomic_json(
+            work / "asset.json",
+            {
+                "asset_id": name,
+                "request_id": revision,
+                "recipe": recipe,
+                "source_file": str(source) if source else None,
+                "collider": collider,
+            },
+        )
+        if source and not script.strip():
+            original_script = source.with_name("model.py")
+            if original_script.is_file():
+                shutil.copyfile(original_script, work / "model.py")
+        if (root / "cancel" / revision).exists():
+            raise RuntimeError("Cancelled before import")
         atomic_json(root / "inbox" / f"{name}.json", request)
         return {
             "status": "queued",
@@ -221,6 +258,9 @@ def build(
 
 
 def inspect_project(project: str | Path, *, engine: str = "auto") -> dict:
+    from . import __version__
+    from .registry import find_blender
+
     target = resolve_target(project, engine)
     project = target.root
     root = state_root(project)
@@ -234,14 +274,50 @@ def inspect_project(project: str | Path, *, engine: str = "auto") -> dict:
             age = (datetime.now(timezone.utc) - updated).total_seconds()
         except (ValueError, TypeError):
             pass
+    responding = age is not None and -5 <= age <= 15
+    blender = find_blender()
+    bridge = project / (
+        "Packages/com.prompttoscene.bridge/package.json"
+        if target.engine == "unity"
+        else "Plugins/PromptToScene/PromptToScene.uplugin"
+    )
+    diagnostics = []
+    if not blender:
+        diagnostics.append({"code": "blender_missing", "message": "Select Blender in setup."})
+    if not bridge.exists() and not responding:
+        diagnostics.append(
+            {
+                "code": "bridge_unconfirmed",
+                "message": "Connect this project in setup to install/update the bridge.",
+            }
+        )
+    if not responding:
+        diagnostics.append(
+            {
+                "code": "editor_offline",
+                "message": "Open this project and wait for editor startup/compilation.",
+            }
+        )
+    elif editor.get("playing"):
+        diagnostics.append(
+            {"code": "editor_playing", "message": "Leave Play mode to process queued work."}
+        )
+    elif editor.get("bridge_version") != __version__:
+        diagnostics.append(
+            {
+                "code": "bridge_version",
+                "message": "Reconnect this project in setup to update the bridge; restart UE.",
+            }
+        )
     return {
         "project": str(project),
         "project_file": str(target.project_file) if target.project_file else None,
         "engine": target.engine,
         "coordinates": "XYZ meters; Y-up" if target.engine == "unity" else "XYZ meters; Z-up",
-        "blender": blender_path(),
+        "blender": blender,
         "editor": editor,
-        "editor_responding": age is not None and -5 <= age <= 15,
+        "editor_responding": responding,
+        "diagnostics": diagnostics,
         "assets": [
             status(target.project_file or project, name, engine=target.engine)
             for name in sorted(

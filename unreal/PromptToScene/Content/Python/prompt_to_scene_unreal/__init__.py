@@ -7,6 +7,7 @@ from pathlib import Path
 
 import unreal
 
+from . import actions
 from .importer import import_asset, is_commandlet, is_playing
 from .protocol import state_root, validate, write_json
 
@@ -41,14 +42,22 @@ def import_pending():
                 if isinstance(request, dict):
                     receipt["request_id"] = request.get("request_id")
                 source = validate(request, path.stem, root)
-                receipt = import_asset(request, source)
+                if (root / "cancel" / request["request_id"]).exists():
+                    receipt.update(status="cancelled")
+                else:
+                    receipt = import_asset(request, source)
                 unreal.log("[Prompt-to-Scene] Imported " + path.stem)
             except Exception as error:
                 receipt["error"] = str(error)
                 unreal.log_warning("[Prompt-to-Scene] " + path.stem + ": " + str(error))
             receipt["completed_utc"] = utc_now()
             write_json(root / "receipts" / path.name, receipt)
+            if receipt.get("status") == "imported":
+                write_json(
+                    root / "history" / path.stem / (receipt["request_id"] + ".json"), receipt
+                )
             path.unlink()
+        actions.process(root)
     finally:
         _busy = False
 
@@ -69,6 +78,8 @@ def tick(_delta):
             root / "editor.json",
             {
                 "engine": "unreal",
+                "bridge_version": "0.3.0",
+                "capabilities": ["actions", "preview", "instance_undo", "auto_place"],
                 "unreal_version": unreal.SystemLibrary.get_engine_version(),
                 "scene": level.get_outer().get_path_name() if level else None,
                 "playing": playing,

@@ -35,6 +35,7 @@ namespace PromptToScene.Editor
         public string work_dir;
         public float[] position;
         public bool collider;
+        public bool auto_place;
         public MaterialData[] materials;
         public TransferFile[] files;
     }
@@ -60,6 +61,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
+        public string bridge_version = "0.3.0";
         public string engine = "unity";
         public string pipeline;
         public string scene;
@@ -115,7 +117,8 @@ namespace PromptToScene.Editor
                         receipt.asset_id = request.asset_id;
                         receipt.request_id = request.request_id;
                         ValidateRequest(request, Path.GetFileNameWithoutExtension(path));
-                        receipt = Import(request);
+                        if (File.Exists(Path.Combine(StateRoot, "cancel", request.request_id))) receipt.status = "cancelled";
+                        else receipt = Import(request);
                         Debug.Log("[Prompt-to-Scene] Imported " + request.asset_id);
                     }
                     catch (Exception e)
@@ -127,8 +130,11 @@ namespace PromptToScene.Editor
                     string receiptPath = Path.Combine(StateRoot, "receipts", Path.GetFileName(path));
                     receipt.completed_utc = DateTime.UtcNow.ToString("o");
                     WriteJson(receiptPath, receipt);
+                    if (receipt.status == "imported")
+                        WriteJson(Path.Combine(StateRoot, "history", receipt.asset_id, receipt.request_id + ".json"), receipt);
                     File.Delete(path);
                 }
+                SceneActions.Process();
             }
             finally { busy = false; }
         }
@@ -191,6 +197,7 @@ namespace PromptToScene.Editor
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (!scene.IsValid() || !scene.isLoaded) throw new Exception("Open a scene before importing");
             string target = "Assets/PromptToScene/" + request.asset_id;
+            var overrides = SceneActions.RememberTints(request.asset_id);
             string absoluteTarget = Path.Combine(ProjectRoot, target);
             Directory.CreateDirectory(absoluteTarget);
             foreach (TransferFile file in request.files)
@@ -287,6 +294,7 @@ namespace PromptToScene.Editor
                 else Object.DestroyImmediate(root);
             }
             AssetDatabase.SaveAssets();
+            SceneActions.RestoreTints(overrides);
             var instances = Resources.FindObjectsOfTypeAll<AssetIdentity>().Where(a =>
                 !EditorUtility.IsPersistent(a) && a.gameObject.scene.IsValid() &&
                 a.gameObject.scene == scene && a.assetId == request.asset_id).ToArray();
@@ -295,9 +303,10 @@ namespace PromptToScene.Editor
                 GameObject instance = (GameObject)PrefabUtility.InstantiatePrefab(
                     AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath), scene);
                 Undo.RegisterCreatedObjectUndo(instance, "Place AI asset");
-                instance.transform.position = new Vector3(request.position[0], request.position[1], request.position[2]);
+                instance.transform.position = request.auto_place ? SceneActions.AutoPosition(instance) : new Vector3(request.position[0], request.position[1], request.position[2]);
                 PrefabUtility.RecordPrefabInstancePropertyModifications(instance.transform);
                 Selection.activeGameObject = instance;
+                if (request.auto_place) SceneActions.Focus(new[] { instance });
             }
             EditorSceneManager.MarkSceneDirty(scene);
             return new ImportReceipt {

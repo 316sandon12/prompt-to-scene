@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0 — 2026-09-30
+
+- Portable setup app: project/Blender discovery, native pickers, bridge installation with backups, local dashboard and bundled Python.
+- Native Codex plugin/skill and DeepSeek Harness bundle installation; shared project/source records across clients.
+- Background Blender tasks with exact-request status, cancellation and bounded repair instructions.
+- Parameterized crate/table/chair/sign creation and parameter-preserving revisions.
+- Grounded placement, actual selection inspection, native transforms and isolated material tint with edit undo.
+- Real engine PNG previews and restoration of successful source revisions.
+- Preserve collider settings and tool-created instance tints through asset regeneration/restoration.
+- Fix UE's repeated in-session FBX pipeline switching and verify stored material parameters despite its false setter return.
+- Beginner download path, client/engine reproduction tools, automated portable builds and expanded tests.
+
+
 ## 0.2.0 — 2026-09-30
 
 - Add Unreal Editor adapter: native combined Static Mesh, opaque PBR materials, texture import, optional box collision and automatic Actor placement.

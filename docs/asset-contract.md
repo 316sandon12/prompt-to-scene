@@ -43,7 +43,7 @@ Position uses the target engine's XYZ axes in meters: Unity Y-up, Unreal Z-up. T
 
 Every material has its original `name` and an `fbx_name` of `PTS_` plus the first 16 lowercase hex characters of SHA-256 over the UTF-8 original name. Source `.blend` files retain the original names; the FBX uses these ASCII identities so engine name sanitization cannot disconnect material slots.
 
-The v0.2 Unity package also accepts existing schema 1 requests (Unity-only, no FBX alias). The v0.1 package cannot consume schema 2 requests: update both server and package together. The Unreal adapter accepts schema 2 only.
+The v0.3 Unity package also accepts existing schema 1 requests (Unity-only, no FBX alias). The v0.1 package cannot consume schema 2 requests: update both server and package together. The Unreal adapter accepts schema 2 only.
 
 ## Success semantics
 

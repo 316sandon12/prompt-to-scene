@@ -1,165 +1,88 @@
 # Prompt-to-Scene
 
-**Ask your AI to build a prop in Blender, place it in Unity or Unreal, and revise the same asset.**
+**Tell your AI what to build. See it appear in Unity or Unreal. Keep refining it by conversation.**
 
-[简体中文](README.zh-CN.md) · [Quickstart](#quickstart) · [Asset contract](docs/asset-contract.md) · [Architecture](docs/architecture.md)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner guide](docs/QUICKSTART.zh-CN.md) · [Verified results](docs/verification.md)
 
-An open-source MCP server with Unity and Unreal editor adapters for a complete **build → import → verify → revise** workflow. Your existing AI client writes Blender Python; this project runs Blender, transfers a validated asset, creates native materials and geometry, places an instance in the active scene, and returns an import receipt.
+Prompt-to-Scene connects **Codex or DeepSeek Harness → Blender → Unity / Unreal Editor**. It runs Blender locally, imports native geometry and materials, places the prop in your scene, and verifies the result. There is no extra modeling subscription or project upload by this bridge; your AI client keeps its existing model connection.
 
-> **v0.2 experimental:** static opaque props; Unity Built-in/URP and Unreal Editor. Natural-language interpretation comes from your MCP-compatible AI client. No LLM or image-to-3D model is bundled. See the [verification matrix](docs/verification.md) for exact tested versions.
+> v0.3 is an experimental release for static opaque props. Blender, an engine editor, and an AI client are separate prerequisites. The downloadable setup app bundles Python and handles bridge/plugin configuration.
 
-![Two material variations of the included crate, rendered in Unity](docs/images/unity-preview.png)
+![Actual Unity preview returned through MCP](docs/images/workflow-unity.png)
 
-*Actual Unity render of the included Blender recipe, staged with two material variations. See the [real-engine checks](docs/verification.md).*
+*Two instances in the real Unity integration test. The workflow changed one instance, revised the asset, restored an earlier source and requested this engine-rendered PNG.*
 
-## The interaction
+## Install
 
-> “Create a one-meter wooden crate with iron straps in Blender. Put it at [2, 0, 3] in Unity and add a collider.”
+[**Windows download**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-windows-x64.zip) · [**macOS Apple Silicon download**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-macos-arm64.zip)
+
+1. Extract the archive and open **Prompt-to-Scene**. On Windows keep both EXE files together.
+2. Select your Unity project folder or Unreal project, then click **Connect / 连接并准备项目**. Blender is detected automatically; choose its executable if necessary.
+3. Click **Install Codex plugin** or **Install Harness plugin**. Restart that client and open a new chat. Keep the engine open outside Play mode; restart UE once after its bridge is installed.
+
+Say: **“Use Prompt-to-Scene to make a wooden crate with metal straps and place it in my project.”**
+
+The app also has a **Generate example crate / 生成示例木箱** button to test the complete pipeline without an AI account. No terminal, Python installation, MCP JSON editing or manual bridge copying is needed for the packaged path. The setup window can be closed after installation.
+
+Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. The operating system may require its normal first-launch approval. Installation details, client detection and common errors: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`; other MCP clients can use [manual setup](docs/manual-setup.md).
+
+## Create, select, refine
+
+> “Make a table 1.5 meters wide. Put it near the scene camera.”
 >
-> “Make the wood darker and the straps thinner. Update the same crate.”
+> “Make the selected object 20% smaller and move it one meter along X.”
+>
+> “Change only this one's wood to green.”
+>
+> “Undo that color change.”
+>
+> “Make the original table taller, keeping its other details.”
+>
+> “Restore its previous model and show me the result.”
 
-The AI calls `build_asset`, then `get_asset_status` with that request ID and an optional wait of up to 30 seconds. Reusing the asset ID updates the existing prefab or Static Mesh. Existing instance transforms are preserved. A queued export is never reported as a successful engine import.
+| Capability | Behavior |
+| --- | --- |
+| Native host plugins | Codex plugin + shared skill; Harness bundle using its official MCP client. Both use the same local runtime and project records. |
+| Setup and diagnosis | Project/Blender discovery, native picker, bridge backup/update, heartbeat, Play mode and version checks. |
+| Repeatable props | Crate, table, chair and sign recipes retain parameters across clients. Custom shapes use AI-authored Blender Python. |
+| Placement | Omitted coordinates place near the editor camera on a collision surface, falling back to the ground plane. Explicit coordinates remain available. |
+| Selected-instance edits | Native move, rotation, scale and material tint. Other instances stay unchanged unless asset scope is requested. |
+| Background jobs | Immediate task IDs, progress/status polling, cancellation and actionable errors. A wait timeout does not cancel the work. |
+| Recovery | Restore a successful source revision; undo a tool's instance edit. The agent workflow limits automatic script repair to two retries. |
+| Real previews | Engine-rendered PNG returned through MCP; a failed preview does not imply failed import. |
 
-## What works
+Generated asset identity, scene transforms and supported instance tints survive revisions. Unity prefab-root scripts/components and Unreal Actor labels/tags remain intact. Save your scene or level normally. Source history, task receipts and undo snapshots stay in the project; setup adds the local state directory to its `.gitignore`.
 
-- Four MCP tools: `inspect_target`, `build_asset`, `publish_blend`, `get_asset_status`.
-- Real background Blender execution; editable `.blend` source retained per revision.
-- Native FBX import into Unity; no additional Unity import package required.
-- Unreal content-only editor plugin: Static Mesh, native material graphs, persistent Actor identity and box collision. No C++ compilation.
-- Principled BSDF base color, metallic and roughness; optional direct base-color and tangent normal textures.
-- Materials adapted to Built-in Standard or URP Lit.
-- Unreal Default Lit materials, meter-to-centimeter conversion and OpenGL-to-DirectX normal-map conversion.
-- Stable ASCII material-slot IDs keep spaces and non-ASCII material names mapped correctly.
-- Stable asset/material/prefab paths, automatic scene placement and box collider.
-- Import receipts with request ID, engine asset paths, prefab/Actor identity, triangle counts and bounds.
-- Engine detection, heartbeat freshness, bounded waiting and explicit stale-revision reporting.
-- A CLI and a reproducible crate recipe, usable without an AI subscription.
+## Supported assets
 
-## Requirements
+- Blender meshes with applied modifiers and opaque Principled BSDF materials; editable `.blend` snapshots per revision.
+- Native FBX, base color, metallic, roughness, direct base-color and tangent normal textures.
+- Unity Built-in Standard / URP Lit materials, prefabs and optional box colliders.
+- UE Default Lit materials, combined Static Meshes, Actors and optional box collision; no C++ build.
+- Publish a compatible saved `.blend` produced by another Blender AI tool with `publish_blend`.
 
-- Python 3.11+ and [uv](https://docs.astral.sh/uv/).
-- Blender 4.2+ (first verification target: 4.2).
-- Unity 2022.3 with an activated editor (Built-in or URP), **or** Unreal Editor 5.7 with a working graphics device.
-- An MCP-compatible client for natural-language use. CLI use does not require one.
+[Asset contract](docs/asset-contract.md) · [Tools and architecture](docs/architecture.md) · [Unreal details](docs/unreal.md)
 
-Versions outside the recorded verification matrix are not a compatibility guarantee. See [verification](docs/verification.md).
+Automatic baking, transparency, rigs/animation, HDRP, arbitrary shader conversion and Blueprint generation are outside this release. Different renderers/lighting need not produce identical pixels. Generated Python runs as your local user; use your client's existing tool permissions. Source restore and edit undo are not a whole-project transaction, and an import that fails midway may leave partial engine assets.
 
-## Quickstart
+## Verification
 
-### 1. Get the server
+Real Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, and Unreal 5.7.2 were exercised on macOS Apple Silicon. Tests cover import, repeat revisions in one editor session, texture wiring, selection isolation, undo, identity, source restore, cancellation, ground placement and PNG return. Native Codex app-server and Harness ToolRuntime calls were verified without a paid LLM request.
 
-```bash
-git clone https://github.com/316sandon12/prompt-to-scene.git
-cd prompt-to-scene
-uv sync --locked
-```
+The portable-app workflow builds and checks Windows/macOS binaries separately. A passing Windows package check is **not** Windows Unity/UE verification. See [the exact matrix and reproduction commands](docs/verification.md).
 
-### 2a. Unity: install the package
-
-In Unity: **Window → Package Manager → + → Add package from disk**. Select:
-
-```text
-unity/Packages/com.prompttoscene.bridge/package.json
-```
-
-Keep the cloned repository in place. Open a scene in the target project, leave Play Mode, and wait for compilation to finish. Both applications operate on your local machine; Blender is started as a separate background process by the server. You do not need a Blender MCP addon for this path.
-
-### 2b. Unreal: install the plugin
-
-Copy `unreal/PromptToScene` into `<YourUnrealProject>/Plugins/PromptToScene`. In Unreal, enable **Edit → Plugins → Prompt-to-Scene** and restart the editor. The plugin declares its Python Editor Script Plugin and Editor Scripting Utilities dependencies. Open a level and leave Play In Editor.
-
-The [v0.2.0 release](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.2.0) also includes a standalone Unreal plugin ZIP. Extract its `PromptToScene` folder into the project's `Plugins` folder.
-
-The plugin automatically watches the project inbox. No remote-execution setting, network listener or C++ build is required. Use the full editor with graphics enabled; commandlets and `-NullRHI` do not support this scene-placement workflow. See the [Unreal guide](docs/unreal.md).
-
-### 3. Register the MCP server
-
-Use your client's MCP server settings with this configuration. Replace every example path with your own **absolute** path:
-
-```json
-{
-  "mcpServers": {
-    "prompt-to-scene": {
-      "command": "/absolute/path/to/uv",
-      "args": ["--directory", "/absolute/path/to/prompt-to-scene", "run", "--locked", "prompt-to-scene-mcp"],
-      "env": {
-        "PTS_PROJECT": "/absolute/path/to/MyUnityProject",
-        "PTS_ENGINE": "unity",
-        "PTS_BLENDER": "/absolute/path/to/blender"
-      }
-    }
-  }
-}
-```
-
-On macOS the usual Blender executable is `/Applications/Blender.app/Contents/MacOS/Blender`. On Windows use the full path to `blender.exe`; backslashes in JSON must be escaped. The project path selects the destination explicitly, even if several Unity editors are open.
-
-For Unreal, set `PTS_PROJECT` to `/absolute/path/to/MyProject/MyProject.uproject` and `PTS_ENGINE` to `unreal`. Omit `PTS_ENGINE` for automatic detection. The legacy `PTS_UNITY_PROJECT` setting still works for Unity. Register two separately named MCP servers if you want both engines available to the AI at once.
-
-Try the interaction above. Ask the AI to inspect the target, follow the [asset contract](docs/asset-contract.md), and verify the returned request ID. Editors poll for work every two seconds while idle. `queued` means the engine has not confirmed an import yet. Positions always use **target-engine XYZ in meters**: Unity is Y-up; Unreal is Z-up and converts these values to centimeters.
-
-### CLI smoke test
-
-With the chosen editor open and the adapter installed:
-
-```bash
-uv run prompt-to-scene --project /path/to/MyUnityProject build crate --script examples/crate.py --position 2 0 3 --wait 30
-uv run prompt-to-scene --project /path/to/MyUnityProject status crate
-
-# Unreal: ground-level placement, coordinates in meters
-uv run prompt-to-scene --project /path/to/MyProject.uproject build crate --script examples/crate.py --position 2 3 0 --wait 30
-```
-
-Results appear under `Assets/PromptToScene/crate/` in Unity or `/Game/PromptToScene/crate/` in Unreal. Save your scene/level normally; the bridge does **not** silently save existing scenes. Add `.prompt-to-scene/` to your project's `.gitignore` to exclude the local queue, logs and source revisions. CLI exit code 2 means an engine error, a superseded request or a wait timeout; the JSON describes which. A timeout does not cancel the pending import.
-
-To publish a model created through another Blender AI tool, save it with its asset meshes inside a collection named `Export`, then call `publish_blend`. The original file is opened with auto-execution disabled and is not overwritten.
-
-For a self-contained textured example, use `--script examples/textured_cube.py` with a different asset ID. It creates its own UVs, checker texture and normal map, without downloads.
-
-## Revision behavior
-
-Use the same `asset_id` to regenerate the same asset. Each `build_asset` script describes the entire asset from scratch; there is no persistent interactive Blender session. To edit an existing file, use another Blender tool and `publish_blend`.
-
-- Source revisions remain in `<Project>/.prompt-to-scene/work/`.
-- Imported `.meta` files and prefab/material GUIDs remain stable.
-- Existing scene instance positions/rotations/scales and prefab-root components remain intact.
-- The prefab's `Visual` subtree, root box collider and managed material properties are owned by the bridge. Put custom scripts on the prefab root; do not put manual overrides inside `Visual`.
-- Renaming a Blender material creates a new material identity. Removed material/texture files are retained rather than automatically deleted.
-- Unreal combines the asset's meshes into one Static Mesh. Asset paths and existing Actor GUIDs remain stable. Actor transforms, labels and user tags are preserved; mesh geometry, collision and generated material graphs belong to the bridge.
-- A pending import must finish before rebuilding that asset. Different asset IDs have independent requests.
-
-## Boundaries
-
-This version deliberately rejects unsupported material nodes instead of silently exporting a different appearance. No automatic procedural texture baking, roughness/metallic textures, transparency, rigs, animation, LOD generation or Blueprint generation yet. Materials can differ under different engine lighting/color management; there is no pixel-identical rendering guarantee.
-
-Blender scripts execute as your local user and are **not sandboxed**. Use trusted scripts and your AI client's tool permissions. Generated `.blend` files are local artifacts; no model or project is uploaded by this bridge. Import failures are reported, but there is no full rollback after a mid-import engine error. Keep projects under version control.
-
-Upgrading from v0.1: update both the server and the Unity package. v0.2 publishes schema 2 requests; the old package rejects these. The new Unity package can still read queued schema 1 requests.
-
-## Development
+## Develop
 
 ```bash
 uv sync --locked
-uv run pytest
+uv run prompt-to-scene-app
+uv run pytest -q
 uv run ruff check .
 uv run ruff format --check .
+# Build on the target operating system:
+uv run --group build python tools/package_app.py
 ```
 
-For real Blender/Unity/Unreal integration verification, see [verification](docs/verification.md). CI exercises Python, request validation and the MCP protocol; installed editors are tested separately.
+MCP tools: `list_projects`, `connect_project`, `inspect_target`, `create_prop`, `revise_prop`, `inspect_asset`, `build_asset`, `publish_blend`, `get_asset_status`, `get_task_status`, `cancel_task`, `inspect_scene`, `edit_scene`, `undo_scene_edit`, `restore_asset`, `get_preview`.
 
-## Roadmap
-
-- [x] AI-authored Blender Python → Unity scene with import receipts
-- [x] Stable asset identity and revisions
-- [ ] Texture baking and broader PBR input coverage
-- [ ] Engine-side preview screenshots returned to the AI
-- [x] Unreal Engine adapter using the same task/receipt contract
-- [ ] Interactive Blender-session adapter and richer scene placement
-
-## Related projects
-
-[MCP for Blender](https://github.com/ahujasid/mcp-for-blender), [MCP for Unity](https://github.com/CoplayDev/unity-mcp), and [Blender Tools](https://github.com/EpicGames/BlenderTools) are useful adjacent projects. This repository is an independent implementation and does not vendor their code. It can receive a saved `.blend` produced by another tool through `publish_blend`.
-
-## License
-
-MIT. See [LICENSE](LICENSE). Blender, Unity, Unreal Engine and your AI client have their own licenses. Example geometry is generated by the included original Python recipe.
+This independent MIT project does not vendor Blender/Unity MCP implementations. It can complement [MCP for Blender](https://github.com/ahujasid/mcp-for-blender), [MCP for Unity](https://github.com/CoplayDev/unity-mcp) and [Blender Tools](https://github.com/EpicGames/BlenderTools). Blender, Unity, Unreal and the AI clients have their own licenses. See [LICENSE](LICENSE) and [CHANGELOG](CHANGELOG.md).

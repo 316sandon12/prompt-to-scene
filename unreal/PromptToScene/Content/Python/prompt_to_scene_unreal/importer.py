@@ -35,8 +35,7 @@ def import_asset(request, source):
     task.filename = str(source / "model.fbx")
     task.destination_path = target
     task.destination_name = "SM_" + asset_id
-    # An explicit factory selects FBX instead of silently switching to Interchange
-    # (which uses a different options pipeline in UE 5.7). No global CVar changes.
+    # Keep initial import and repeated in-session reimports on the same FBX pipeline.
     task.factory = unreal.FbxFactory()
     task.automated = True
     task.replace_existing = True
@@ -62,7 +61,14 @@ def import_asset(request, source):
     }.items():
         data.set_editor_property(name, value)
     task.options = options
-    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    setting = "Interchange.FeatureFlags.Import.FBX"
+    enabled = unreal.SystemLibrary.get_console_variable_bool_value(setting)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    try:
+        unreal.SystemLibrary.execute_console_command(world, setting + " 0")
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    finally:
+        unreal.SystemLibrary.execute_console_command(world, setting + (" 1" if enabled else " 0"))
     meshes = [obj for obj in task.get_objects() if isinstance(obj, unreal.StaticMesh)]
     if len(meshes) != 1:
         raise RuntimeError("FBX import did not produce one combined StaticMesh")
@@ -98,9 +104,14 @@ def import_asset(request, source):
     ]
     with unreal.ScopedEditorTransaction("Prompt-to-Scene: place/update " + asset_id):
         if not instances:
-            actor = actors.spawn_actor_from_class(
-                unreal.StaticMeshActor, unreal.Vector(*(v * 100 for v in request["position"]))
+            from .actions import auto_position
+
+            position = (
+                auto_position(mesh)
+                if request.get("auto_place")
+                else unreal.Vector(*(v * 100 for v in request["position"]))
             )
+            actor = actors.spawn_actor_from_class(unreal.StaticMeshActor, position)
             if actor is None:
                 raise RuntimeError("Could not spawn StaticMeshActor")
             actor.set_actor_label(asset_id)
@@ -117,6 +128,10 @@ def import_asset(request, source):
                 tags.append(tag)
             tags.append("PTS.Revision:" + request["request_id"])
             actor.set_editor_property("tags", [unreal.Name(t) for t in tags])
+    if request.get("auto_place"):
+        from .actions import focus
+
+        focus(instances)
     # Asset packages are saved; the user's level stays dirty until they save it.
     extent = mesh.get_bounds().box_extent
     triangles = mesh.get_num_triangles(0)

@@ -1,5 +1,44 @@
 # Verification
 
+## v0.3 — recorded on 2026-09-30
+
+Environment: macOS 15.8 / Apple M3 Pro, Python 3.11.16, Blender 4.2.0, Unity 2022.3.62f3c1 (China build), URP 14.0.11, Unreal Editor 5.7.2. Native client checks used Codex CLI 0.159.0 and DeepSeek Harness `@deepseek-ai/dsh` 0.2.0-rc.1.
+
+| Check | Result |
+| --- | --- |
+| Python/protocol/setup tests | 48 passed; lint and formatting passed |
+| Blender recipes | Crate 1,404, table 540, chair 864, sign 216 triangles; actual background export |
+| Unity Built-in and URP | Initial/revised import, textures and saved `.blend` publishing passed |
+| UE native regression | Geometry, PBR, collision, Unicode material mapping, identity and textures passed |
+| All three engine paths, real MCP | Recipe creation → grounded placement → selection → duplicate-instance isolation → transform → undo → tint → structural revision → source restore → edit undo → PNG → worker cancellation |
+| Repeated in-session revisions | Original asset/object identity and collider=false preserved; selected-instance tint retained through shared geometry updates |
+| Codex native plugin | Isolated marketplace registration; 16 tools discovered; app-server invoked `list_projects` successfully |
+| Harness native bundle | Isolated profile installation/config composition; real ToolRuntime invoked the registered MCP tool |
+| Setup interface | Local browser layout inspected; token/origin rejection and connected-project state tested |
+| macOS portable app | Built locally; actual frozen stdio server, bridge extraction, setup HTML/API checked |
+| Windows/macOS release builds | See the [Portable apps workflow](https://github.com/316sandon12/prompt-to-scene/actions/workflows/package.yml) for the build attached to the release |
+
+Native host verification invokes tools through each host's actual plugin runtime without asking an LLM to model an asset. The engine workflow uses an MCP client and deterministic recipes; it does not measure arbitrary natural-language modeling quality. Mac binary tests include a real detached Blender job after its MCP parent exits. Windows package tests do not establish Windows Unity/UE compatibility.
+
+The fixture makes a floor at one meter, verifies automatic placement on it, then creates two instances. Tests assert that selected edits affect only one instance and shared model changes retain both identities. Unity runs the real editor in graphics-enabled batch mode with a test driver pumping its importer; UE uses the normal live watcher in a full graphics-enabled editor. Preview PNGs were visually inspected; lighting differs between pipelines. The fixture scenes are not saved after interactive edits.
+
+Sanitized machine-readable summary: [verification-v0.3.json](verification-v0.3.json). [Unity preview](images/workflow-unity.png) and [Unreal preview](images/workflow-unreal.png) are actual tool results. Full logs remain local because they can contain personal paths or editor licensing information.
+
+### Reproduce v0.3
+
+First run the relevant engine smoke test below. Then use the disposable project it prints:
+
+```bash
+uv run python tools/workflow_smoke.py --project /repo/.local/unity-smoke-EXAMPLE --editor /absolute/path/to/Unity
+uv run python tools/workflow_smoke.py --project /repo/.local/unreal-smoke-EXAMPLE/Smoke.uproject --editor /absolute/path/to/UnrealEditor-Cmd
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /absolute/path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /absolute/path/to/blender
+```
+
+On Windows the core executable ends in `.exe`; omit `--blender` to verify only the self-contained package without a Blender installation. The two client tests create disposable host configuration directories, use no LLM/API key and do not alter the user's real client profiles. Harness's existing Node/pnpm environment must be available.
+
 ## v0.2 — recorded on 2026-09-30
 
 Environment: macOS 15.8 on Apple M3 Pro, Python 3.11.16, Blender 4.2.0, Unity 2022.3.62f3c1 (China build), URP 14.0.11, Unreal Editor 5.7.2 (CL 49658320).

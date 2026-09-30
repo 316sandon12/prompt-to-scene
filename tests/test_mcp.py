@@ -31,6 +31,18 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                     "build_asset",
                     "publish_blend",
                     "get_asset_status",
+                    "list_projects",
+                    "connect_project",
+                    "create_prop",
+                    "inspect_asset",
+                    "revise_prop",
+                    "get_task_status",
+                    "cancel_task",
+                    "inspect_scene",
+                    "edit_scene",
+                    "undo_scene_edit",
+                    "restore_asset",
+                    "get_preview",
                 }
                 result = await session.call_tool("get_asset_status", {"asset_id": "crate"})
                 assert not result.isError

@@ -68,13 +68,19 @@ def build_material(data, source, target):
             raise RuntimeError("Could not connect material property: " + str(property_))
 
     base = import_texture(source, target, data["base_color_texture"], False)
+    tint = node(unreal.MaterialExpressionVectorParameter, -750, -450)
+    tint.set_editor_property("parameter_name", "PTS_Color")
+    tint.set_editor_property("default_value", unreal.LinearColor(*data["color"]))
     if base:
         color = node(unreal.MaterialExpressionTextureSample, -500, -250)
         color.set_editor_property("texture", base)
         color.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+        multiply_color = node(unreal.MaterialExpressionMultiply, -250, -250)
+        library.connect_material_expressions(color, "RGB", multiply_color, "A")
+        library.connect_material_expressions(tint, "RGB", multiply_color, "B")
+        color = multiply_color
     else:
-        color = node(unreal.MaterialExpressionConstant3Vector, -500, -250)
-        color.set_editor_property("constant", unreal.LinearColor(*data["color"]))
+        color = tint
     connect(color, unreal.MaterialProperty.MP_BASE_COLOR)
     for value, prop, y in (
         (data["metallic"], unreal.MaterialProperty.MP_METALLIC, -50),
