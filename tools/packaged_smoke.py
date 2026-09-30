@@ -42,7 +42,7 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 16
+                    assert len((await client.list_tools()).tools) == 26
                     response = await client.call_tool(
                         "connect_project", {"project_path": str(project)}
                     )
@@ -50,7 +50,15 @@ def main():
                     assert (
                         project / "Packages/com.prompttoscene.bridge/Editor/SceneActions.cs"
                     ).is_file()
+                    response = await client.call_tool("inspect_library", {})
+                    assert not response.isError, response
+                    catalog = response.structuredContent or json.loads(response.content[0].text)
+                    assert len(catalog["recipes"]) == 9
                     if args.blender:
+                        response = await client.call_tool(
+                            "set_project_style", {"preset": "cozy", "quality": "mobile"}
+                        )
+                        assert not response.isError, response
                         response = await client.call_tool(
                             "create_prop", {"kind": "chair", "asset_id": "packaged_chair"}
                         )
@@ -64,7 +72,7 @@ def main():
             # The MCP parent has exited. Its detached child must survive its extraction cleanup.
             revision = submitted[0]["request_id"]
             state_file = project / ".prompt-to-scene/jobs" / revision / "state.json"
-            deadline = time.monotonic() + 120
+            deadline = time.monotonic() + 600
             while True:
                 state = json.loads(state_file.read_text())
                 if state["status"] != "building":
@@ -73,6 +81,11 @@ def main():
                 if time.monotonic() > deadline:
                     raise RuntimeError("Detached packaged worker did not finish")
                 time.sleep(0.1)
+            work = project / ".prompt-to-scene/work/packaged_chair" / revision
+            report = json.loads((work / "report.json").read_text())
+            assert report["texture_count"] >= 10, report
+            assert (work / "studio.png").stat().st_size > 5000
+            assert (work / "blender_recipe.py").is_file()
         child = subprocess.Popen([binary, "--setup", "--no-browser"], env=environment)
         try:
             deadline = time.monotonic() + 30

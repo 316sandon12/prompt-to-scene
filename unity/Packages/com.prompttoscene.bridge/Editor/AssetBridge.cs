@@ -23,6 +23,7 @@ namespace PromptToScene.Editor
         public float roughness;
         public string base_color_texture;
         public string normal_texture;
+        public string roughness_texture, metallic_texture, mask_texture, reuse_path;
         public float normal_strength = 1;
     }
     [Serializable] public class TransferRequest
@@ -61,7 +62,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
-        public string bridge_version = "0.3.0";
+        public string bridge_version = "0.4.0";
         public string engine = "unity";
         public string pipeline;
         public string scene;
@@ -182,7 +183,7 @@ namespace PromptToScene.Editor
                     float.IsNaN(material.normal_strength) || float.IsInfinity(material.normal_strength) ||
                     material.normal_strength < 0)
                     throw new Exception("Invalid material parameters");
-                foreach (string texture in new[] { material.base_color_texture, material.normal_texture })
+                foreach (string texture in new[] { material.base_color_texture, material.normal_texture, material.roughness_texture, material.metallic_texture, material.mask_texture })
                     if (!string.IsNullOrEmpty(texture) && !request.files.Any(f => f.name == texture && texture.EndsWith(".png")))
                         throw new Exception("Texture is absent from manifest: " + texture);
             }
@@ -219,6 +220,14 @@ namespace PromptToScene.Editor
             var materials = new Dictionary<string, Material>();
             foreach (MaterialData data in request.materials)
             {
+                if (!string.IsNullOrEmpty(data.reuse_path))
+                {
+                    if (!data.reuse_path.StartsWith("Assets/") || data.reuse_path.Contains("..")) throw new Exception("Reusable material must be inside Assets/");
+                    var reusedMaterial = AssetDatabase.LoadAssetAtPath<Material>(data.reuse_path);
+                    if (reusedMaterial == null) throw new Exception("Reusable material is missing: " + data.reuse_path);
+                    materials.Add(data.name, reusedMaterial);
+                    continue;
+                }
                 string materialPath = target + "/mat_" + Sha256(Encoding.UTF8.GetBytes(data.name)).Substring(0, 16) + ".mat";
                 var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
                 Shader shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard");
@@ -239,6 +248,15 @@ namespace PromptToScene.Editor
                 material.SetTexture(urp ? "_BaseMap" : "_MainTex", Texture(target, data.base_color_texture, false));
                 material.SetTexture("_BumpMap", Texture(target, data.normal_texture, true));
                 material.SetFloat("_BumpScale", data.normal_strength);
+                var mask = Texture(target, data.mask_texture, false, true);
+                material.SetTexture("_MetallicGlossMap", mask);
+                if (mask != null)
+                {
+                    material.EnableKeyword(urp ? "_METALLICSPECGLOSSMAP" : "_METALLICGLOSSMAP");
+                    material.SetFloat(urp ? "_Smoothness" : "_GlossMapScale", 1);
+                    material.SetFloat("_SmoothnessTextureChannel", 0);
+                }
+                else material.DisableKeyword(urp ? "_METALLICSPECGLOSSMAP" : "_METALLICGLOSSMAP");
                 if (string.IsNullOrEmpty(data.normal_texture)) material.DisableKeyword("_NORMALMAP");
                 else material.EnableKeyword("_NORMALMAP");
                 EditorUtility.SetDirty(material);
@@ -319,14 +337,14 @@ namespace PromptToScene.Editor
             };
         }
 
-        private static Texture2D Texture(string target, string name, bool normal)
+        private static Texture2D Texture(string target, string name, bool normal, bool linear = false)
         {
             if (string.IsNullOrEmpty(name)) return null;
             string path = target + "/" + name;
             var importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null) throw new Exception("Texture import failed: " + name);
             importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            importer.sRGBTexture = !normal;
+            importer.sRGBTexture = !normal && !linear;
             importer.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }

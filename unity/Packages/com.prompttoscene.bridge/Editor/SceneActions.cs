@@ -15,19 +15,23 @@ namespace PromptToScene.Editor
         public int schema_version;
         public string request_id, target_engine, operation, scope, asset_id, undo_id, material;
         public float[] move, rotate, scale, color;
+        public string scene;
+        public SceneObject anchor;
+        public Placement[] placements;
     }
     [Serializable] public class RendererState { public string path; public string[] materials; }
     [Serializable] public class SceneObject
     {
         public string id, name, asset_id;
         public int instance_id;
-        public float[] position, rotation, quaternion, scale;
+        public float[] position, rotation, quaternion, scale, bounds_min, bounds_max;
         public RendererState[] renderers;
     }
     [Serializable] public class SceneResult
     {
         public string status = "completed", engine = "unity", request_id, error, scene, undo_id, preview, restored_edit;
-        public SceneObject[] selected, assets, objects;
+        public SceneObject[] selected, assets, objects, context, selected_context;
+        public string[] created_ids;
         public int changed;
     }
 
@@ -64,20 +68,7 @@ namespace PromptToScene.Editor
                     }
         }
 
-        public static SceneObject Describe(AssetIdentity identity)
-        {
-            var t = identity.transform;
-            var q = t.rotation;
-            return new SceneObject {
-                id = GlobalObjectId.GetGlobalObjectIdSlow(identity.gameObject).ToString(),
-                instance_id = identity.gameObject.GetInstanceID(), name = identity.name, asset_id = identity.assetId,
-                position = Vec(t.position), rotation = Vec(t.eulerAngles), quaternion = new[] { q.x, q.y, q.z, q.w }, scale = Vec(t.localScale),
-                renderers = identity.GetComponentsInChildren<Renderer>().Select(r => new RendererState {
-                    path = AnimationUtility.CalculateTransformPath(r.transform, t),
-                    materials = r.sharedMaterials.Select(m => m == null ? "" : AssetDatabase.GetAssetPath(m)).ToArray()
-                }).ToArray()
-            };
-        }
+        public static SceneObject Describe(AssetIdentity identity) => SceneLayout.Describe(identity.gameObject);
 
         public static void Focus(GameObject[] objects)
         {
@@ -148,7 +139,8 @@ namespace PromptToScene.Editor
         static SceneResult Execute(SceneAction a)
         {
             var result = new SceneResult { request_id = a.request_id, scene = SceneKey };
-            if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); return result; }
+            if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); return result; }
+            if (a.operation == "arrange") return SceneLayout.Arrange(a, SceneKey);
             if (a.operation == "undo")
             {
                 if (!Id(a.undo_id)) throw new Exception("Invalid undo ID");
@@ -157,6 +149,8 @@ namespace PromptToScene.Editor
                 var objects = snapshot.objects.Select(Resolve).ToArray();
                 if (objects.Any(o => o == null)) throw new Exception("An edited object is no longer loaded");
                 for (int i = 0; i < objects.Length; i++) Restore(objects[i], snapshot.objects[i]);
+                foreach (var createdId in snapshot.created_ids ?? new string[0])
+                { var created = SceneLayout.Find(createdId); if (created != null) Undo.DestroyObjectImmediate(created); }
                 EditorSceneManager.MarkSceneDirty(Scene);
                 result.restored_edit = a.undo_id; result.objects = snapshot.objects;
                 return result;
@@ -234,7 +228,7 @@ namespace PromptToScene.Editor
             return identity != null && identity.assetId == state.asset_id && obj.scene == Scene ? obj : null;
         }
 
-        static void Restore(GameObject obj, SceneObject state)
+        public static void Restore(GameObject obj, SceneObject state)
         {
             Undo.RecordObject(obj.transform, "Restore Prompt-to-Scene edit");
             obj.transform.position = Vec(state.position);

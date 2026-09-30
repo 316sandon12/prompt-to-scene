@@ -1,6 +1,6 @@
 # Unreal Editor adapter
 
-For v0.3, the [setup app](QUICKSTART.zh-CN.md) installs and enables this bridge automatically. The steps below remain available for manual installation. The current release also supports selection/edit/undo, preview and source restore; see the [tool contract](architecture.md).
+For v0.4, the [setup app](QUICKSTART.zh-CN.md) installs and enables this bridge automatically. The steps below remain available for manual installation. The current release also supports art direction, baked PBR, semantic parts, contextual arrangement, draft selection, preview and source restore; see the [tool contract](architecture.md).
 
 The v0.2 adapter targets Unreal Editor 5.7. It is a content-only Python plugin with no compiled module or third-party Python dependencies. The native assets remain usable when the plugin is disabled; automation itself is editor-only.
 

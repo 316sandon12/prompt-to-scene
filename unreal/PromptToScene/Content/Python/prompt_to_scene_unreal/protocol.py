@@ -101,8 +101,14 @@ def validate(request, filename, root):
             raise ValueError("Invalid metallic/roughness")
         if not finite(material.get("normal_strength"), 0):
             raise ValueError("Invalid normal strength")
-        for key in ("base_color_texture", "normal_texture"):
-            texture = material.get(key)
+        for key in (
+            "base_color_texture",
+            "normal_texture",
+            "roughness_texture",
+            "metallic_texture",
+            "mask_texture",
+        ):
+            texture = material.get(key, "")
             if not isinstance(texture, str) or (
                 texture and (texture not in names or not texture.endswith(".png"))
             ):

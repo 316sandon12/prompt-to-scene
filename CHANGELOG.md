@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0 — 2026-09-30
+
+- Persistent project art direction: three palettes/styles, quality budgets, reference recipe adoption and read-only binding to existing engine materials.
+- Nine designed prop recipes with structural alternatives, semantic parts, supports, bevels and hardware.
+- UV preparation and real Cycles baking of curated wood/metal/paint/stone into base-color, roughness, metallic and tangent-normal maps; Unity metallic/smoothness packing and UE data-texture mapping.
+- Independent semantic geometry/material edits and locks retained through shared recipe revisions.
+- Real scene bounds and anchor-based around/along/under/right/front layouts, conservative overlap checks, fit-under scaling, native instances and persistent layout undo.
+- Two/three isolated 3D candidate drafts, consistent studio/front/back renders, and selected-candidate final baking/import.
+- A local creation workshop and 26 MCP tools shared by Codex and DeepSeek Harness.
+- Two Blender worker slots per project, retained build drivers for detached portable workers, and source/report access.
+- Avoid reverse DNS during local setup launch; use a read-only Windows process probe instead of `os.kill(pid, 0)`.
+- Expanded real Blender/native editor checks and a full authoring guide.
+
+Update the server, client plugin and engine bridge together. Existing saved sources remain restorable; revising v0.3 recipes adopts the new geometry designs. Baking covers curated recipe surfaces, and layouts use world-axis bounds with existing orientation. Static opaque assets remain the scope.
+
 ## 0.3.0 — 2026-09-30
 
 - Portable setup app: project/Blender discovery, native pickers, bridge installation with backups, local dashboard and bundled Python.

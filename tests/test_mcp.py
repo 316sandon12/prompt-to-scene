@@ -43,6 +43,16 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                     "undo_scene_edit",
                     "restore_asset",
                     "get_preview",
+                    "inspect_library",
+                    "get_project_style",
+                    "set_project_style",
+                    "edit_prop_part",
+                    "create_prop_set",
+                    "create_variants",
+                    "get_variants",
+                    "choose_variant",
+                    "get_studio_preview",
+                    "arrange_props",
                 }
                 result = await session.call_tool("get_asset_status", {"asset_id": "crate"})
                 assert not result.isError

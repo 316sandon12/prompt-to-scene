@@ -5,7 +5,7 @@ import unreal
 from .protocol import digest
 
 
-def import_texture(source, target, name, normal):
+def import_texture(source, target, name, normal, linear=False):
     if not name:
         return None
     task = unreal.AssetImportTask()
@@ -22,7 +22,7 @@ def import_texture(source, target, name, normal):
     if len(results) != 1 or not isinstance(results[0], unreal.Texture2D):
         raise RuntimeError("Texture import failed: " + name)
     texture = results[0]
-    texture.set_editor_property("srgb", not normal)
+    texture.set_editor_property("srgb", not normal and not linear)
     texture.set_editor_property(
         "compression_settings",
         (
@@ -42,6 +42,14 @@ def import_texture(source, target, name, normal):
 
 
 def build_material(data, source, target):
+    if data.get("reuse_path"):
+        path = data["reuse_path"]
+        if not path.startswith("/Game/") or ".." in path:
+            raise ValueError("Reusable material must be inside /Game/")
+        existing = unreal.EditorAssetLibrary.load_asset(path)
+        if not isinstance(existing, unreal.MaterialInterface):
+            raise ValueError("Reusable material is missing: " + path)
+        return existing
     name = "M_" + digest(data["name"])
     path = target + "/" + name
     material = (
@@ -82,13 +90,23 @@ def build_material(data, source, target):
     else:
         color = tint
     connect(color, unreal.MaterialProperty.MP_BASE_COLOR)
-    for value, prop, y in (
-        (data["metallic"], unreal.MaterialProperty.MP_METALLIC, -50),
-        (data["roughness"], unreal.MaterialProperty.MP_ROUGHNESS, 50),
+    for key, value, prop, y in (
+        ("metallic_texture", data["metallic"], unreal.MaterialProperty.MP_METALLIC, -50),
+        ("roughness_texture", data["roughness"], unreal.MaterialProperty.MP_ROUGHNESS, 100),
     ):
-        scalar = node(unreal.MaterialExpressionConstant, -250, y)
-        scalar.set_editor_property("r", value)
-        connect(scalar, prop)
+        texture = import_texture(source, target, data.get(key, ""), False, linear=True)
+        if texture:
+            scalar = node(unreal.MaterialExpressionTextureSample, -500, y)
+            scalar.set_editor_property("texture", texture)
+            scalar.set_editor_property(
+                "sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
+            )
+            if not library.connect_material_property(scalar, "R", prop):
+                raise RuntimeError("Could not connect PBR map: " + key)
+        else:
+            scalar = node(unreal.MaterialExpressionConstant, -250, y)
+            scalar.set_editor_property("r", value)
+            connect(scalar, prop)
     normal = import_texture(source, target, data["normal_texture"], True)
     if normal:
         sample = node(unreal.MaterialExpressionTextureSample, -750, 250)

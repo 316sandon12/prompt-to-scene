@@ -1,5 +1,42 @@
 # Verification
 
+## v0.4 — recorded on 2026-09-30
+
+Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 (China build), URP 14.0.11, Unreal Editor 5.7.2. Native host versions: Codex CLI 0.159.0 and DeepSeek Harness 0.2.0-rc.1.
+
+| Check | Result |
+| --- | --- |
+| Python, protocol and setup | 71 tests passed; lint/format passed. Includes geometry/material lock independence, project style isolation, layout collisions, setup without reverse DNS and non-destructive process probes. |
+| Actual Blender library | All nine recipes exported, baked PBR maps and three source views checked; no draft inbox entries. Native vertex hashes verify frozen parts and material-only geometry invariance. |
+| Unity Built-in, URP and UE | Real MCP creation of matching table/chair/stool; native baked-map and data-texture color-space checks; backrest-only revision preserves asset identity, other parts and instance tint. |
+| Layout in all three paths | Four chairs around a selected table; undo removes three copies and restores the original; rearrangement and fitting a stool underneath succeed. Native PNG returned. |
+| Existing material reuse | Unity Built-in and UE reuse an existing material reference; its asset file hash is unchanged. |
+| Draft selection | Two real cabinet drafts leave Unity scene instance count unchanged; source image returns through MCP; choosing a draft bakes and imports a final cabinet. |
+| Codex and Harness | Isolated real host registration and tool invocation passed. Codex discovered all 26 tools. No paid LLM calls needed. |
+| Local portable macOS app | Frozen stdio tools, embedded bridge, local setup HTML/API and detached Blender baking pass after MCP exits. |
+| Workshop UI | Local browser checked style controls, semantic-part selection, candidate cards and multi-view image loading; no browser warnings/errors observed. |
+
+[Sanitized results](verification-v0.4.json). Actual renders: [Blender chair](images/authoring-chair.png), [cabinet](images/authoring-cabinet.png), [barrel](images/authoring-barrel.png), [Unity scene](images/authoring-unity.png), [UE scene](images/authoring-unreal.png). The native scenes use sparse fixture lighting; they verify engine geometry/material state, not production lighting or visual equivalence. Blender views use consistent studio lighting. These are actual model renders, not generated concept images.
+
+These checks exercise deterministic recipes and real tools, not arbitrary LLM modeling quality. Baking was exercised at the mobile tier; higher tiers increase resolution/detail but are not a performance guarantee. Layout uses conservative world-axis bounds and keeps instance orientation. Windows portable CI is separate from native Windows editor validation; Windows Unity/UE has not been tested. Full logs remain local because they can contain personal paths and editor licensing details.
+
+### Reproduce v0.4
+
+Use disposable `.local/*smoke-*` projects created by the engine smoke scripts below. The authoring driver creates a new fixture scene, not a user's working scene.
+
+```bash
+uv run pytest -q
+uv run python tools/art_smoke.py
+uv run python tools/authoring_smoke.py --project /repo/.local/unity-smoke-EXAMPLE --editor /absolute/path/to/Unity --variants
+uv run python tools/authoring_smoke.py --project /repo/.local/unreal-smoke-EXAMPLE --editor /absolute/path/to/UnrealEditor-Cmd
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /absolute/path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /absolute/path/to/blender
+```
+
+`art_smoke.py` verifies one style per recipe across the three styles; it does not test every parameter combination. Native authoring checks install the current bridge into disposable projects. Use `--variants` for the additional source-study/publish workflow. The package test starts the actual frozen app, exits its MCP parent while a detached worker runs, checks baked output, then checks setup startup. Windows binary names end in `.exe`; omit `--blender` on machines without Blender.
+
 ## v0.3 — recorded on 2026-09-30
 
 Environment: macOS 15.8 / Apple M3 Pro, Python 3.11.16, Blender 4.2.0, Unity 2022.3.62f3c1 (China build), URP 14.0.11, Unreal Editor 5.7.2. Native client checks used Codex CLI 0.159.0 and DeepSeek Harness `@deepseek-ai/dsh` 0.2.0-rc.1.

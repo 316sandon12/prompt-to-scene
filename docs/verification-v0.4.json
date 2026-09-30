@@ -1,0 +1,265 @@
+{
+  "release": "0.4.0",
+  "date": "2026-09-30",
+  "environment": {
+    "os": "macOS 15.8",
+    "cpu": "Apple M3 Pro",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2",
+    "codex_cli": "0.159.0",
+    "harness": "0.2.0-rc.1"
+  },
+  "python": {
+    "tests_passed": 71,
+    "ruff": "passed"
+  },
+  "blender": {
+    "library": [
+      {
+        "asset": "crate_cozy",
+        "triangles": 4208,
+        "texture_count": 10,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "body",
+          "lid",
+          "straps",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "table_heritage",
+        "triangles": 1672,
+        "texture_count": 10,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "top",
+          "legs",
+          "frame",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "chair_workshop",
+        "triangles": 2212,
+        "texture_count": 10,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "seat",
+          "legs",
+          "backrest",
+          "frame",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "sign_cozy",
+        "triangles": 1400,
+        "texture_count": 15,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "post",
+          "board",
+          "frame",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "stool_heritage",
+        "triangles": 1536,
+        "texture_count": 10,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "seat",
+          "legs",
+          "frame",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "bench_workshop",
+        "triangles": 1672,
+        "texture_count": 10,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "seat",
+          "legs",
+          "frame",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "barrel_cozy",
+        "triangles": 2068,
+        "texture_count": 10,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "body",
+          "lid",
+          "hoops",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "cabinet_heritage",
+        "triangles": 1888,
+        "texture_count": 15,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "body",
+          "doors",
+          "legs",
+          "top",
+          "hardware"
+        ]
+      },
+      {
+        "asset": "shelf_workshop",
+        "triangles": 1616,
+        "texture_count": 15,
+        "checks": {
+          "geometry": "passed",
+          "materials": "passed",
+          "uv": "passed",
+          "budget": "passed"
+        },
+        "semantic_parts": [
+          "frame",
+          "shelves",
+          "back",
+          "hardware"
+        ]
+      }
+    ],
+    "actual_locked_geometry_invariance": "passed",
+    "material_only_edit_geometry_invariance": "passed",
+    "isolated_draft_views": "passed"
+  },
+  "native": {
+    "unity_builtin": {
+      "result": "passed",
+      "tool_calls": {
+        "inspect_library": 1,
+        "set_project_style": 3,
+        "create_prop_set": 1,
+        "get_task_status": 8,
+        "create_prop": 1,
+        "inspect_asset": 2,
+        "edit_scene": 1,
+        "inspect_scene": 6,
+        "edit_prop_part": 1,
+        "arrange_props": 3,
+        "undo_scene_edit": 1,
+        "create_variants": 1,
+        "get_variants": 1,
+        "choose_variant": 1
+      },
+      "pbr_maps": "native texture/color-space assertions passed",
+      "semantic_edit": "actual unchanged-part hashes and native identity/tint preservation passed",
+      "arrangement": "four chairs around anchor, undo, rearrange and fit stool below table passed",
+      "preview": "actual native PNG returned",
+      "material_reuse": "native reference and unchanged material file hash passed",
+      "draft_selection": "two real drafts stay outside engine; selected candidate imported"
+    },
+    "unity_urp": {
+      "result": "passed",
+      "tool_calls": {
+        "inspect_library": 1,
+        "set_project_style": 1,
+        "create_prop_set": 1,
+        "get_task_status": 4,
+        "inspect_asset": 2,
+        "edit_scene": 1,
+        "inspect_scene": 4,
+        "edit_prop_part": 1,
+        "arrange_props": 3,
+        "undo_scene_edit": 1
+      },
+      "pbr_maps": "native texture/color-space assertions passed",
+      "semantic_edit": "actual unchanged-part hashes and native identity/tint preservation passed",
+      "arrangement": "four chairs around anchor, undo, rearrange and fit stool below table passed",
+      "preview": "actual native PNG returned",
+      "material_reuse": "not exercised in this pipeline",
+      "draft_selection": "not exercised in this pipeline"
+    },
+    "unreal": {
+      "result": "passed",
+      "tool_calls": {
+        "inspect_library": 1,
+        "set_project_style": 3,
+        "create_prop_set": 1,
+        "get_task_status": 5,
+        "create_prop": 1,
+        "inspect_asset": 2,
+        "edit_scene": 1,
+        "inspect_scene": 4,
+        "edit_prop_part": 1,
+        "arrange_props": 3,
+        "undo_scene_edit": 1
+      },
+      "pbr_maps": "native texture/color-space assertions passed",
+      "semantic_edit": "actual unchanged-part hashes and native identity/tint preservation passed",
+      "arrangement": "four chairs around anchor, undo, rearrange and fit stool below table passed",
+      "preview": "actual native PNG returned",
+      "material_reuse": "native reference and unchanged material file hash passed",
+      "draft_selection": "not exercised in this pipeline"
+    }
+  },
+  "hosts": {
+    "codex": "native app-server discovered 26 tools and invoked list_projects",
+    "harness": "native bundle registration and ToolRuntime invocation"
+  },
+  "portable": {
+    "macos_local": "frozen app, detached Blender baking after MCP exit, 26 tools, embedded bridge, setup HTML/API passed",
+    "windows_engine": "not tested"
+  },
+  "boundaries": [
+    "Curated recipe baking only; no arbitrary shader conversion",
+    "Axis-aligned bounds layout; preserves orientation",
+    "No aesthetics scoring or image-to-3D",
+    "No Windows native editor claim",
+    "Native scenes use sparse test lighting, not production art direction"
+  ]
+}

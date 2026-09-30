@@ -47,7 +47,16 @@ def launch_worker(spec: Path):
         )
 
 
-def submit(project, name, script, position=None, collider=True, blend_file=None, recipe=None):
+def submit(
+    project,
+    name,
+    script,
+    position=None,
+    collider=True,
+    blend_file=None,
+    recipe=None,
+    preview_only=False,
+):
     target = registry.resolve(project)
     name = core.asset_id(name)
     core.position_values(position)
@@ -82,6 +91,7 @@ def submit(project, name, script, position=None, collider=True, blend_file=None,
             "collider": collider,
             "blend_file": blend_file,
             "recipe": recipe,
+            "preview_only": preview_only,
         }
         state = {
             "request_id": revision,
@@ -139,8 +149,13 @@ def worker(spec_path):
             blend_file=spec["blend_file"],
             request_id=revision,
             recipe=spec["recipe"],
+            preview_only=spec.get("preview_only", False),
+            timeout=600,
         )
-        state.update(result, stage="Waiting for the editor to import")
+        state.update(
+            result,
+            stage="Draft ready" if spec.get("preview_only") else "Waiting for the editor to import",
+        )
     except Exception as error:
         cancelled = (root / "cancel" / revision).exists()
         state.update(
@@ -201,6 +216,23 @@ def job_status(project, revision, wait_seconds=0):
 
 
 def process_alive(pid):
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+        handle = kernel.OpenProcess(0x1000, False, int(pid))
+        if not handle:
+            return ctypes.get_last_error() == 5  # Access denied is not proof of exit.
+        try:
+            code = wintypes.DWORD()
+            return not kernel.GetExitCodeProcess(handle, ctypes.byref(code)) or code.value == 259
+        finally:
+            kernel.CloseHandle(handle)
     try:
         os.kill(int(pid), 0)
         return True
@@ -229,7 +261,7 @@ def cancel(project, revision):
 
 
 def action(project, operation, *, asset_id=None, scope="selected", values=None, undo_id=None):
-    if operation not in {"inspect", "transform", "tint", "focus", "preview", "undo"}:
+    if operation not in {"inspect", "transform", "tint", "focus", "preview", "undo", "arrange"}:
         raise ValueError("Unknown editor action")
     if scope not in {"selected", "asset"}:
         raise ValueError("scope must be selected or asset")
@@ -238,7 +270,16 @@ def action(project, operation, *, asset_id=None, scope="selected", values=None, 
     if scope == "asset" and not asset_id:
         raise ValueError("An asset ID is required to edit every loaded instance")
     values = values or {}
-    if values.keys() - {"move", "rotate", "scale", "color", "material"}:
+    if values.keys() - {
+        "move",
+        "rotate",
+        "scale",
+        "color",
+        "material",
+        "scene",
+        "anchor",
+        "placements",
+    }:
         raise ValueError("Unknown edit field")
     for key in ("move", "rotate", "scale", "color"):
         if key in values:
@@ -294,6 +335,7 @@ def inspect_asset(project, name):
         "asset_id": name,
         "current": current,
         "metadata": metadata,
+        "report": core.read_optional_json(work / "report.json") if work else None,
         "script": script,
         "history": history,
         "source_blend": str(work / "source.blend") if work else None,

@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
-  "Version": 3,
-  "VersionName": "0.3.0",
+  "Version": 4,
+  "VersionName": "0.4.0",
   "FriendlyName": "Prompt-to-Scene",
   "Description": "Import AI-authored Blender props and report verified Unreal scene results.",
   "Category": "Editor",

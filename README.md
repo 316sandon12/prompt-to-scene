@@ -1,88 +1,85 @@
 # Prompt-to-Scene
 
-**Tell your AI what to build. See it appear in Unity or Unreal. Keep refining it by conversation.**
+**Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
-[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner guide](docs/QUICKSTART.zh-CN.md) · [Verified results](docs/verification.md)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [Authoring guide](docs/AUTHORING.zh-CN.md) · [Verified results](docs/verification.md)
 
-Prompt-to-Scene connects **Codex or DeepSeek Harness → Blender → Unity / Unreal Editor**. It runs Blender locally, imports native geometry and materials, places the prop in your scene, and verifies the result. There is no extra modeling subscription or project upload by this bridge; your AI client keeps its existing model connection.
+Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.3 is an experimental release for static opaque props. Blender, an engine editor, and an AI client are separate prerequisites. The downloadable setup app bundles Python and handles bridge/plugin configuration.
+> v0.4 is experimental and targets static opaque props. Install Blender, an engine editor and a working AI client first. The local workshop also operates the built-in library without an LLM.
 
-![Actual Unity preview returned through MCP](docs/images/workflow-unity.png)
+![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 
-*Two instances in the real Unity integration test. The workflow changed one instance, revised the asset, restored an earlier source and requested this engine-rendered PNG.*
+*An actual studio render of the built-in chair, with editable semantic parts and baked PBR surfaces. Engine lighting and rendering can produce different results.*
 
 ## Install
 
-[**Windows download**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-windows-x64.zip) · [**macOS Apple Silicon download**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-macos-arm64.zip)
+[**Windows x64**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-windows-x64.zip) · [**macOS Apple Silicon**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-macos-arm64.zip)
 
-1. Extract the archive and open **Prompt-to-Scene**. On Windows keep both EXE files together.
-2. Select your Unity project folder or Unreal project, then click **Connect / 连接并准备项目**. Blender is detected automatically; choose its executable if necessary.
-3. Click **Install Codex plugin** or **Install Harness plugin**. Restart that client and open a new chat. Keep the engine open outside Play mode; restart UE once after its bridge is installed.
+1. Extract the download and open **Prompt-to-Scene**. Keep both Windows EXE files together.
+2. Select an engine project and click **Connect / 连接并准备项目**. The app locates Blender and installs the bridge.
+3. Click **Install Codex plugin** or **Install Harness plugin**, restart that client and start a new chat.
 
-Say: **“Use Prompt-to-Scene to make a wooden crate with metal straps and place it in my project.”**
+Keep the editor open outside Play mode. Restart UE once after installing the bridge. Say:
 
-The app also has a **Generate example crate / 生成示例木箱** button to test the complete pipeline without an AI account. No terminal, Python installation, MCP JSON editing or manual bridge copying is needed for the packaged path. The setup window can be closed after installation.
+> “Use Prompt-to-Scene. Set a cozy art style for this project and show me three chair designs before publishing one.”
 
-Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. The operating system may require its normal first-launch approval. Installation details, client detection and common errors: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`; other MCP clients can use [manual setup](docs/manual-setup.md).
+Or choose a prop in **创作工作台 / Workshop**, compare candidates and publish your favorite. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
 
-## Create, select, refine
+Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
 
-> “Make a table 1.5 meters wide. Put it near the scene camera.”
->
-> “Make the selected object 20% smaller and move it one meter along X.”
->
-> “Change only this one's wood to green.”
->
-> “Undo that color change.”
->
-> “Make the original table taller, keeping its other details.”
->
-> “Restore its previous model and show me the result.”
+## Six authoring features
 
-| Capability | Behavior |
+| Feature | What it does |
 | --- | --- |
-| Native host plugins | Codex plugin + shared skill; Harness bundle using its official MCP client. Both use the same local runtime and project records. |
-| Setup and diagnosis | Project/Blender discovery, native picker, bridge backup/update, heartbeat, Play mode and version checks. |
-| Repeatable props | Crate, table, chair and sign recipes retain parameters across clients. Custom shapes use AI-authored Blender Python. |
-| Placement | Omitted coordinates place near the editor camera on a collision surface, falling back to the ground plane. Explicit coordinates remain available. |
-| Selected-instance edits | Native move, rotation, scale and material tint. Other instances stay unchanged unless asset scope is requested. |
-| Background jobs | Immediate task IDs, progress/status polling, cancellation and actionable errors. A wait timeout does not cancel the work. |
-| Recovery | Restore a successful source revision; undo a tool's instance edit. The agent workflow limits automatic script repair to two retries. |
-| Real previews | Engine-rendered PNG returned through MCP; a failed preview does not imply failed import. |
+| Project art direction | Persistent Cozy, Heritage or Workshop defaults, palette, wear and quality. Adopt a retained recipe's style or bind existing engine materials without editing them. |
+| Designed prop library | Nine parametric recipes: crate, table, chair, sign, stool, bench, barrel, cabinet and shelf. Silhouette alternatives, bevels, supports and hardware. |
+| Automatic material preparation | UV generation and actual base-color, roughness, metallic and tangent-normal baking for curated wood/metal/paint/stone. Packed Unity metallic/smoothness maps and explicit UE material inputs. |
+| Semantic edits and locks | Change the backrest, seat, legs or other named parts. Geometry and material locks remain independent through whole-asset revisions. |
+| Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
+| Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-Generated asset identity, scene transforms and supported instance tints survive revisions. Unity prefab-root scripts/components and Unreal Actor labels/tags remain intact. Save your scene or level normally. Source history, task receipts and undo snapshots stay in the project; setup adds the local state directory to its `.gitignore`.
+These features are available through both AI hosts and the local workshop. The MCP server exposes 26 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
 
-## Supported assets
+## Refine by conversation
 
-- Blender meshes with applied modifiers and opaque Principled BSDF materials; editable `.blend` snapshots per revision.
-- Native FBX, base color, metallic, roughness, direct base-color and tangent normal textures.
-- Unity Built-in Standard / URP Lit materials, prefabs and optional box colliders.
-- UE Default Lit materials, combined Static Meshes, Actors and optional box collision; no C++ build.
-- Publish a compatible saved `.blend` produced by another Blender AI tool with `publish_blend`.
+> “Make a matching table, chair and cabinet set.”
+>
+> “Make this chair's backrest 15% taller; keep the seat and legs.”
+>
+> “Lock the backrest geometry before changing the project style.”
+>
+> “Put four chairs around the table I selected, then show the actual engine preview.”
+>
+> “Fit the stool under the selected table.”
+>
+> “Tint only the selected instance green.”
+>
+> “Undo that placement,” or “Restore this asset's previous model.”
 
-[Asset contract](docs/asset-contract.md) · [Tools and architecture](docs/architecture.md) · [Unreal details](docs/unreal.md)
+Semantic edits update shared assets. Instance transforms and tints run directly in the editor. Revisions preserve native asset identity, existing instance transforms and tool-created tint overrides. Unity prefab-root components and Unreal Actor labels/tags survive. Save your scene normally.
 
-Automatic baking, transparency, rigs/animation, HDRP, arbitrary shader conversion and Blueprint generation are outside this release. Different renderers/lighting need not produce identical pixels. Generated Python runs as your local user; use your client's existing tool permissions. Source restore and edit undo are not a whole-project transaction, and an import that fails midway may leave partial engine assets.
+Background jobs, exact-request receipts, cancellation, source history and engine PNG previews remain available. Source restore and instance undo have different scopes; neither provides whole-project rollback.
 
-## Verification
+## Supported scope
 
-Real Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, and Unreal 5.7.2 were exercised on macOS Apple Silicon. Tests cover import, repeat revisions in one editor session, texture wiring, selection isolation, undo, identity, source restore, cancellation, ground placement and PNG return. Native Codex app-server and Harness ToolRuntime calls were verified without a paid LLM request.
+Static meshes, opaque PBR, Unity Built-in/URP, and UE native Static Mesh assets. Custom shapes use AI-authored Blender Python or a compatible saved `.blend`. Each revision retains source and reports geometry/material/UV/budget checks.
 
-The portable-app workflow builds and checks Windows/macOS binaries separately. A passing Windows package check is **not** Windows Unity/UE verification. See [the exact matrix and reproduction commands](docs/verification.md).
+Automatic baking covers the curated recipe surfaces. Arbitrary third-party shader graphs, transparency, rigs/animation, HDRP, image-to-3D reconstruction and Blueprint generation are outside this release. Candidates are deterministic recipe alternatives. Layout uses world-axis-aligned bounds and preserves orientation; complex concave spaces and angled walls require manual adjustment. Reports do not score beauty. Generated Python is trusted local code.
 
-## Develop
+[Asset contract](docs/asset-contract.md) · [Unreal details](docs/unreal.md) · [Authoring walkthrough in Chinese](docs/AUTHORING.zh-CN.md)
+
+## Verification and development
+
+Real Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, and Unreal 5.7.2 are exercised on macOS Apple Silicon. The tests cover baked maps, actual unchanged-part geometry, material reuse, identity, instance overrides, layout/undo, isolated drafts and native previews. Host tests invoke real Codex app-server and Harness ToolRuntime tools without an LLM request.
+
+Portable Windows/macOS binaries are checked separately. Windows package checks do not establish Windows Unity/UE compatibility. [Exact matrix and reproduction commands](docs/verification.md).
 
 ```bash
 uv sync --locked
 uv run prompt-to-scene-app
 uv run pytest -q
 uv run ruff check .
-uv run ruff format --check .
-# Build on the target operating system:
-uv run --group build python tools/package_app.py
 ```
 
-MCP tools: `list_projects`, `connect_project`, `inspect_target`, `create_prop`, `revise_prop`, `inspect_asset`, `build_asset`, `publish_blend`, `get_asset_status`, `get_task_status`, `cancel_task`, `inspect_scene`, `edit_scene`, `undo_scene_edit`, `restore_asset`, `get_preview`.
-
-This independent MIT project does not vendor Blender/Unity MCP implementations. It can complement [MCP for Blender](https://github.com/ahujasid/mcp-for-blender), [MCP for Unity](https://github.com/CoplayDev/unity-mcp) and [Blender Tools](https://github.com/EpicGames/BlenderTools). Blender, Unity, Unreal and the AI clients have their own licenses. See [LICENSE](LICENSE) and [CHANGELOG](CHANGELOG.md).
+MIT licensed. Contributions and reproducible engine compatibility reports are welcome.

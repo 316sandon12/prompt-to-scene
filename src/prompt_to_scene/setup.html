@@ -284,10 +284,158 @@
       </div>
       <div id="selection" class="muted"></div>
       <img id="previewImage" class="hidden" alt="引擎实际渲染预览" />
-      <div id="tasks"></div>
+      <details>
+        <summary>任务进度与历史记录</summary>
+        <div id="tasks"></div>
+      </details>
+    </section>
+    <section id="workshop">
+      <h2>创作工作台</h2>
+      <p class="muted">
+        一次设定风格，整套道具保持一致。也可以在 Codex 或 Harness
+        中用对话完成这些操作。
+      </p>
+      <div class="grid">
+        <div>
+          <h3>项目风格</h3>
+          <label for="artStyle">造型与配色</label
+          ><select id="artStyle"></select>
+          <label for="artQuality">制作精度</label
+          ><select id="artQuality">
+            <option value="mobile">轻量 · 256 贴图</option>
+            <option value="desktop" selected>标准 · 512 贴图</option>
+            <option value="hero">精细 · 1024 贴图</option>
+          </select>
+          <div class="row" id="palette" style="margin: 14px 0"></div>
+          <label for="artWear">旧化程度 <span id="wearLabel"></span></label
+          ><input type="range" id="artWear" min="0" max="1" step="0.01" />
+          <button id="saveStyle">保存项目风格</button>
+          <p class="muted">影响新道具；已有道具需要主动应用风格。</p>
+        </div>
+        <div>
+          <h3>制作一个道具</h3>
+          <label for="propKind">道具类型</label
+          ><select id="propKind"></select>
+          <div class="row">
+            <div class="grow">
+              <label for="propWidth">宽（米）</label
+              ><input id="propWidth" type="number" min="0.01" step="0.05" />
+            </div>
+            <div class="grow">
+              <label for="propHeight">高（米）</label
+              ><input id="propHeight" type="number" min="0.01" step="0.05" />
+            </div>
+          </div>
+          <label for="propDepth">深（米）</label
+          ><input id="propDepth" type="number" min="0.01" step="0.05" />
+          <div class="row" style="margin-top: 16px">
+            <button class="primary" id="createProp">制作并放进项目</button
+            ><button id="createVariants">先比较三种造型</button>
+          </div>
+          <p class="muted">
+            候选草稿只在这里展示。选中后才制作贴图并导入引擎。
+          </p>
+        </div>
+      </div>
+      <div id="candidateGallery"></div>
+      <hr style="border: 0; border-top: 1px solid #304153; margin: 24px 0" />
+      <div class="grid">
+        <div>
+          <h3>修改一个部件</h3>
+          <label for="editAsset">已生成的道具</label
+          ><select id="editAsset">
+            <option value="">先生成一个道具…</option>
+          </select>
+          <label for="editPart">部件</label
+          ><select id="editPart"></select>
+          <div id="partState" class="muted"></div>
+          <label for="partOperation">想怎样修改</label
+          ><select id="partOperation">
+            <option value="height">调整部件高度</option>
+            <option value="material">更换材质</option>
+            <option value="lock_geometry">锁定形状</option>
+            <option value="unlock_geometry">解锁形状</option>
+            <option value="lock_material">锁定材质</option>
+            <option value="unlock_material">解锁材质</option>
+          </select>
+          <label for="partHeight">高度倍率</label
+          ><input
+            id="partHeight"
+            type="number"
+            min="0.1"
+            max="10"
+            step="0.1"
+            value="1.2"
+          />
+          <label for="partMaterial">材质</label
+          ><select id="partMaterial">
+            <option value="wood">木头</option>
+            <option value="metal">金属</option>
+            <option value="paint">彩漆</option>
+            <option value="stone">石材</option>
+          </select>
+          <div class="row" style="margin-top: 14px">
+            <button id="applyPart">应用部件修改</button
+            ><button id="restyle">应用项目风格</button>
+          </div>
+          <p class="muted">
+            部件修改会更新同款道具的所有实例。仅修改一个实例时，在 AI
+            客户端里说“只改我选中的这个”。
+          </p>
+        </div>
+        <div>
+          <h3>根据场景摆放</h3>
+          <p class="muted">先在引擎中选中参照物，例如桌子、墙或柜子。</p>
+          <label for="layoutAsset">要摆放的道具</label
+          ><select id="layoutAsset"></select>
+          <label for="layoutRelation">摆放关系</label
+          ><select id="layoutRelation">
+            <option value="around">围绕参照物</option>
+            <option value="along">沿参照物前侧排列</option>
+            <option value="under">放到参照物下方</option>
+            <option value="right">放在参照物右侧</option>
+            <option value="front">放在参照物前方</option>
+          </select>
+          <div class="row">
+            <div class="grow">
+              <label for="layoutCount">数量</label
+              ><input
+                id="layoutCount"
+                type="number"
+                value="4"
+                min="1"
+                max="16"
+              />
+            </div>
+            <div class="grow">
+              <label for="layoutGap">间距（米）</label
+              ><input
+                id="layoutGap"
+                type="number"
+                value="0.12"
+                min="0"
+                max="10"
+                step="0.05"
+              />
+            </div>
+          </div>
+          <label
+            ><input id="layoutFit" type="checkbox" style="width: auto" />
+            在下方空间不足时等比缩小</label
+          >
+          <div class="row">
+            <button id="arrange">检查并摆放</button
+            ><button id="undoLayout" disabled>撤销这次摆放</button>
+          </div>
+          <p class="muted">
+            复用已有实例，数量不足时复制。检测到明显穿插会停止。参照物需对齐世界坐标轴。
+          </p>
+        </div>
+      </div>
+      <div id="sourceViews"></div>
     </section>
     <footer>
-      v0.3 支持静态不透明道具。场景由你正常保存。关闭此页面不影响 AI
+      v0.4 支持静态不透明道具。场景由你正常保存。关闭此页面不影响 AI
       插件和已提交的任务。<br /><a
         href="https://github.com/316sandon12/prompt-to-scene"
         target="_blank"
@@ -335,7 +483,15 @@
         button.disabled = false;
       }
     }
-    async function refresh() {
+    let refreshPromise = null;
+    function refresh() {
+      if (!refreshPromise)
+        refreshPromise = refreshState().finally(() => {
+          refreshPromise = null;
+        });
+      return refreshPromise;
+    }
+    async function refreshState() {
       try {
         const s = await api("state");
         $("version").textContent = "v" + s.version;
@@ -369,6 +525,7 @@
           initial = false;
           notice("先连接项目，再安装你使用的 AI 客户端插件。");
         }
+        await refreshWorkshop(s);
         const tasks = $("tasks");
         tasks.replaceChildren();
         (s.tasks || []).forEach((t) => {
@@ -381,6 +538,7 @@
             imported: "已导入",
             error: "需要处理",
             cancelled: "已取消",
+            completed: "草稿完成",
           };
           p.textContent = t.asset_id + " · " + (labels[t.status] || t.status);
           el.append(p);
@@ -404,7 +562,8 @@
           }
           if (t.status === "imported") {
             for (const [label, fn] of [
-              ["预览", () => showPreview(t.asset_id)],
+              ["引擎预览", () => showPreview(t.asset_id)],
+              ["源模型三视图", () => sourceViews(t.asset_id, t.request_id)],
               [
                 "恢复上一版",
                 () =>
@@ -418,6 +577,12 @@
               b.onclick = () => act(b, fn);
               el.append(b);
             }
+          }
+          if (t.report) {
+            const report = document.createElement("p");
+            report.className = "muted";
+            report.textContent = `${t.report.triangles} 三角面 / ${t.report.triangle_budget} 预算 · ${t.report.material_count} 材质 · ${t.report.texture_count} 贴图`;
+            el.append(report);
           }
           tasks.append(el);
         });
@@ -525,6 +690,411 @@
         notice("设置服务已关闭，可以关闭此页面。");
         clearInterval(timer);
       });
+    let workshopProject = null,
+      library = null,
+      edited = null,
+      lastLayoutUndo = null;
+    const previewCache = new Map();
+    const kindNames = {
+      crate: "木箱",
+      table: "桌子",
+      chair: "椅子",
+      sign: "路牌",
+      stool: "圆凳",
+      bench: "长凳",
+      barrel: "木桶",
+      cabinet: "柜子",
+      shelf: "书架",
+    };
+    const partNames = {
+      body: "主体",
+      lid: "盖子",
+      straps: "包边",
+      hardware: "连接件",
+      top: "桌面 / 顶板",
+      legs: "腿",
+      frame: "框架",
+      seat: "座面",
+      backrest: "靠背",
+      post: "立柱",
+      board: "牌面",
+      hoops: "桶箍",
+      doors: "柜门",
+      shelves: "层板",
+      back: "背板",
+      all: "全部部件",
+    };
+    const roleNames = {
+      wood: "木色",
+      metal: "金属",
+      paint: "彩漆",
+      stone: "石色",
+    };
+    function colorHex(rgb) {
+      return (
+        "#" +
+        rgb
+          .map((v) =>
+            Math.round(
+              (v <= 0.0031308
+                ? v * 12.92
+                : 1.055 * Math.pow(v, 1 / 2.4) - 0.055) * 255,
+            )
+              .toString(16)
+              .padStart(2, "0"),
+          )
+          .join("")
+      );
+    }
+    function linearColor(hex) {
+      return [1, 3, 5].map((i) => {
+        const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+        return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+    }
+    function fillPalette(art) {
+      $("palette").replaceChildren();
+      Object.entries(art.palette).forEach(([key, color]) => {
+        const label = document.createElement("label");
+        label.textContent = roleNames[key];
+        const input = document.createElement("input");
+        input.type = "color";
+        input.id = "palette-" + key;
+        input.value = colorHex(color);
+        input.style.width = "64px";
+        input.style.padding = "4px";
+        label.append(input);
+        $("palette").append(label);
+      });
+      $("artWear").value = art.wear;
+      $("wearLabel").textContent = Math.round(art.wear * 100) + "%";
+    }
+    function dimensions() {
+      const p = library.recipes[$("propKind").value].parameters;
+      for (const [field, key] of [
+        ["propWidth", "width"],
+        ["propHeight", "height"],
+        ["propDepth", "depth"],
+      ])
+        $(field).value = p[key];
+    }
+    function creation() {
+      return {
+        kind: $("propKind").value,
+        asset_id: $("propKind").value + "_" + Date.now().toString(36),
+        parameters: {
+          width: Number($("propWidth").value),
+          height: Number($("propHeight").value),
+          depth: Number($("propDepth").value),
+        },
+      };
+    }
+    async function studioImage(asset, request, view = "studio") {
+      const key = asset + "/" + request + "/" + view;
+      if (!previewCache.has(key)) {
+        const response = await fetch("/api/studio/file/" + key, {
+          headers: { "X-PTS-Token": token },
+        });
+        if (!response.ok) throw Error("源模型预览尚未就绪");
+        previewCache.set(key, URL.createObjectURL(await response.blob()));
+      }
+      return previewCache.get(key);
+    }
+    async function sourceViews(asset, request) {
+      const area = $("sourceViews");
+      area.replaceChildren();
+      const title = document.createElement("h3");
+      title.textContent = "源模型 · 统一工作室光照";
+      area.append(title);
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      area.append(grid);
+      for (const view of ["studio", "front", "back"]) {
+        const image = document.createElement("img");
+        image.alt = "Blender 实际模型 · " + view;
+        image.src = await studioImage(asset, request, view);
+        grid.append(image);
+      }
+    }
+    async function loadAsset() {
+      const asset = $("editAsset").value;
+      const previousPart = $("editPart").value;
+      if (!asset) {
+        edited = null;
+        $("editPart").replaceChildren();
+        partState();
+        return;
+      }
+      const result = await api("asset/" + asset);
+      if ($("editAsset").value !== asset) return;
+      edited = result;
+      const recipe = edited.metadata?.recipe;
+      $("editPart").replaceChildren();
+      (recipe?.available_parts || []).forEach((p) =>
+        $("editPart").add(new Option(partNames[p] || p, p)),
+      );
+      if (recipe?.available_parts?.length)
+        $("editPart").add(new Option("全部部件（统一锁定）", "all"));
+      if (
+        previousPart === "all" ||
+        recipe?.available_parts?.includes(previousPart)
+      )
+        $("editPart").value = previousPart;
+      partState();
+    }
+    function partState() {
+      const r = edited?.metadata?.recipe,
+        part = $("editPart").value,
+        lock = r?.locks?.[part];
+      $("partState").textContent = !r
+        ? "此资产没有参数配方，可在 AI 客户端修改原始脚本。"
+        : part === "all"
+          ? "形状锁定 " +
+            r.available_parts.filter((p) => r.locks?.[p]?.geometry).length +
+            "/" +
+            r.available_parts.length +
+            " · 材质锁定 " +
+            r.available_parts.filter((p) => r.locks?.[p]?.material).length +
+            "/" +
+            r.available_parts.length
+          : (lock?.geometry ? "形状已锁定" : "形状可编辑") +
+            " · " +
+            (lock?.material ? "材质已锁定" : "材质可编辑");
+      $("partHeight").value = r?.parts?.[part]?.scale?.[2] || 1.2;
+    }
+    async function refreshWorkshop(s) {
+      if (!s.library) return;
+      library = s.library;
+      if (workshopProject !== s.active) {
+        workshopProject = s.active;
+        $("artStyle").replaceChildren();
+        Object.entries(library.styles).forEach(([key, value]) =>
+          $("artStyle").add(new Option(value.label, key)),
+        );
+        $("artStyle").value = library.project_style.preset;
+        $("artQuality").value = library.project_style.quality;
+        fillPalette(library.project_style);
+        $("propKind").replaceChildren();
+        Object.keys(library.recipes).forEach((k) =>
+          $("propKind").add(new Option(kindNames[k] || k, k)),
+        );
+        dimensions();
+      }
+      const assets = [
+        ...new Set(
+          (s.assets || [])
+            .filter((t) => t.status === "imported")
+            .map((t) => t.asset_id),
+        ),
+      ];
+      for (const id of ["editAsset", "layoutAsset"]) {
+        const signature = JSON.stringify(assets);
+        if ($(id).dataset.assets === signature) continue;
+        $(id).dataset.assets = signature;
+        const old = $(id).value;
+        $(id).replaceChildren(new Option("选择道具…", ""));
+        assets.forEach((name) => $(id).add(new Option(name, name)));
+        if (assets.includes(old)) $(id).value = old;
+      }
+      if (edited && $("editAsset").value === edited.asset_id) {
+        const current = (s.assets || []).find(
+          (a) => a.asset_id === edited.asset_id,
+        );
+        if (current?.request_id !== edited.current?.request_id)
+          await loadAsset();
+      }
+      const gallery = $("candidateGallery");
+      const signature = JSON.stringify(
+        (s.studies || []).map((st) => [
+          st.study_id,
+          st.status,
+          st.chosen,
+          st.candidates.map((c) => [c.status, c.error]),
+        ]),
+      );
+      if (gallery.dataset.signature !== signature) {
+        gallery.replaceChildren();
+        for (const study of (s.studies || []).slice(0, 2)) {
+          const title = document.createElement("h3");
+          title.textContent =
+            (kindNames[study.kind] || study.kind) + " · 候选造型";
+          gallery.append(title);
+          const note = document.createElement("p");
+          note.className = "muted";
+          note.textContent = study.chosen
+            ? "已选中方案 " +
+              study.chosen.index +
+              "；成品" +
+              ({
+                building: "正在制作",
+                queued: "等待导入",
+                imported: "已导入",
+                error: "制作失败，可重试",
+                cancelled: "已取消，可重试",
+              }[study.chosen.status] || "任务已提交") +
+              "。下方保留源草稿供比较。"
+            : "真实 Blender 草稿，尚未进入引擎。精细贴图在选中后制作。";
+          gallery.append(note);
+          const grid = document.createElement("div");
+          grid.className = "grid";
+          grid.style.gridTemplateColumns = "repeat(auto-fit,minmax(190px,1fr))";
+          gallery.append(grid);
+          for (const c of study.candidates) {
+            const card = document.createElement("div"),
+              label = document.createElement("p");
+            label.textContent =
+              "方案 " +
+              c.index +
+              " · " +
+              ({
+                building: "正在制作",
+                completed: "可选择",
+                error: "制作失败",
+                cancelled: "已取消",
+              }[c.status] || c.status);
+            card.append(label);
+            grid.append(card);
+            if (c.status === "completed") {
+              const image = document.createElement("img");
+              image.alt = "方案 " + c.index + " 的真实草稿";
+              image.src = await studioImage(c.asset_id, c.request_id);
+              card.append(image);
+              const views = document.createElement("button");
+              views.textContent = "多角度查看";
+              views.onclick = () =>
+                act(views, () => sourceViews(c.asset_id, c.request_id));
+              card.append(views);
+              const choose = document.createElement("button");
+              const chosen =
+                study.chosen?.index === c.index &&
+                !["error", "cancelled"].includes(study.chosen.status);
+              choose.textContent = chosen ? "已选择" : "选择并制作成品";
+              choose.disabled = chosen;
+              choose.onclick = () =>
+                act(choose, async () => {
+                  await api("choose", {
+                    study_id: study.study_id,
+                    index: c.index,
+                  });
+                  notice("已开始制作成品材质，完成后自动导入。");
+                });
+              card.append(choose);
+            } else if (c.error) {
+              const e = document.createElement("p");
+              e.className = "error";
+              e.textContent = c.error;
+              card.append(e);
+            }
+          }
+        }
+        gallery.dataset.signature = signature;
+      }
+    }
+    $("artStyle").onchange = () =>
+      fillPalette(library.styles[$("artStyle").value]);
+    $("artWear").oninput = () =>
+      ($("wearLabel").textContent =
+        Math.round(Number($("artWear").value) * 100) + "%");
+    $("saveStyle").onclick = (e) =>
+      act(e.target, async () => {
+        const palette = {};
+        Object.keys(roleNames).forEach(
+          (k) => (palette[k] = linearColor($("palette-" + k).value)),
+        );
+        await api("style", {
+          preset: $("artStyle").value,
+          quality: $("artQuality").value,
+          overrides: { palette, wear: Number($("artWear").value) },
+        });
+        notice("项目风格已保存，新道具将使用这套设计。");
+      });
+    $("propKind").onchange = dimensions;
+    $("createProp").onclick = (e) =>
+      act(e.target, async () => {
+        await api("create", creation());
+        notice("正在制作模型和贴图，完成后会出现在引擎中。");
+        await refresh();
+      });
+    $("createVariants").onclick = (e) =>
+      act(e.target, async () => {
+        await api("variants", creation());
+        notice("正在制作三个草稿，不会向场景添加物体。");
+        await refresh();
+      });
+    $("editAsset").onchange = () =>
+      loadAsset().catch((e) => notice(e.message, true));
+    $("editPart").onchange = partState;
+    $("applyPart").onclick = (e) =>
+      act(e.target, async () => {
+        if (
+          !edited ||
+          edited.asset_id !== $("editAsset").value ||
+          !$("editPart").value
+        )
+          throw Error("先选择一个有部件配方的道具");
+        const part = $("editPart").value,
+          op = $("partOperation").value,
+          data = { asset_id: $("editAsset").value, part };
+        if (op === "height") {
+          if (part === "all") throw Error("请选择具体部件");
+          const latest = await api("asset/" + data.asset_id);
+          const scale = [
+            ...(latest.metadata.recipe.parts?.[part]?.scale || [1, 1, 1]),
+          ];
+          scale[2] = Number($("partHeight").value);
+          data.changes = { scale };
+        } else if (op === "material")
+          data.changes = { material: $("partMaterial").value };
+        else
+          data[op.endsWith("geometry") ? "lock_geometry" : "lock_material"] =
+            op.startsWith("lock_");
+        await api("part", data);
+        notice("部件修改已提交，其他部件将保留。");
+      });
+    $("restyle").onclick = (e) =>
+      act(e.target, async () => {
+        if (!$("editAsset").value) throw Error("先选择道具");
+        await api("revise", {
+          asset_id: $("editAsset").value,
+          apply_project_style: true,
+        });
+        notice("正在应用项目风格，已锁定的部分会保留。");
+      });
+    $("arrange").onclick = (e) =>
+      act(e.target, async () => {
+        if (!$("layoutAsset").value) throw Error("先选择要摆放的道具");
+        notice("正在读取场景、检查空间…");
+        let r = await api("arrange", {
+          items: [
+            {
+              asset_id: $("layoutAsset").value,
+              count: Number($("layoutCount").value),
+            },
+          ],
+          relation: $("layoutRelation").value,
+          gap: Number($("layoutGap").value),
+          fit: $("layoutFit").checked,
+        });
+        if (r.inspection_request_id && r.status !== "completed")
+          throw Error("编辑器尚未响应，请打开项目后重试。尚未提交摆放。");
+        if (r.status === "queued") r = await wait(r.request_id);
+        if (r.status === "error") throw Error(r.error);
+        lastLayoutUndo = r.undo_id;
+        $("undoLayout").disabled = !lastLayoutUndo;
+        notice("已摆放 " + r.changed + " 个实例，可以撤销。");
+      });
+    $("undoLayout").onclick = (e) =>
+      act(e.target, async () => {
+        const task = await api("action", {
+          operation: "undo",
+          undo_id: lastLayoutUndo,
+        });
+        await wait(task.request_id);
+        notice("已恢复原来的摆放，并移除本次复制的实例。");
+        lastLayoutUndo = null;
+        $("undoLayout").disabled = true;
+      });
+
     refresh();
     const timer = setInterval(refresh, 3000);
   </script>

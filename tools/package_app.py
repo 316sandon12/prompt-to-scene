@@ -52,6 +52,9 @@ def main():
         ("unreal/PromptToScene", "resources/unreal/PromptToScene"),
         ("plugins/shared", "resources/plugins/shared"),
         ("src/prompt_to_scene/blender_export.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_recipe.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_surfaces.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_preview.py", "prompt_to_scene"),
         ("src/prompt_to_scene/setup.html", "prompt_to_scene"),
     ):
         data += ["--add-data", str(REPO / source) + ":" + target]

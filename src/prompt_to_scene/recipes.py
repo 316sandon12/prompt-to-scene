@@ -1,121 +1,156 @@
-"""Small deterministic prop recipes; values remain editable across AI clients."""
+"""Validated, persistent art-directed recipes and semantic edits."""
 
 import json
 import math
+from copy import deepcopy
 
-DEFAULTS = {
-    "crate": {"width": 1.0, "depth": 1.0, "height": 1.0, "planks": 5},
-    "table": {"width": 1.5, "depth": 0.8, "height": 0.75, "thickness": 0.08},
-    "chair": {"width": 0.5, "depth": 0.5, "height": 0.9, "seat_height": 0.45},
-    "sign": {"width": 0.8, "depth": 0.08, "height": 1.5, "board_height": 0.4},
-}
+from . import design, styles
+
+DEFAULTS = design.DEFAULTS
+COMMON = {"color", "metal_color", "roughness", "seed", "variant", "detail", "taper"}
+PART_FIELDS = {"scale", "offset", "rotation", "color", "material", "roughness", "wear"}
 
 
-def prepare(kind: str, parameters: dict | None = None) -> tuple[str, dict]:
+def finite(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+
+
+def validate_part(changes):
+    if not isinstance(changes, dict) or changes.keys() - PART_FIELDS:
+        raise ValueError("Part edits support scale/offset/rotation/color/material/roughness/wear")
+    for key in ("scale", "offset", "rotation", "color"):
+        if key not in changes:
+            continue
+        v = changes[key]
+        if not isinstance(v, list) or len(v) != 3 or not all(finite(n) for n in v):
+            raise ValueError(key + " needs three finite values")
+        if key == "scale" and any(n <= 0 or n > 10 for n in v):
+            raise ValueError("Part scale must be positive and at most 10")
+        if key == "color" and any(n < 0 or n > 1 for n in v):
+            raise ValueError("Color uses linear RGB from 0 to 1")
+        if key == "offset" and any(abs(n) > 100 for n in v):
+            raise ValueError("Part offsets are limited to 100 meters")
+    if "material" in changes and changes["material"] not in {"wood", "metal", "paint", "stone"}:
+        raise ValueError("Choose wood, metal, paint or stone")
+    for key in ("roughness", "wear"):
+        if key in changes:
+            styles.unit(changes[key], key)
+
+
+def prepare(kind, parameters=None, *, style=None, quality=None, parts=None, locks=None):
     if kind not in DEFAULTS:
-        raise ValueError("Recipe must be crate, table, chair or sign")
-    defaults = {
-        **DEFAULTS[kind],
-        "color": [0.24, 0.085, 0.025],
-        "metal_color": [0.08, 0.09, 0.11],
-        "roughness": 0.72,
-    }
-    parameters = parameters or {}
-    if parameters.keys() - defaults.keys():
+        raise ValueError("Recipe must be one of " + ", ".join(DEFAULTS))
+    parameters = deepcopy(parameters or {})
+    if parameters.keys() - (DEFAULTS[kind].keys() | COMMON):
         raise ValueError(
-            "Unknown recipe parameters: " + ", ".join(parameters.keys() - defaults.keys())
+            "Unknown recipe parameters: "
+            + ", ".join(parameters.keys() - (DEFAULTS[kind].keys() | COMMON))
         )
-    data = {**defaults, **parameters}
+    data = {**DEFAULTS[kind], "seed": 0, "variant": 0, "detail": 1, **parameters}
     for key, value in data.items():
         if key.endswith("color"):
-            if (
-                not isinstance(value, list)
-                or len(value) != 3
-                or any(
-                    not isinstance(v, (float, int)) or not math.isfinite(v) or not 0 <= v <= 1
-                    for v in value
-                )
-            ):
-                raise ValueError(key + " must contain three linear RGB values between 0 and 1")
-        elif key == "roughness":
-            if (
-                not isinstance(value, (float, int))
-                or not math.isfinite(value)
-                or not 0 <= value <= 1
-            ):
-                raise ValueError("roughness must be between 0 and 1")
-        elif (
-            not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= 100
-        ):
-            raise ValueError(key + " must be positive and at most 100")
-    if kind == "crate" and (int(data["planks"]) != data["planks"] or not 2 <= data["planks"] <= 32):
-        raise ValueError("planks must be an integer between 2 and 32")
-    if kind == "table" and data["thickness"] >= data["height"]:
-        raise ValueError("thickness must be less than height")
-    if kind == "chair" and data["seat_height"] >= data["height"]:
-        raise ValueError("seat_height must be less than height")
-    if kind == "sign" and data["board_height"] >= data["height"]:
-        raise ValueError("board_height must be less than height")
-    recipe = {"kind": kind, "parameters": data}
+            validate_part({"color": value})
+        elif key in {"roughness", "taper"}:
+            styles.unit(value, key)
+            if key == "taper" and value < 0.3:
+                raise ValueError("taper must be at least 0.3")
+        elif key in {"seed", "variant", "detail", "planks", "shelves"}:
+            limit = {
+                "seed": (0, 1000000),
+                "variant": (0, 2),
+                "detail": (0, 1),
+                "planks": (2, 16),
+                "shelves": (2, 8),
+            }[key]
+            if not finite(value) or int(value) != value or not limit[0] <= value <= limit[1]:
+                raise ValueError(f"{key} must be an integer from {limit[0]} to {limit[1]}")
+        elif not finite(value) or not 0.01 <= value <= 100:
+            raise ValueError(key + " must be between 0.01 and 100 meters")
+    if kind == "table" and data["thickness"] >= data["height"] * 0.4:
+        raise ValueError("thickness must be less than 40% of height")
+    if kind == "chair" and data["seat_height"] >= data["height"] * 0.9:
+        raise ValueError("seat_height must be less than 90% of height")
+    if kind == "sign" and data["board_height"] >= data["height"] * 0.9:
+        raise ValueError("board_height must be less than 90% of height")
+    art = deepcopy(style or styles.preset())
+    if quality:
+        art["quality"] = quality
+    styles.validate(art)
+    parts, locks = deepcopy(parts or {}), deepcopy(locks or {})
+    if (parts.keys() | locks.keys()) - set(design.PARTS[kind]):
+        raise ValueError("Unknown part; choose " + ", ".join(design.PARTS[kind]))
+    for edit in parts.values():
+        validate_part(edit)
+    recipe = {
+        "version": 2,
+        "kind": kind,
+        "parameters": data,
+        "style": art,
+        "parts": parts,
+        "locks": locks,
+    }
+    items = design.plan(recipe)
+    if any(any(not finite(v) or v <= 0 for v in item["size"]) for item in items):
+        raise ValueError("These dimensions produce an invalid part; increase the available space")
+    recipe["part_hashes"] = design.part_hashes(items)
+    recipe["available_parts"] = design.PARTS[kind]
     script = (
-        "import json\np = json.loads("
-        + repr(json.dumps(data))
-        + ")\nkind = "
-        + repr(kind)
-        + "\n"
-        + BODY
+        "import runpy, json\nfrom pathlib import Path\n"
+        'runpy.run_path(str(Path(__file__).with_name("blender_recipe.py")))["build"](json.loads('
+        + repr(json.dumps({"recipe": recipe, "objects": items}))
+        + "))\n"
     )
     return script, recipe
 
 
-BODY = """
-import bpy
-bpy.ops.object.select_all(action="SELECT")
-bpy.ops.object.delete(use_global=False)
-collection = bpy.data.collections.new("Export")
-bpy.context.scene.collection.children.link(collection)
-def material(name, color, metal, rough):
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    node = mat.node_tree.nodes.get("Principled BSDF")
-    node.inputs["Base Color"].default_value = (*color, 1)
-    node.inputs["Metallic"].default_value = metal
-    node.inputs["Roughness"].default_value = rough
-    return mat
-wood = material("Wood", p["color"], 0, p["roughness"])
-metal = material("Metal", p["metal_color"], .85, .3)
-def box(name, center, size, mat=wood):
-    bpy.ops.mesh.primitive_cube_add(size=1, location=center)
-    obj = bpy.context.object
-    obj.name = name
-    for owner in list(obj.users_collection): owner.objects.unlink(obj)
-    collection.objects.link(obj)
-    obj.dimensions = size
-    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    obj.data.materials.append(mat)
-    mod = obj.modifiers.new("Soft edges", "BEVEL")
-    mod.width = min(size) * .08
-    mod.segments = 2
-    bpy.ops.object.modifier_apply(modifier=mod.name)
-w, d, h = p["width"], p["depth"], p["height"]
-if kind == "crate":
-    n = int(p["planks"])
-    for i in range(n): box("Plank_%02d" % i, (-w/2 + (i+.5)*w/n, 0, h/2), (w/n*.96, d*.96, h*.96))
-    for x in (-w*.36, w*.36):
-        for y in (-d*.49, d*.49): box("Side_strap", (x,y,h/2), (w*.075,d*.025,h), metal)
-        for z in (h*.0125,h*.9875): box("Top_strap", (x,0,z), (w*.075,d*.98,h*.025), metal)
-elif kind in ("table", "chair"):
-    top = h if kind == "table" else p["seat_height"]
-    thick = p.get("thickness", min(w,d)*.12)
-    leg = min(w,d)*.12
-    box("Top", (0,0,top-thick/2), (w,d,thick))
-    for x in (-w/2+leg, w/2-leg):
-        for y in (-d/2+leg,d/2-leg): box("Leg", (x,y,(top-thick)/2), (leg,leg,top-thick))
-    if kind == "chair":
-        for x in (-w/2+leg, w/2-leg): box("Back_post", (x,d/2-leg,(top+h)/2), (leg,leg,h-top))
-        box("Backrest", (0,d/2-leg,h-(h-top)*.2), (w,leg,(h-top)*.4))
-else:
-    board = p["board_height"]
-    box("Post", (0,0,(h-board)/2), (min(w*.1,.1),d*1.4,h-board))
-    box("Sign_board", (0,0,h-board/2), (w,d,board))
-"""
+def revise(recipe, parameters=None, *, style=None, quality=None):
+    return prepare(
+        recipe["kind"],
+        {**recipe["parameters"], **(parameters or {})},
+        style=style or recipe.get("style"),
+        quality=quality,
+        parts=recipe.get("parts"),
+        locks=recipe.get("locks"),
+    )
+
+
+def edit_part(recipe, part, changes=None, lock_geometry=None, lock_material=None):
+    if part not in design.PARTS[recipe["kind"]]:
+        raise ValueError("Unknown semantic part: " + part)
+    changes = changes or {}
+    validate_part(changes)
+    updated = deepcopy(recipe)
+    parts, locks = updated.setdefault("parts", {}), updated.setdefault("locks", {})
+    old = locks.get(part, {})
+    geometry_changes = changes.keys() & {"scale", "offset", "rotation"}
+    material_changes = changes.keys() & {"color", "material", "roughness", "wear"}
+    if old.get("geometry") and lock_geometry is not False and geometry_changes:
+        raise ValueError("Unlock this part's geometry before changing it")
+    if old.get("material") and lock_material is not False and material_changes:
+        raise ValueError("Unlock this part's material before changing it")
+    parts[part] = {**parts.get(part, {}), **changes}
+    geometry = old.get("geometry", False) if lock_geometry is None else lock_geometry
+    material = old.get("material", False) if lock_material is None else lock_material
+    if not isinstance(geometry, bool) or not isinstance(material, bool):
+        raise ValueError("Lock values must be booleans")
+    if geometry or material:
+        snapshot = deepcopy(old)
+        snapshot.update(geometry=geometry, material=material)
+        if geometry and not old.get("geometry"):
+            snapshot.update(
+                parameters=deepcopy(updated["parameters"]),
+                style=deepcopy(updated.get("style") or styles.preset()),
+                edit=deepcopy(parts[part]),
+            )
+        if material and not old.get("material"):
+            snapshot.update(
+                material_parameters=deepcopy(updated["parameters"]),
+                material_style=deepcopy(updated.get("style") or styles.preset()),
+                material_edit=deepcopy(parts[part]),
+            )
+        locks[part] = snapshot
+    else:
+        locks.pop(part, None)
+    return prepare(
+        updated["kind"], updated["parameters"], style=updated.get("style"), parts=parts, locks=locks
+    )

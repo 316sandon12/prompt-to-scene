@@ -1,66 +1,64 @@
 # Prompt-to-Scene
 
-**用一句话让 AI 在 Blender 生成模型，直接出现在 Unity 或 UE，再继续用对话修改。**
+**用指令在 Blender 制作风格统一的道具，比较造型，修改部件，然后直接放进 Unity 或 UE。**
 
-[English](README.md) · [下载最新版本](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [新手完整教程](docs/QUICKSTART.zh-CN.md) · [实际测试记录](docs/verification.md)
+[English](README.md) · [下载](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [新手安装](docs/QUICKSTART.zh-CN.md) · [六项创作功能](docs/AUTHORING.zh-CN.md) · [实际测试](docs/verification.md)
 
-现在支持 **Codex 和 DeepSeek Harness 插件**。两个客户端使用同一套项目连接、模型参数与版本记录。安装程序自带 Python，自动安装引擎桥接组件；无需手改 MCP 配置，也无需另买建模 API。
+连接 **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**。自然语言由你现有的 AI 客户端理解，Blender 在本地运行；插件完成材质准备、原生导入、场景摆放和结果检查。下载程序自带 Python，不需要另买建模 API。
 
-> v0.3 为实验版，面向静态、不透明道具。你仍需先安装 Blender、Unity 或 UE，以及能正常对话的 AI 客户端。自然语言理解由客户端现有模型提供。
+> v0.4 为实验版，面向静态、不透明道具。需已安装 Blender、引擎编辑器和可正常对话的 AI 客户端。工作台也能直接操作内置道具，无需调用模型。
 
-## 最简单的开始方式
+![实际 Blender 模型与烘焙材质](docs/images/authoring-chair.png)
 
-[**下载 Windows 版**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-windows-x64.zip) · [**下载 Mac Apple Silicon 版**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-macos-arm64.zip)
+*内置椅子的实际 Blender 工作室渲染，包含可编辑部件和烘焙 PBR 材质。引擎中的灯光与显示效果会不同。*
 
-1. 解压并打开 **Prompt-to-Scene**。
-2. 选择游戏项目，点击 **连接并准备项目**。
-3. 点击 **安装 Codex 插件** 或 **安装 Harness 插件**，重启对应客户端，开始新对话。
+## 三步开始
 
-保持引擎打开，退出 Play 模式。UE 首次安装桥接插件后需要重启一次。然后直接说：
+[**Windows x64**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-windows-x64.zip) · [**Mac Apple Silicon**](https://github.com/316sandon12/prompt-to-scene/releases/latest/download/Prompt-to-Scene-macos-arm64.zip)
 
-> 用 Prompt-to-Scene 做一个带金属包边的木箱，放进当前项目。
+1. 完整解压并打开 **Prompt-to-Scene**。
+2. 选择游戏项目，点击 **连接并准备项目**。程序自动检测 Blender、安装引擎桥接组件。
+3. 点击 **安装 Codex 插件** 或 **安装 Harness 插件**，重启客户端，在新对话里开始使用。
 
-也可以先点击安装页面的 **生成示例木箱**，不用 AI 就能验证整个流程。
+保持引擎打开并退出 Play 模式。UE 首次安装桥接插件后重启一次。然后说：
 
-下载包的系统首次打开提示、Blender 检测和客户端安装问题，都在 [新手教程](docs/QUICKSTART.zh-CN.md) 中说明。Mac 社区构建采用临时签名、未做 Apple 公证；Windows 社区构建未签名，首次运行可能需要系统确认。
+> 用 Prompt-to-Scene，把这个项目设为温暖卡通风格。先给我三种椅子造型比较，选好以后再放进项目。
 
-![Unity 实际生成的预览](docs/images/workflow-unity.png)
+也可以打开 **创作工作台**，选择道具，点 **先比较三种造型**，选中后点 **选择并制作成品**。普通请求可直接制作，无需每次挑方案。首次只想验证连接，点 **生成示例木箱** 即可。
 
-*真实 Unity 测试返回的图片：两个箱子经历了单实例编辑、模型更新、版本恢复和预览。不是生成式效果图。*
+Mac 社区构建采用临时签名、未公证；Windows 构建未签名。系统首次打开提示与客户端安装问题见 [新手教程](docs/QUICKSTART.zh-CN.md)。
 
-## 接下来可以这样说
+## 六项创作功能
 
-- “做一张 1.5 米宽的桌子，放在场景相机附近。”
-- “把我选中的这个物体缩小 20%，沿 X 轴移动一米。”
-- “只把这个箱子的木头变绿，其他箱子保持原样。”
-- “撤销刚才的颜色修改。”
-- “把这款桌子加高，其他设计保持原样。”
-- “恢复这个模型的上一版，给我看引擎里的预览。”
-
-木箱、桌子、椅子、路牌有可持续修改的参数配方；其他静态模型由 AI 编写 Blender Python。位置、旋转、缩放和单实例染色直接在引擎执行，无需重新建模。
-
-## 已经做好的简化
-
-| 以前需要做的事 | 现在的方式 |
+| 功能 | 开发者可以怎样用 |
 | --- | --- |
-| 手动复制 Unity/UE 插件、修改配置 | 选择项目后自动安装，更新前保留旧版备份 |
-| 安装 Python、uv、编辑 MCP JSON | 下载程序后点击安装客户端插件 |
-| 每个 AI 客户端重新配置项目 | 共用项目连接与模型历史 |
-| 每次填写模型坐标 | 默认放到场景相机附近的碰撞表面，无表面时使用地面平面 |
-| 等一个长调用、分不清是否导入成功 | 后台任务、准确请求编号和引擎回执 |
-| “这个物体”靠 AI 猜 | 读取引擎实际选中对象 |
-| 想改颜色却重新生成整个模型 | 原生实例编辑，支持撤销 |
-| 修改后无法找回原版 | 保留成功版本的 `.blend`，支持恢复 |
-| 只能看文字结果 | 返回真实引擎 PNG 预览 |
+| 项目美术风格 | 保存 Cozy、Heritage、Workshop 风格、配色、旧化和质量档；新道具继承同一套设置，可参考已有配方或绑定现有引擎材质。 |
+| 有结构的道具库 | 木箱、桌子、椅子、路牌、凳子、长凳、木桶、柜子、置物架，共九种配方；带轮廓变化、倒角、支撑和连接件。 |
+| 自动材质准备 | 内置木材、金属、漆面、石材自动生成 UV 并烘焙底色、粗糙度、金属度、法线；Unity 自动打包金属/光滑度贴图，UE 连接对应材质输入。 |
+| 部件编辑与锁定 | “只加高靠背”“座面改成漆面”“锁住腿的形状”；形状锁和材质锁独立，整体修改时保留锁定部分。 |
+| 根据场景摆放 | 读取真实对象边界，以选中的桌子/墙/柜子为参照，围绕、排成一行、放到下面或旁边；检查重叠、按需缩小、复制实例并支持撤销。 |
+| 比较后再导入 | 两到三个真实 3D 草稿，工作室/正面/背面预览；候选不进入引擎，选好才烘焙并发布成品。 |
 
-模型重建保留资产身份、现有实例的位置/旋转/缩放和本工具的染色覆盖。Unity 的自定义脚本适合放在 prefab 根对象；UE 保留 Actor 标签和名称。场景仍由你正常保存。
+完整提示词、按钮操作与各功能边界见 [创作指南](docs/AUTHORING.zh-CN.md)。这六项功能同时接入两个 AI 客户端和本地工作台。
 
-## 支持范围与验证
+## 继续用对话修改
 
-支持静态网格、基础 PBR 参数、直接连接的底色贴图和切线法线贴图；Unity 支持 Built-in/URP，UE 使用原生 Static Mesh、材质与 Actor。可以接收其他 Blender AI 工具生成的、符合 [资产约定](docs/asset-contract.md) 的 `.blend`。
+- “做一套同风格的桌子、椅子和柜子。”
+- “只把这款椅子的靠背加高 15%，座面和腿保持原样。”
+- “锁定靠背的形状，之后只改材质。”
+- “围绕我在引擎里选中的桌子，摆四把椅子；完成后看真实引擎预览。”
+- “把凳子放到桌子下面，空间不够时等比缩小。”
+- “只把选中的这一把椅子染成绿色。”
+- “撤销刚才的摆放”，或“恢复这款模型的上一版”。
 
-暂不支持自动烘焙、透明材质、骨骼动画、HDRP 或任意节点材质无损转换。不同引擎的灯光和色彩管理可能导致画面差异。版本恢复与编辑撤销不等于整个项目的事务回滚。
+部件编辑更新共享资产；单个实例的位置、旋转、缩放与染色直接在引擎执行。模型重建保留资产身份、已有实例的变换和本工具的染色覆盖。Unity 自定义脚本适合放在 prefab 根对象；UE 保留 Actor 名称和标签。场景/关卡由你正常保存。
 
-已用真实 Blender 4.2、Unity 2022.3（Built-in/URP）、UE 5.7.2 验证；Codex 和 Harness 都完成了真实宿主工具调用。Windows 打包检查和 Windows 引擎实测是两回事，详见 [验证矩阵](docs/verification.md)。
+## 范围与验证
 
-贡献者可运行 `uv sync --locked`，然后 `uv run prompt-to-scene-app`。其他 MCP 客户端及命令行用法见 [手动配置](docs/manual-setup.md)。项目采用 MIT 协议。
+当前支持静态网格、不透明 PBR、Unity Built-in/URP 和 UE 原生 Static Mesh。自定义模型可由 AI 编写 Blender Python，或导入其他工具生成的兼容 `.blend`。程序会保留配方、源文件、成功版本和检查报告。
+
+内置配方的材质可自动烘焙；任意第三方节点图不支持自动转换。暂不支持透明、骨骼动画、HDRP、自动图片转模型或 Blueprint 生成。候选是配方造型变化，不代表任意三维概念生成。布局采用世界轴对齐边界、保留实例朝向；复杂凹形空间或斜墙仍需人工调整。报告检查几何、材质、UV 和预算，不给审美打分。
+
+已用真实 Blender 4.2、Unity 2022.3（Built-in/URP）与 UE 5.7.2 验证。Windows 打包检查与 Windows 引擎实测是两回事，具体通过项目见 [验证矩阵](docs/verification.md)。
+
+贡献者运行 `uv sync --locked`，然后 `uv run prompt-to-scene-app`。[手动配置](docs/manual-setup.md) · [架构和工具](docs/architecture.md) · [资产约定](docs/asset-contract.md) · MIT 协议。

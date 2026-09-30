@@ -14,7 +14,7 @@ AI client ── stdio MCP ── persistent worker job ── background Blende
                                    exact-request receipts + PNG
 ```
 
-The setup page binds an ephemeral **127.0.0.1** port. It uses a random per-run token, exact Host/Origin checks and no CORS access. It is only a setup/dashboard surface; the AI clients use stdio. The portable core contains Python, the MCP server, export driver, both engine bridges and the shared skill. Installation copies the core to a versioned user directory so moving the downloaded app does not break registered plugins.
+The setup page binds an ephemeral **127.0.0.1** port. It uses a random per-run token, exact Host/Origin checks and no CORS access. It provides setup and a local creation workshop; the AI clients use stdio. The portable core contains Python, the MCP server, retained Blender drivers, both engine bridges and the shared skill. Installation copies the core to a versioned user directory so moving the downloaded app does not break registered plugins.
 
 ## Two adapters, one workflow
 
@@ -32,15 +32,34 @@ Explicit `PTS_PROJECT` / legacy `PTS_UNITY_PROJECT` settings override the active
 | Tools | Purpose |
 | --- | --- |
 | `list_projects`, `connect_project`, `inspect_target` | Discover, connect/install, and diagnose the chosen editor. |
-| `create_prop`, `revise_prop`, `inspect_asset` | Build/revise supported recipes and read retained source/parameters/history. |
+| `inspect_library`, `get_project_style`, `set_project_style` | List nine recipes, concrete style/quality defaults, reference-style adoption and existing-material bindings. |
+| `create_prop`, `create_prop_set`, `revise_prop`, `inspect_asset` | Build/revise recipes or matching sets; read retained source, parameters, reports and history. |
+| `edit_prop_part` | Edit semantic geometry/material properties and independent locks. |
+| `create_variants`, `get_variants`, `choose_variant`, `get_studio_preview` | Isolated 3D drafts, exact state, selected-candidate publication and Blender studio/front/back PNGs. |
 | `build_asset`, `publish_blend` | Run trusted custom bpy or publish a compatible saved source. |
 | `get_asset_status`, `get_task_status`, `cancel_task` | Track exact requests, bounded waits and cooperative cancellation. |
-| `inspect_scene`, `edit_scene`, `undo_scene_edit` | Read selection; transform/tint/focus native instances; restore a prior edit snapshot. |
+| `inspect_scene`, `edit_scene`, `arrange_props`, `undo_scene_edit` | Read selection and static context; transform/tint/focus or arrange native instances; restore a prior edit/layout snapshot. |
 | `restore_asset`, `get_preview` | Reimport a successful source revision or return an engine PNG. |
 
-Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
+There are 26 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
 
-The separate schema 1 action queue supports selection, transforms, tint, focus, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
+The separate schema 1 action queue supports selection, transforms, tint, focus, contextual arrangement, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
+
+## Art direction, materials and retained recipes
+
+`art-direction.json` stores concrete defaults per project. New recipe assets inherit a snapshot; existing assets change only through an explicit revision. `styles.py` owns three curated palettes and four quality budgets. `design.py` produces deterministic semantic primitive plans for nine prop kinds, separate from their Blender realization. Recipe version 2 retains dimensions, part edits and frozen lock inputs. Geometry/material locks are independent; large neighboring changes can leave gaps. Revising a v0.3 recipe adopts the new designs; saved `.blend` revisions remain available.
+
+`blender_recipe.py` creates the planned geometry. `blender_surfaces.py` prepares a common UV atlas and uses Cycles CPU baking for curated wood, metal, paint and stone: base color, roughness, metallic and tangent normal. Export validates direct image links, color spaces and manifest references. Unity packs metallic into R and smoothness into A; UE uses separate linear data maps and its normal convention. Existing material bindings are read-only references inside `Assets/` or `/Game/`. Arbitrary custom shader graphs are still rejected rather than automatically baked.
+
+Each work revision retains its Blender helper scripts alongside `model.py`, preserving the exact build implementation and avoiding references to a portable app's temporary extraction directory after its parent exits. Per-project slots cap Blender concurrency at two processes. A quality report includes geometry/material/UV/budget checks, per-part bounds and actual vertex geometry hashes. It does not score aesthetic quality.
+
+## Draft studies and contextual layout
+
+`studies/<id>.json` groups two or three drafts. Each uses a unique asset/request identity and `preview_only`: the worker exports source and views but never writes an engine inbox request. The chosen candidate is rebuilt with final project quality and published under the intended asset ID. Repeating the same successful choice returns the original task. Drafts are deterministic structural variants, not image-to-3D or unconstrained concept synthesis.
+
+`inspect_scene` adds bounds for static context: Unity renderer objects and UE StaticMeshActors in the active scene/level. `layout.py` plans around/along/under/right/front positions in target-engine meters. It reuses eligible instances, clones extras, keeps existing orientation and can uniformly shrink objects to fit below an anchor. Only world-axis-aligned anchors are supported. Conservative AABB checks reject overlaps; known table/stool recipes supply clearance, with a conservative fallback for other objects.
+
+Native adapters recheck the scene, source poses, anchor bounds and obstacles before mutation. Layout snapshots include original poses and newly created IDs; undo restores originals and removes those copies. If the initial scene read is queued, resume `arrange_props` with `inspection_request_id`. Once the layout itself is queued, poll that request ID; resubmitting can create another layout. Undo requires the original loaded scene and surviving objects.
 
 ## Asset and instance identity
 
@@ -63,6 +82,8 @@ Per-asset submission/build locks reject concurrent replacement and pending impor
 The shared agent instructions request at most two repairs for actionable script/material errors. This is an orchestration policy for the host AI, not an additional autonomous model inside the server. Offline/Play/compilation/version problems should be resolved without regenerating the asset.
 
 ## Previews and boundaries
+
+Blender creates studio/front/back views from the actual exported source with consistent lighting, stored beside each revision. These views support draft comparison and do not show the engine.
 
 Unity renders the current managed objects through a temporary camera/light into a PNG and removes those temporary objects. UE captures its actual focused editor viewport asynchronously. These images show native engine assets, with that engine's lighting/color handling; they are not generated images or pixel-matched Blender renders. Working graphics and an editor viewport are required.
 

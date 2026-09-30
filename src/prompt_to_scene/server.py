@@ -7,7 +7,7 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP, Image
 
-from . import core, recipes, registry, workflow
+from . import authoring, core, layout, recipes, registry, studies, styles, workflow
 from .core import inspect_project, wait_for_status
 
 mcp = FastMCP(
@@ -15,7 +15,15 @@ mcp = FastMCP(
     instructions="""
 Create static opaque PBR assets in Blender, then publish to the configured Unity or Unreal project.
 If no project is connected, use list_projects then connect_project with the user's chosen project.
-Prefer create_prop recipes for crates, tables, chairs and signs. For other shapes author bpy.
+Use inspect_library for nine designed recipes, semantic parts, styles and quality budgets.
+New props inherit get_project_style. set_project_style remembers concrete art direction; reference
+images can inform palette/shape through the client's own vision, not hidden image-to-3D claims.
+Prefer create_prop/create_prop_set with saved style. edit_prop_part edits or locks named parts;
+revise_prop preserves frozen parts. Use create_variants only for requested design exploration,
+get_studio_preview for source views, choose_variant for final textured import. Drafts do not
+enter the engine scene. Native get_preview remains the authority for in-game appearance.
+Arrange_props reads actual anchor/obstacle bounds and can duplicate props, shrink to fit and undo.
+Do not retry a queued arrangement; poll its ID to avoid extra copies. For other shapes author bpy.
 Build returns immediately: wait through building/queued until the exact request is imported.
 Use inspect_scene to resolve 'this object'. edit_scene edits selected instances directly; use
 asset scope only for all loaded instances. revise_prop changes persistent shared recipe parameters.
@@ -143,16 +151,15 @@ def create_prop(
     parameters: dict | None = None,
     position: list[float] | None = None,
     collider: bool = True,
+    quality: str | None = None,
 ) -> dict:
-    """Create a repeatable crate/table/chair/sign. Dimensions are meters; colors are linear RGB.
+    """Create an art-directed prop using the saved project style and automatic PBR baking.
 
-    Parameters: width, depth, height, color, metal_color, roughness; crate: planks; table:
-    thickness; chair: seat_height; sign: board_height. Omit position to place near the editor
-    camera on the ground. Parameters persist across clients for revise_prop.
+    inspect_library lists nine recipes, parameters, parts and quality settings. Omit quality
+    to inherit the project. New assets are placed near the camera; revisions keep transforms.
     """
-    script, recipe = recipes.prepare(kind, parameters)
-    return workflow.submit(
-        str(project()["project"]), asset_id, script, position, collider, recipe=recipe
+    return authoring.create(
+        str(project()["project"]), kind, asset_id, parameters, position, collider, quality
     )
 
 
@@ -163,22 +170,169 @@ def inspect_asset(asset_id: str) -> dict:
 
 
 @mcp.tool()
-def revise_prop(asset_id: str, parameters: dict) -> dict:
-    """Change supplied recipe parameters; retain other details and instance transforms."""
-    info = workflow.inspect_asset(str(project()["project"]), asset_id)
-    recipe = (info.get("metadata") or {}).get("recipe")
-    if not recipe:
-        raise ValueError(
-            "Custom model: read inspect_asset's script and revise that script with build_asset."
-        )
-    script, recipe = recipes.prepare(recipe["kind"], {**recipe["parameters"], **parameters})
-    return workflow.submit(
-        str(project()["project"]),
-        asset_id,
-        script,
-        recipe=recipe,
-        collider=info["metadata"].get("collider", True),
+def revise_prop(
+    asset_id: str,
+    parameters: dict | None = None,
+    apply_project_style: bool = False,
+    quality: str | None = None,
+) -> dict:
+    """Change shared recipe dimensions or apply the current project style; preserve locked parts.
+
+    This changes every instance using this asset. For one instance use edit_scene instead.
+    """
+    return authoring.revise(
+        str(project()["project"]), asset_id, parameters, apply_project_style, quality
     )
+
+
+@mcp.tool()
+def inspect_library() -> dict:
+    """List curated styles, quality budgets, recipe parameters and semantic part names."""
+    return authoring.catalog(str(project()["project"]))
+
+
+@mcp.tool()
+def get_project_style() -> dict:
+    """Read persistent art direction shared by Codex, Harness, new props and prop sets."""
+    return styles.read(str(project()["project"]))
+
+
+@mcp.tool()
+def set_project_style(
+    preset: str | None = None,
+    quality: str | None = None,
+    overrides: dict | None = None,
+    reference_asset: str | None = None,
+) -> dict:
+    """Remember art direction for future assets; existing assets change only on explicit revision.
+
+    Presets: cozy, heritage, workshop. Quality: draft/mobile/desktop/hero. Overrides:
+    palette (wood/metal/paint/stone linear RGB), roundness/taper/wear 0..1, material_bindings
+    (role -> existing Assets/ or /Game/ material path). Reused materials remain untouched.
+    reference_asset adopts an existing recipe's style. Use client vision for reference images,
+    then propose concrete palette/shape values; this tool does not reconstruct images.
+    """
+    return authoring.set_style(
+        str(project()["project"]), preset, quality, overrides, reference_asset
+    )
+
+
+@mcp.tool()
+def edit_prop_part(
+    asset_id: str,
+    part: str,
+    changes: dict | None = None,
+    lock_geometry: bool | None = None,
+    lock_material: bool | None = None,
+) -> dict:
+    """Edit or lock one semantic part of a shared recipe; inspect_asset lists its parts.
+
+    Changes: scale XYZ factors, offset XYZ meters, rotation XYZ degrees, color linear RGB,
+    material wood/metal/paint/stone, roughness and wear. Part coordinates are Blender Z-up.
+    Geometry transforms pivot around the part's bottom center. Locks retain their saved
+    geometry/material on later changes; explicitly unlock before changing locked properties.
+    """
+    return authoring.edit_part(
+        str(project()["project"]), asset_id, part, changes, lock_geometry, lock_material
+    )
+
+
+@mcp.tool()
+def create_prop_set(items: list[dict]) -> dict:
+    """Create up to eight matching designs with one saved style. Each needs kind and asset_id.
+
+    Optional fields: parameters, position, collider. Poll every returned task; after all imports
+    use arrange_props for copies/placement. Partial submission reports already-started tasks.
+    """
+    return authoring.create_set(str(project()["project"]), items)
+
+
+@mcp.tool()
+def create_variants(
+    kind: str, asset_id: str, parameters: dict | None = None, count: int = 3
+) -> dict:
+    """Generate two or three real 3D drafts with identical studio lighting and three views.
+
+    Drafts stay outside the engine assets/scenes. Use only when exploring alternatives is useful;
+    normal create_prop publishes directly. Wait with get_variants, view get_studio_preview,
+    and publish the user's chosen candidate with choose_variant.
+    """
+    return studies.create(str(project()["project"]), kind, asset_id, parameters, count)
+
+
+@mcp.tool()
+def get_variants(study_id: str) -> dict:
+    """Read each candidate's exact status, report and preview views; no aesthetic score."""
+    return studies.read(str(project()["project"]), study_id)
+
+
+@mcp.tool()
+def choose_variant(
+    study_id: str, index: int, quality: str | None = None, position: list[float] | None = None
+) -> dict:
+    """Publish the selected draft at final quality with automatic textures and engine import."""
+    return studies.choose(str(project()["project"]), study_id, index, quality, position)
+
+
+@mcp.tool()
+def get_studio_preview(asset_id: str, request_id: str, view: str = "studio"):
+    """Return an actual Blender source render (studio/front/back), including isolated drafts.
+
+    Clearly label as Blender studio, not an engine screenshot. get_preview shows the game scene.
+    """
+    path = studies.preview_path(str(project()["project"]), asset_id, request_id, view)
+    return Image(data=path.read_bytes(), format="png")
+
+
+@mcp.tool()
+async def arrange_props(
+    items: list[dict],
+    relation: str = "around",
+    anchor_id: str | None = None,
+    gap: float = 0.12,
+    fit: bool = False,
+    inspection_request_id: str | None = None,
+) -> dict:
+    """Place managed props relative to a selected real scene anchor, with collision checks/undo.
+
+    items: [{asset_id, count=1, object_id?}], up to 32 instances. Relations: around, along,
+    under, right, front. fit can shrink under-anchor props. Uses world-axis bounds; anchor
+    should align to 90-degree axes. Existing instances move, additional ones are duplicated.
+    If inspection is queued, retry with inspection_request_id. If arrangement is queued,
+    poll its exact request with get_task_status; do not submit the layout again.
+    """
+    target = str(project()["project"])
+    if inspection_request_id is None:
+        task = workflow.action(target, "inspect")
+        inspection_request_id = task["request_id"]
+    scene = await get_task_status(inspection_request_id, 10)
+    if scene["status"] != "completed":
+        return {**scene, "inspection_request_id": inspection_request_id}
+    clearance = None
+    selected = scene.get("selected_context", [])
+    anchor = (
+        next((o for o in scene.get("context", []) + selected if o["id"] == anchor_id), None)
+        if anchor_id
+        else (selected[0] if len(selected) == 1 else None)
+    )
+    if anchor and anchor.get("asset_id") and relation == "under":
+        info = workflow.inspect_asset(target, anchor["asset_id"])
+        recipe = (info.get("metadata") or {}).get("recipe") or {}
+        if recipe.get("kind") in {"table", "chair", "stool", "bench"}:
+            p = recipe["parameters"]
+            up = 1 if scene.get("engine") == "unity" else 2
+            clearance = (
+                (
+                    p.get("seat_height", p["height"])
+                    - p.get("thickness", min(p["width"], p["depth"]) * 0.11)
+                )
+                * anchor["scale"][up]
+            ) - gap
+    planned = layout.plan(scene, items, relation, anchor_id, gap, fit, clearance)
+    task = workflow.action(
+        target, "arrange", values={k: planned[k] for k in ("scene", "anchor", "placements")}
+    )
+    return await get_task_status(task["request_id"], 10)
 
 
 @mcp.tool()

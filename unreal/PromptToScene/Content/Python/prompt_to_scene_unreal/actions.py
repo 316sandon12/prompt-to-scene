@@ -31,7 +31,10 @@ def vector(value):
 def describe(actor):
     component = actor.static_mesh_component
     rotation = actor.get_actor_rotation()
+    center, extent = actor.get_actor_bounds(False)
     return {
+        "bounds_min": [(getattr(center, k) - getattr(extent, k)) / 100 for k in ("x", "y", "z")],
+        "bounds_max": [(getattr(center, k) + getattr(extent, k)) / 100 for k in ("x", "y", "z")],
         "id": guid(actor),
         "name": actor.get_actor_label(),
         "asset_id": asset_id(actor),
@@ -143,11 +146,22 @@ def execute(request, root):
     revision = request["request_id"]
     selected = targets(request)
     if operation == "inspect":
+        from . import layout
+
+        visible = layout.context()
         return {
+            "context": [describe(a) for a in visible],
+            "selected_context": [
+                describe(a) for a in actors().get_selected_level_actors() if a in visible
+            ],
             "scene": scene(),
             "selected": [describe(a) for a in targets({"scope": "selected"})],
             "assets": [describe(a) for a in targets({"scope": "asset"})],
         }
+    if operation == "arrange":
+        from .layout import arrange
+
+        return arrange(request, root)
     if operation == "undo":
         undo_id = request.get("undo_id", "")
         if not re.fullmatch(r"[a-f0-9]{32}", undo_id):
@@ -179,6 +193,9 @@ def execute(request, root):
                     actor.static_mesh_component.set_material(
                         i, unreal.load_asset(path) if path else None
                     )
+        for created_id in snapshot.get("created_ids", []):
+            if created_id in objects:
+                actors().destroy_actor(objects[created_id])
         return {"restored_edit": undo_id, "objects": snapshot["objects"]}
     if not selected:
         raise ValueError("Select a Prompt-to-Scene prop in this level, or choose an asset scope")

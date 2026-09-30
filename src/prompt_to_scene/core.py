@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import time
 import uuid
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -130,6 +131,64 @@ def wait_for_status(
         time.sleep(min(0.25, remaining))
 
 
+@contextmanager
+def blender_slot(root, revision):
+    """Share at most two Blender processes per project across clients and candidate batches."""
+    from .workflow import process_alive
+
+    slots = root / "blender-slots"
+    slots.mkdir(exist_ok=True)
+    claimed = None
+    deadline = time.monotonic() + 1800
+    while claimed is None:
+        if (root / "cancel" / revision).exists():
+            raise RuntimeError("Cancelled while waiting for Blender")
+        for index in range(2):
+            slot = slots / str(index)
+            cleanup = slots / (str(index) + "-cleanup")
+            if cleanup.exists():
+                try:
+                    # Cleanup only touches two tiny files. Recover an empty lock left by a crash.
+                    if time.time() - cleanup.stat().st_mtime > 30:
+                        cleanup.rmdir()
+                except (FileNotFoundError, OSError):
+                    pass
+                if cleanup.exists():
+                    continue
+            try:
+                slot.mkdir()
+            except FileExistsError:
+                try:
+                    cleanup.mkdir()
+                except FileExistsError:
+                    continue
+                try:
+                    owner = read_optional_json(slot / "owner.json")
+                    abandoned = owner and not process_alive(owner["pid"])
+                    if not owner and slot.exists():
+                        abandoned = time.time() - slot.stat().st_mtime > 30
+                    if abandoned:
+                        (slot / "owner.json").unlink(missing_ok=True)
+                        slot.rmdir()
+                except FileNotFoundError:
+                    pass
+                finally:
+                    cleanup.rmdir()
+                continue
+            atomic_json(slot / "owner.json", {"pid": os.getpid(), "request_id": revision})
+            claimed = slot
+            break
+        if claimed is None:
+            if time.monotonic() > deadline:
+                raise RuntimeError("Blender queue did not become available; inspect running tasks")
+            time.sleep(0.2)
+    try:
+        yield
+    finally:
+        (claimed / "owner.json").unlink(missing_ok=True)
+        claimed.rmdir()
+
+
 def build(
     project: str | Path,
     name: str,
@@ -142,6 +201,7 @@ def build(
     engine: str = "auto",
     request_id: str | None = None,
     recipe: dict | None = None,
+    preview_only: bool = False,
 ) -> dict:
     """Run a trusted AI/user-authored script in a separate Blender process, then queue import."""
     target = resolve_target(project, engine)
@@ -175,33 +235,52 @@ def build(
         work = root / "work" / name / revision
         work.mkdir(parents=True)
         (work / "model.py").write_text(script, encoding="utf-8")
-        driver = Path(__file__).with_name("blender_export.py")
-        command = [blender, "--background", "--factory-startup", "--disable-autoexec"]
+        # Retain the exact drivers with the source. A detached packaged worker uses a
+        # fresh extraction directory, and the submitting MCP process may already be gone.
+        for helper in (
+            "blender_export.py",
+            "blender_recipe.py",
+            "blender_surfaces.py",
+            "blender_preview.py",
+        ):
+            shutil.copy2(Path(__file__).with_name(helper), work / helper)
+        driver = work / "blender_export.py"
+        command = [
+            blender,
+            "--background",
+            "--factory-startup",
+            "--disable-autoexec",
+            "--threads",
+            "4",
+        ]
         if source:
             command.append(str(source))
         command += ["--python-exit-code", "1", "--python", str(driver), "--", str(work)]
         log_path = work / "blender.log"
-        with log_path.open("w") as log:
-            try:
-                child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
-                deadline = time.monotonic() + timeout
-                while child.poll() is None:
-                    if (root / "cancel" / revision).exists():
-                        child.terminate()
-                        try:
-                            child.wait(timeout=5)
-                        except subprocess.TimeoutExpired:
+        with blender_slot(root, revision):
+            with log_path.open("w") as log:
+                try:
+                    child = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+                    deadline = time.monotonic() + timeout
+                    while child.poll() is None:
+                        if (root / "cancel" / revision).exists():
+                            child.terminate()
+                            try:
+                                child.wait(timeout=5)
+                            except subprocess.TimeoutExpired:
+                                child.kill()
+                                child.wait()
+                            raise RuntimeError("Cancelled before import")
+                        if time.monotonic() > deadline:
                             child.kill()
                             child.wait()
-                        raise RuntimeError("Cancelled before import")
-                    if time.monotonic() > deadline:
-                        child.kill()
-                        child.wait()
-                        raise subprocess.TimeoutExpired(command, timeout)
-                    time.sleep(0.1)
-                result = child
-            except subprocess.TimeoutExpired as exc:
-                raise RuntimeError(f"Blender timed out after {timeout}s; log: {log_path}") from exc
+                            raise subprocess.TimeoutExpired(command, timeout)
+                        time.sleep(0.1)
+                    result = child
+                except subprocess.TimeoutExpired as exc:
+                    raise RuntimeError(
+                        f"Blender timed out after {timeout}s; log: {log_path}"
+                    ) from exc
         export_file = work / "export.json"
         if result.returncode != 0 or not export_file.exists():
             tail = log_path.read_text(errors="replace")[-6000:]
@@ -235,6 +314,8 @@ def build(
                 "recipe": recipe,
                 "source_file": str(source) if source else None,
                 "collider": collider,
+                "report": exported.get("report"),
+                "previews": exported.get("previews", []),
             },
         )
         if source and not script.strip():
@@ -243,14 +324,18 @@ def build(
                 shutil.copyfile(original_script, work / "model.py")
         if (root / "cancel" / revision).exists():
             raise RuntimeError("Cancelled before import")
-        atomic_json(root / "inbox" / f"{name}.json", request)
+        if not preview_only:
+            atomic_json(root / "inbox" / f"{name}.json", request)
         return {
-            "status": "queued",
+            "status": "completed" if preview_only else "queued",
             "engine": target.engine,
             "asset_id": name,
             "request_id": revision,
             "source_blend": str(work / "source.blend"),
             "triangles": exported["triangles"],
+            "report": exported.get("report"),
+            "previews": exported.get("previews", []),
+            "preview_only": preview_only,
             "message": "Blender finished. Call get_asset_status with request_id to verify import.",
         }
     finally:

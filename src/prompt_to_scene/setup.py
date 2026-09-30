@@ -9,9 +9,10 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from socketserver import TCPServer
 from urllib.parse import urlsplit
 
-from . import __version__, clients, core, recipes, registry, workflow
+from . import __version__, authoring, clients, core, registry, studies, workflow
 
 
 def pick(kind="project"):
@@ -58,15 +59,28 @@ def state():
         "active": registry.read().get("active"),
         "blender": registry.find_blender(),
         "clients": clients.inventory(),
-        "recipes": recipes.DEFAULTS,
+        "recipes": authoring.recipes.DEFAULTS,
     }
     try:
         target = registry.resolve()
+        result["active"] = str(target.project_file or target.root)
         result["target"] = core.inspect_project(target.project_file or target.root)
+        result["library"] = authoring.catalog(str(target.project_file or target.root))
         root = core.state_root(target.root)
         jobs = sorted(
             (root / "jobs").glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True
         )[:20]
+        result["studies"] = [
+            studies.read(None, p.stem)
+            for p in sorted(
+                (root / "studies").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+            )[:5]
+        ]
+        result["assets"] = [
+            core.read_optional_json(p)
+            for p in (root / "receipts").glob("*.json")
+            if (core.read_optional_json(p) or {}).get("status") == "imported"
+        ]
         result["tasks"] = [
             workflow.job_status(str(target.project_file or target.root), p.parent.name)
             for p in jobs
@@ -78,6 +92,12 @@ def state():
 
 class Server(ThreadingHTTPServer):
     daemon_threads = True
+
+    def server_bind(self):
+        # This loopback-only app does not need a potentially blocking reverse DNS lookup.
+        TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
 
     def __init__(self):
         super().__init__(("127.0.0.1", 0), Handler)
@@ -124,6 +144,14 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/state":
                 self.reply(state())
+            elif path.startswith("/api/studio/"):
+                fields = path.split("/")
+                if len(fields) != 7:
+                    raise ValueError("Invalid studio preview path")
+                image = studies.preview_path(None, fields[4], fields[5], fields[6])
+                self.reply(image.read_bytes(), content_type="image/png")
+            elif path.startswith("/api/asset/"):
+                self.reply(workflow.inspect_asset(None, path.rsplit("/", 1)[1]))
             elif path.startswith("/api/preview/"):
                 revision = workflow.identifier(path.rsplit("/", 1)[1])
                 root = core.state_root(registry.resolve().root)
@@ -155,10 +183,27 @@ class Handler(BaseHTTPRequestHandler):
                     data["client"], data.get("profile", "web"), data.get("command") or None
                 )
             elif operation == "/api/demo":
-                script, recipe = recipes.prepare(data.get("kind", "crate"))
-                result = workflow.submit(
-                    None, data.get("asset_id", "demo_crate"), script, recipe=recipe
+                result = authoring.create(
+                    None, data.get("kind", "crate"), data.get("asset_id", "demo_crate")
                 )
+            elif operation == "/api/style":
+                result = authoring.set_style(None, **data)
+            elif operation == "/api/create":
+                result = authoring.create(None, **data)
+            elif operation == "/api/part":
+                result = authoring.edit_part(None, **data)
+            elif operation == "/api/revise":
+                result = authoring.revise(None, **data)
+            elif operation == "/api/variants":
+                result = studies.create(None, **data)
+            elif operation == "/api/choose":
+                result = studies.choose(None, **data)
+            elif operation == "/api/arrange":
+                import asyncio
+
+                from .server import arrange_props
+
+                result = asyncio.run(arrange_props(**data))
             elif operation == "/api/action":
                 result = workflow.action(
                     None,
