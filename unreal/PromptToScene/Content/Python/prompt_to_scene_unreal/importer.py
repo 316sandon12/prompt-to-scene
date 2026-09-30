@@ -32,67 +32,86 @@ def import_asset(request, source):
     asset_id = request["asset_id"]
     target = "/Game/PromptToScene/" + asset_id
     unreal.EditorAssetLibrary.make_directory(target)
-    task = unreal.AssetImportTask()
-    task.filename = str(source / "model.fbx")
-    task.destination_path = target
-    task.destination_name = "SM_" + asset_id
-    # Keep initial import and repeated in-session reimports on the same FBX pipeline.
-    task.factory = unreal.FbxFactory()
-    task.automated = True
-    task.replace_existing = True
-    task.replace_existing_settings = True
-    task.save = False
-    options = unreal.FbxImportUI()
-    options.automated_import_should_detect_type = False
-    options.mesh_type_to_import = unreal.FBXImportType.FBXIT_STATIC_MESH
-    options.import_mesh = True
-    options.import_materials = False
-    options.import_textures = False
-    options.import_animations = False
-    options.import_as_skeletal = False
-    data = options.static_mesh_import_data
-    for name, value in {
-        "combine_meshes": True,
-        "convert_scene": True,
-        "convert_scene_unit": True,
-        "force_front_x_axis": True,
-        "transform_vertex_to_absolute": True,
-        "auto_generate_collision": False,
-        "import_uniform_scale": 1.0,
-    }.items():
-        data.set_editor_property(name, value)
-    task.options = options
-    setting = "Interchange.FeatureFlags.Import.FBX"
-    enabled = unreal.SystemLibrary.get_console_variable_bool_value(setting)
-    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-    try:
-        unreal.SystemLibrary.execute_console_command(world, setting + " 0")
-        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-    finally:
-        unreal.SystemLibrary.execute_console_command(world, setting + (" 1" if enabled else " 0"))
-    meshes = [obj for obj in task.get_objects() if isinstance(obj, unreal.StaticMesh)]
-    if len(meshes) != 1:
-        raise RuntimeError("FBX import did not produce one combined StaticMesh")
-    mesh = meshes[0]
-    if mesh.get_path_name() != target + "/SM_" + asset_id + ".SM_" + asset_id:
-        raise RuntimeError("Importer changed the managed mesh path")
-    if static_meshes.get_lod_count(mesh) > 1 and not static_meshes.remove_lods(mesh):
-        raise RuntimeError("Could not replace the previous LOD chain")
-    try:
-        unreal.SystemLibrary.execute_console_command(world, setting + " 0")
-        for index, lod in enumerate(request.get("lods", []), 1):
-            if static_meshes.import_lod(mesh, index, str(source / lod["file"])) != index:
-                raise RuntimeError(f"Could not import LOD {index}")
-            if mesh.get_num_triangles(index) != lod["triangles"]:
-                raise RuntimeError(f"LOD {index} geometry differs from the prepared mesh")
-        if request.get("lods"):
-            # The subsystem disables automatic sizing; that mesh property is not Python-exposed.
-            if not static_meshes.set_lod_screen_sizes(
-                mesh, [1.0] + [lod["screen_height"] for lod in request["lods"]]
-            ):
-                raise RuntimeError("Could not set LOD screen sizes")
-    finally:
-        unreal.SystemLibrary.execute_console_command(world, setting + (" 1" if enabled else " 0"))
+    expected_path = target + "/SM_" + asset_id + ".SM_" + asset_id
+    mesh = (
+        unreal.load_asset(expected_path)
+        if unreal.EditorAssetLibrary.does_asset_exist(expected_path)
+        else None
+    )
+    geometry_hash = request.get("geometry_hash", "")
+    reuse_geometry = bool(
+        geometry_hash
+        and isinstance(mesh, unreal.StaticMesh)
+        and unreal.EditorAssetLibrary.get_metadata_tag(mesh, "PromptToScene.GeometryHash")
+        == geometry_hash
+        and mesh.get_num_lods() == 1 + len(request.get("lods", []))
+    )
+    if not reuse_geometry:
+        task = unreal.AssetImportTask()
+        task.filename = str(source / "model.fbx")
+        task.destination_path = target
+        task.destination_name = "SM_" + asset_id
+        # Keep initial import and repeated in-session reimports on the same FBX pipeline.
+        task.factory = unreal.FbxFactory()
+        task.automated = True
+        task.replace_existing = True
+        task.replace_existing_settings = True
+        task.save = False
+        options = unreal.FbxImportUI()
+        options.automated_import_should_detect_type = False
+        options.mesh_type_to_import = unreal.FBXImportType.FBXIT_STATIC_MESH
+        options.import_mesh = True
+        options.import_materials = False
+        options.import_textures = False
+        options.import_animations = False
+        options.import_as_skeletal = False
+        data = options.static_mesh_import_data
+        for name, value in {
+            "combine_meshes": True,
+            "convert_scene": True,
+            "convert_scene_unit": True,
+            "force_front_x_axis": True,
+            "transform_vertex_to_absolute": True,
+            "auto_generate_collision": False,
+            "import_uniform_scale": 1.0,
+        }.items():
+            data.set_editor_property(name, value)
+        task.options = options
+        setting = "Interchange.FeatureFlags.Import.FBX"
+        enabled = unreal.SystemLibrary.get_console_variable_bool_value(setting)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        try:
+            unreal.SystemLibrary.execute_console_command(world, setting + " 0")
+            unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        finally:
+            unreal.SystemLibrary.execute_console_command(
+                world, setting + (" 1" if enabled else " 0")
+            )
+        meshes = [obj for obj in task.get_objects() if isinstance(obj, unreal.StaticMesh)]
+        if len(meshes) != 1:
+            raise RuntimeError("FBX import did not produce one combined StaticMesh")
+        mesh = meshes[0]
+        if mesh.get_path_name() != target + "/SM_" + asset_id + ".SM_" + asset_id:
+            raise RuntimeError("Importer changed the managed mesh path")
+        if static_meshes.get_lod_count(mesh) > 1 and not static_meshes.remove_lods(mesh):
+            raise RuntimeError("Could not replace the previous LOD chain")
+        try:
+            unreal.SystemLibrary.execute_console_command(world, setting + " 0")
+            for index, lod in enumerate(request.get("lods", []), 1):
+                if static_meshes.import_lod(mesh, index, str(source / lod["file"])) != index:
+                    raise RuntimeError(f"Could not import LOD {index}")
+                if mesh.get_num_triangles(index) != lod["triangles"]:
+                    raise RuntimeError(f"LOD {index} geometry differs from the prepared mesh")
+            if request.get("lods"):
+                # The subsystem disables automatic sizing; that mesh property is not Python-exposed.
+                if not static_meshes.set_lod_screen_sizes(
+                    mesh, [1.0] + [lod["screen_height"] for lod in request["lods"]]
+                ):
+                    raise RuntimeError("Could not set LOD screen sizes")
+        finally:
+            unreal.SystemLibrary.execute_console_command(
+                world, setting + (" 1" if enabled else " 0")
+            )
     materials = {m["fbx_name"]: build_material(m, source, target) for m in request["materials"]}
     slots = mesh.get_editor_property("static_materials")
     if not slots:
@@ -102,36 +121,39 @@ def import_asset(request, source):
         if name not in materials:
             raise RuntimeError("Unmapped FBX material slot: " + name)
         mesh.set_material(index, materials[name])
-    if not static_meshes.remove_collisions(mesh):
-        raise RuntimeError("Could not clear generated collision")
-    if request["collider"]:
-        if request.get("collision_mode") == "convex":
-            # FBX with auto_generate_collision=False can leave section collision disabled.
-            # Convex decomposition only considers enabled sections and otherwise returns
-            # true with zero hulls. Enable them and verify the resulting native geometry.
-            for section in range(mesh.get_num_sections(0)):
-                static_meshes.enable_section_collision(mesh, True, 0, section)
-            static_meshes.set_convex_decomposition_collisions(mesh, 8, 32, 100000)
-            if static_meshes.get_convex_collision_count(mesh) == 0:
-                # Some meshes/builds produce no V-HACD hull. A native 26-DOP is a
-                # usable convex approximation, and the receipt makes this fallback explicit.
-                if (
-                    static_meshes.add_simple_collisions(
-                        mesh, unreal.ScriptCollisionShapeType.NDOP26
+    if not reuse_geometry:
+        if not static_meshes.remove_collisions(mesh):
+            raise RuntimeError("Could not clear generated collision")
+        if request["collider"]:
+            if request.get("collision_mode") == "convex":
+                # FBX with auto_generate_collision=False can leave section collision disabled.
+                # Convex decomposition only considers enabled sections and otherwise returns
+                # true with zero hulls. Enable them and verify the resulting native geometry.
+                for section in range(mesh.get_num_sections(0)):
+                    static_meshes.enable_section_collision(mesh, True, 0, section)
+                static_meshes.set_convex_decomposition_collisions(mesh, 8, 32, 100000)
+                if static_meshes.get_convex_collision_count(mesh) == 0:
+                    # Some meshes/builds produce no V-HACD hull. A native 26-DOP is a
+                    # usable convex approximation, and the receipt makes this fallback explicit.
+                    if (
+                        static_meshes.add_simple_collisions(
+                            mesh, unreal.ScriptCollisionShapeType.NDOP26
+                        )
+                        < 0
+                    ):
+                        raise RuntimeError("Could not create native convex collision")
+                    warnings.append(
+                        "Convex decomposition produced no hulls; used one native 26-DOP hull"
                     )
-                    < 0
-                ):
-                    raise RuntimeError("Could not create native convex collision")
-                warnings.append(
-                    "Convex decomposition produced no hulls; used one native 26-DOP hull"
-                )
-            if static_meshes.get_convex_collision_count(mesh) == 0:
-                raise RuntimeError("Native collision creation produced no geometry")
-        elif (
-            request.get("collision_mode", "box") == "box"
-            and static_meshes.add_simple_collisions(mesh, unreal.ScriptCollisionShapeType.BOX) < 0
-        ):
-            raise RuntimeError("Could not create box collision")
+                if static_meshes.get_convex_collision_count(mesh) == 0:
+                    raise RuntimeError("Native collision creation produced no geometry")
+            elif (
+                request.get("collision_mode", "box") == "box"
+                and static_meshes.add_simple_collisions(mesh, unreal.ScriptCollisionShapeType.BOX)
+                < 0
+            ):
+                raise RuntimeError("Could not create box collision")
+    unreal.EditorAssetLibrary.set_metadata_tag(mesh, "PromptToScene.GeometryHash", geometry_hash)
     unreal.EditorAssetLibrary.set_metadata_tag(mesh, "PromptToScene.AssetId", asset_id)
     unreal.EditorAssetLibrary.set_metadata_tag(
         mesh, "PromptToScene.Revision", request["request_id"]
@@ -187,6 +209,7 @@ def import_asset(request, source):
         raise RuntimeError("Imported mesh has no triangles")
     return {
         "status": "imported",
+        "geometry_reused": reuse_geometry,
         "engine": "unreal",
         "asset_id": asset_id,
         "request_id": request["request_id"],

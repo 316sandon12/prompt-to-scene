@@ -243,6 +243,7 @@ def build(
                 if previous.is_file():
                     shutil.copy2(previous, work / retained)
         (work / "model.py").write_text(script, encoding="utf-8")
+        atomic_json(work / "cache-config.json", {"path": str(root / "cache" / "bakes")})
         if preparation:
             atomic_json(work / "preparation-config.json", preparation)
         # Retain the exact drivers with the source. A detached packaged worker uses a
@@ -254,6 +255,8 @@ def build(
             "blender_preview.py",
             "blender_ingest.py",
             "blender_prepare.py",
+            "blender_edit.py",
+            "blender_cache.py",
         ):
             shutil.copy2(Path(__file__).with_name(helper), work / helper)
         driver = work / "blender_export.py"
@@ -322,6 +325,11 @@ def build(
             "files": files,
             "lods": exported.get("lods", []),
             "collision_mode": exported.get("collision_mode") or ("box" if collider else "none"),
+            "geometry_hash": hashlib.sha256(
+                (exported["geometry_hash"] + str(collider)).encode()
+            ).hexdigest()
+            if exported.get("geometry_hash")
+            else "",
         }
         atomic_json(work / "request.json", request)
         atomic_json(

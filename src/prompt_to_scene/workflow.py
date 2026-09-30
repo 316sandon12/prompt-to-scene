@@ -133,6 +133,10 @@ def worker(spec_path):
     root = core.state_root(target.root)
     if path != root / "jobs" / revision / "spec.json":
         raise ValueError("Worker spec must be inside this project's job directory")
+    if spec.get("kind"):
+        from . import background
+
+        return background.run(path)
     state = core.read_optional_json(path.with_name("state.json"))
     try:
         if (root / "cancel" / revision).exists():
@@ -143,9 +147,10 @@ def worker(spec_path):
 
             state["stage"] = "Preparing source asset"
             core.atomic_json(path.with_name("state.json"), state)
-            model, provenance = sources.resolve(
+            model, source_provenance = sources.resolve(
                 spec["source"], path.parent / "inputs", root / "cancel" / revision
             )
+            provenance = provenance or source_provenance
             spec["script"] = sources.script(model)
         previous = core.read_optional_json(root / "receipts" / (spec["asset_id"] + ".json"))
         if previous and previous.get("status") == "imported":
@@ -201,7 +206,12 @@ def job_status(project, revision, wait_seconds=0):
     deadline = time.monotonic() + wait_seconds
     while True:
         state = core.read_optional_json(root / "jobs" / revision / "state.json")
-        if state:
+        if state and state.get("kind"):
+            if state["status"] == "building":
+                process = core.read_optional_json(root / "jobs" / revision / "process.json")
+                if process and not process_alive(process["pid"]):
+                    state.update(status="error", error="Worker stopped; resume the saved workflow")
+        elif state:
             receipt = core.read_optional_json(
                 root / "history" / state["asset_id"] / (revision + ".json")
             )
@@ -282,7 +292,18 @@ def cancel(project, revision):
 
 
 def action(project, operation, *, asset_id=None, scope="selected", values=None, undo_id=None):
-    if operation not in {"inspect", "transform", "tint", "focus", "preview", "undo", "arrange"}:
+    if operation not in {
+        "inspect",
+        "transform",
+        "tint",
+        "focus",
+        "preview",
+        "undo",
+        "arrange",
+        "analyze",
+        "ground",
+        "select",
+    }:
         raise ValueError("Unknown editor action")
     if scope not in {"selected", "asset"}:
         raise ValueError("scope must be selected or asset")
@@ -303,6 +324,8 @@ def action(project, operation, *, asset_id=None, scope="selected", values=None, 
         "view",
         "frame_id",
         "review_stage",
+        "object_id",
+        "snap_to_surface",
     }:
         raise ValueError("Unknown edit field")
     if "view" in values and values["view"] not in {"studio", "front", "back"}:

@@ -1,0 +1,420 @@
+{
+  "version": "0.6.0",
+  "recorded_date": "2026-10-01",
+  "timezone": "Asia/Shanghai",
+  "source_ref": "v0.6.0",
+  "environment": {
+    "os": "macOS 15.8",
+    "hardware": "Apple M3 Pro",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2"
+  },
+  "python": {
+    "tests_passed": 130,
+    "lint": "passed",
+    "format": "passed",
+    "shared_skill": "passed"
+  },
+  "native": {
+    "unity_builtin": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "set_project_style": 1,
+        "create_prop": 1,
+        "get_task_status": 21,
+        "edit_scene": 2,
+        "inspect_scene": 3,
+        "compose_scene": 3,
+        "undo_scene_edit": 2,
+        "arrange_props": 1,
+        "inspect_performance": 3,
+        "review_quality": 1,
+        "repair_quality": 1,
+        "import_asset": 2,
+        "inspect_asset": 4,
+        "edit_imported_part": 4,
+        "set_art_brief": 1,
+        "generate_model": 1,
+        "publish_prepared": 1,
+        "apply_usage_preset": 1
+      },
+      "checks": [
+        "37-degree upright anchor",
+        "furnished reading corner",
+        "native backrest vertices face away from table",
+        "three-instance saved layout copy and undo",
+        "rotated-anchor arrangement and undo",
+        "12cm support correction",
+        "same-frame material repair and two-repair cap",
+        "imported grouping/locks/source replacement",
+        "unchanged ceramic geometry preserved",
+        "native geometry and bake reuse",
+        "provider candidate preparation and selected publication",
+        "mobile preset geometry, 512px textures and native LODs",
+        "native identity and placement retained"
+      ],
+      "external_after_replacement": {
+        "triangles": 17760,
+        "vertices": 11550,
+        "material_slots": 3,
+        "texture_count": 9,
+        "texture_bytes_estimate": 3145725,
+        "lod_triangles": [
+          17760,
+          8880,
+          4440
+        ],
+        "lod_vertices": [
+          11550,
+          5841,
+          2966
+        ],
+        "lod_screen_heights": [
+          0.5,
+          0.20000000298023224,
+          0.009999999776482582
+        ],
+        "support_known": true,
+        "support_gap": -5.960464477539063e-08
+      },
+      "mobile_preset": {
+        "triangles": 7678,
+        "vertices": 6857,
+        "material_slots": 2,
+        "texture_count": 6,
+        "texture_bytes_estimate": 8388606,
+        "lod_triangles": [
+          7678,
+          3838,
+          1534
+        ],
+        "lod_vertices": [
+          6857,
+          3692,
+          1513
+        ],
+        "lod_screen_heights": [
+          0.5,
+          0.20000000298023224,
+          0.009999999776482582
+        ],
+        "support_known": true,
+        "support_gap": -5.960464477539063e-08
+      },
+      "quality": {
+        "repair_count": 2,
+        "remaining_findings": [],
+        "same_camera_before_after": "passed"
+      },
+      "material_update_bake_cache": [
+        {
+          "reused_materials": [
+            "GlazedCeramic",
+            "WarmBrass"
+          ],
+          "baked_materials": []
+        },
+        {
+          "reused_materials": [
+            "GlazedCeramic"
+          ],
+          "baked_materials": [
+            "WarmBrass__part_657c97bf"
+          ]
+        }
+      ]
+    },
+    "unity_urp": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "set_project_style": 1,
+        "create_prop": 1,
+        "get_task_status": 22,
+        "edit_scene": 2,
+        "inspect_scene": 3,
+        "compose_scene": 3,
+        "undo_scene_edit": 2,
+        "arrange_props": 1,
+        "inspect_performance": 3,
+        "review_quality": 1,
+        "repair_quality": 1,
+        "import_asset": 2,
+        "inspect_asset": 4,
+        "edit_imported_part": 4,
+        "set_art_brief": 1,
+        "generate_model": 1,
+        "publish_prepared": 1,
+        "apply_usage_preset": 1
+      },
+      "checks": [
+        "37-degree upright anchor",
+        "furnished reading corner",
+        "native backrest vertices face away from table",
+        "three-instance saved layout copy and undo",
+        "rotated-anchor arrangement and undo",
+        "12cm support correction",
+        "same-frame material repair and two-repair cap",
+        "imported grouping/locks/source replacement",
+        "unchanged ceramic geometry preserved",
+        "native geometry and bake reuse",
+        "provider candidate preparation and selected publication",
+        "mobile preset geometry, 512px textures and native LODs",
+        "native identity and placement retained"
+      ],
+      "external_after_replacement": {
+        "triangles": 17760,
+        "vertices": 11550,
+        "material_slots": 3,
+        "texture_count": 9,
+        "texture_bytes_estimate": 3145725,
+        "lod_triangles": [
+          17760,
+          8880,
+          4440
+        ],
+        "lod_vertices": [
+          11550,
+          5841,
+          2966
+        ],
+        "lod_screen_heights": [
+          0.5,
+          0.20000000298023224,
+          0.009999999776482582
+        ],
+        "support_known": true,
+        "support_gap": -5.960464477539063e-08
+      },
+      "mobile_preset": {
+        "triangles": 7678,
+        "vertices": 6857,
+        "material_slots": 2,
+        "texture_count": 6,
+        "texture_bytes_estimate": 8388606,
+        "lod_triangles": [
+          7678,
+          3838,
+          1534
+        ],
+        "lod_vertices": [
+          6857,
+          3692,
+          1513
+        ],
+        "lod_screen_heights": [
+          0.5,
+          0.20000000298023224,
+          0.009999999776482582
+        ],
+        "support_known": true,
+        "support_gap": -5.960464477539063e-08
+      },
+      "quality": {
+        "repair_count": 2,
+        "remaining_findings": [],
+        "same_camera_before_after": "passed"
+      },
+      "material_update_bake_cache": [
+        {
+          "reused_materials": [
+            "GlazedCeramic",
+            "WarmBrass"
+          ],
+          "baked_materials": []
+        },
+        {
+          "reused_materials": [
+            "GlazedCeramic"
+          ],
+          "baked_materials": [
+            "WarmBrass__part_657c97bf"
+          ]
+        }
+      ]
+    },
+    "unreal": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "set_project_style": 1,
+        "create_prop": 1,
+        "get_task_status": 24,
+        "edit_scene": 2,
+        "inspect_scene": 3,
+        "compose_scene": 3,
+        "undo_scene_edit": 2,
+        "arrange_props": 1,
+        "inspect_performance": 3,
+        "review_quality": 1,
+        "repair_quality": 1,
+        "import_asset": 2,
+        "inspect_asset": 4,
+        "edit_imported_part": 4,
+        "set_art_brief": 1,
+        "generate_model": 1,
+        "publish_prepared": 1,
+        "apply_usage_preset": 1
+      },
+      "checks": [
+        "37-degree upright anchor",
+        "furnished reading corner",
+        "native backrest vertices face away from table",
+        "three-instance saved layout copy and undo",
+        "rotated-anchor arrangement and undo",
+        "12cm support correction",
+        "same-frame material repair and two-repair cap",
+        "imported grouping/locks/source replacement",
+        "unchanged ceramic geometry preserved",
+        "native geometry and bake reuse",
+        "provider candidate preparation and selected publication",
+        "mobile preset geometry, 512px textures and native LODs",
+        "native identity and placement retained"
+      ],
+      "external_after_replacement": {
+        "triangles": 17760,
+        "vertices": 11908,
+        "material_slots": 3,
+        "texture_count": 12,
+        "texture_bytes_estimate": 4194300,
+        "lod_triangles": [
+          17760,
+          8880,
+          4440
+        ],
+        "lod_vertices": [
+          11908,
+          5907,
+          2978
+        ],
+        "lod_screen_heights": [
+          1.0,
+          0.5,
+          0.20000000298023224
+        ],
+        "support_known": true,
+        "support_gap": -2.4300561562995426e-14
+      },
+      "mobile_preset": {
+        "triangles": 7678,
+        "vertices": 7589,
+        "material_slots": 2,
+        "texture_count": 8,
+        "texture_bytes_estimate": 11184808,
+        "lod_triangles": [
+          7678,
+          3838,
+          1534
+        ],
+        "lod_vertices": [
+          7589,
+          3809,
+          1529
+        ],
+        "lod_screen_heights": [
+          1.0,
+          0.5,
+          0.20000000298023224
+        ],
+        "support_known": true,
+        "support_gap": -2.4300561562995426e-14
+      },
+      "quality": {
+        "repair_count": 2,
+        "remaining_findings": [],
+        "same_camera_before_after": "passed"
+      },
+      "material_update_bake_cache": [
+        {
+          "reused_materials": [
+            "GlazedCeramic",
+            "WarmBrass"
+          ],
+          "baked_materials": []
+        },
+        {
+          "reused_materials": [
+            "GlazedCeramic",
+            "WarmBrass__part_657c97bf"
+          ],
+          "baked_materials": []
+        }
+      ]
+    }
+  },
+  "cache": {
+    "real_blender": "passed",
+    "invalidation": [
+      "RGB node output",
+      "Value node output",
+      "edited packed image pixels",
+      "normal-source geometry"
+    ],
+    "bypass": [
+      "attribute node",
+      "external coordinate object",
+      "camera coordinates",
+      "cross-material projection"
+    ]
+  },
+  "hosts": {
+    "codex": {
+      "version": "0.159.0",
+      "tools_discovered": 47,
+      "actual_app_server_invocation": "passed"
+    },
+    "harness": {
+      "version": "0.2.0-rc.1",
+      "actual_bundle_and_tool_runtime": "passed"
+    }
+  },
+  "ui": {
+    "local_browser": "selection, imported part controls, native and candidate images passed",
+    "local_console_errors": 0,
+    "mcp_apps_fixture": [
+      "initialize",
+      "tools/call",
+      "ui/update-model-context",
+      "ui/message",
+      "real candidate image"
+    ],
+    "fixture_console_anomaly": "One unclassified MutationObserver exception; functional exchanges passed",
+    "actual_codex_harness_embedded_ui": "not verified; optional host feature"
+  },
+  "providers": {
+    "self_hosted_fixture": "real local HTTP -> download -> Blender -> candidate -> native publication",
+    "meshy": "text preview/refine, image and multi-image contracts tested; no live paid API call",
+    "model_quality": "not measured; fixture serves a known model"
+  },
+  "local_macos_package": {
+    "frozen_stdio_tools": 47,
+    "html_js_and_bridges": "passed",
+    "detached_recipe_after_parent_exit": "passed",
+    "detached_external_source_after_parent_exit": "passed"
+  },
+  "release_ci": {
+    "status": "pending"
+  },
+  "limitations": [
+    "Static opaque PBR only",
+    "Windows native Unity/UE not tested",
+    "No inferred FPS, draw calls or aesthetic scores",
+    "RGBA8+mip texture estimate is not platform VRAM",
+    "Layouts use conservative upright oriented bounds",
+    "An intermediate UE run passed functional assertions but crashed at shutdown in libEOSSDK-Mac-Shipping; rejected; a subsequent full rerun including usage presets passed with exit code 0"
+  ],
+  "images": {
+    "workbench-unity-before.png": "f26737f5bd4acc41a780371ec88009d70def9bd81796552b61c9da98b36e5e6a",
+    "workbench-unity-after.png": "f1de4a1825a4cd9482084ab94b469ec5483d0d133289d36b48ff9572082ef6f8",
+    "workbench-unreal-before.png": "9a19db95a2eb2cafa5adf72f03bc5c10825f4ce2200a4c93dcb72dad537ab3b5",
+    "workbench-unreal-after.png": "14625ad1678def29551453f44d3254e75bf0b40e4023be2966df9454f2be0369"
+  },
+  "python_distribution": {
+    "wheel": "passed",
+    "sdist": "passed",
+    "new_resources_and_final_modules": "verified"
+  }
+}

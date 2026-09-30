@@ -182,6 +182,7 @@
   </style>
   <main>
     <header>
+<a id="workbenchLink" href="/workbench">打开统一创作台 →</a>
       <div>
         <div class="steps">INSTALL ONCE · CREATE BY CONVERSATION</div>
         <h1>Prompt-to-Scene</h1>
@@ -549,7 +550,7 @@
       <div id="reviewGallery"></div>
     </section>
     <footer>
-      v0.5 支持静态不透明道具。场景由你正常保存。关闭此页面不影响 AI
+      v0.6 支持静态不透明道具。场景由你正常保存。关闭此页面不影响 AI
       插件和已提交的任务。<br /><a
         href="https://github.com/316sandon12/prompt-to-scene"
         target="_blank"
@@ -1269,3 +1270,5 @@
     });
   </script>
 </html>
+
+<script>document.getElementById("workbenchLink").href = "/workbench" + location.hash;</script>

@@ -56,6 +56,27 @@ def tick(_delta):
         assert selected, "Fixture asset missing"
         if command["operation"] in {"select", "select_all"}:
             actors.set_selected_level_actors(selected)
+        if command["operation"] == "check_facing":
+            chair = selected[0]
+            name = command["asset_id"].rsplit("_", 1)[0] + "_table"
+            table = next(
+                a for a in actors.get_all_level_actors() if "PTS.Asset:" + name in map(str, a.tags)
+            )
+            mesh = chair.static_mesh_component.static_mesh.get_static_mesh_description(0)
+            points = [
+                mesh.get_vertex_position(unreal.VertexID(id_value=i))
+                for i in range(mesh.get_vertex_count())
+            ]
+            top = max(p.z for p in points)
+            back = [p for p in points if p.z > top * 0.7]
+            center = unreal.Vector(
+                sum(p.x for p in back) / len(back), sum(p.y for p in back) / len(back), 0
+            )
+            backward = unreal.MathLibrary.transform_direction(chair.get_actor_transform(), center)
+            to_table = table.get_actor_location() - chair.get_actor_location()
+            assert backward.x * to_table.x + backward.y * to_table.y < -1, (
+                "Chair backrest faces the table"
+            )
         if command["operation"] == "check":
             for actor in selected:
                 for material in actor.static_mesh_component.get_materials():
@@ -80,6 +101,19 @@ def tick(_delta):
             assert collisions == receipt["collision_count"]
             (root / "preparation-native.json").write_text(
                 json.dumps({"triangles": triangles, "colliders": collisions})
+            )
+        if command["operation"] == "check_usage_preset":
+            from prompt_to_scene_unreal.diagnostics import textures_used
+
+            textures = [
+                t
+                for m in selected[0].static_mesh_component.get_materials()
+                for t in textures_used(m)
+            ]
+            assert len(textures) >= 8
+            assert all(
+                t.blueprint_get_size_x() == 512 and t.blueprint_get_size_y() == 512
+                for t in textures
             )
         if command["operation"] == "capture_material":
             material = next(

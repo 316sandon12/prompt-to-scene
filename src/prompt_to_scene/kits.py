@@ -40,16 +40,12 @@ KITS = {
 }
 
 
-def create(project, kit, prefix, quality=None):
-    from .authoring import submit_recipe
-
+def blueprint(project, kit, prefix, quality=None):
     if kit not in KITS:
         raise ValueError("Choose a kit from inspect_library")
     core.asset_id(prefix)
     chosen = KITS[kit]
     art = styles.preset(chosen["style"], quality or styles.read(project)["quality"])
-    target = registry.resolve(project)
-    tasks = []
     prepared = []
     for index, item in enumerate(chosen["items"]):
         asset = core.asset_id(prefix + "_" + item["kind"])
@@ -60,6 +56,15 @@ def create(project, kit, prefix, quality=None):
         # Explicit, spaced initial positions make the set immediately reviewable.
         position = [index * 2.4, 0, 0]
         prepared.append((asset, script, recipe, position))
+    return prepared, art
+
+
+def create(project, kit, prefix, quality=None):
+    from .authoring import submit_recipe
+
+    prepared, art = blueprint(project, kit, prefix, quality)
+    target = registry.resolve(project)
+    tasks = []
     for asset, _, _, _ in prepared:
         info = core.status(target.project_file or target.root, asset)
         if info["status"] != "unknown":

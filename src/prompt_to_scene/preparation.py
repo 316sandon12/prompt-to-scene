@@ -6,9 +6,11 @@ from . import styles
 
 
 def options(values=None, quality="desktop"):
-    if quality not in styles.QUALITY or quality == "draft":
-        raise ValueError("Preparation quality must be mobile, desktop or hero")
+    if quality not in styles.QUALITY:
+        raise ValueError("Preparation quality must be draft, mobile, desktop or hero")
     budget = styles.QUALITY[quality]
+    if quality == "draft":
+        budget = {**budget, "texture_size": 256}
     result = {
         "triangle_budget": budget["triangles"],
         "texture_size": budget["texture_size"],

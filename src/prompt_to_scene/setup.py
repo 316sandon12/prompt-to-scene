@@ -16,12 +16,17 @@ from . import (
     __version__,
     authoring,
     clients,
+    compositions,
     core,
+    generation,
     kits,
+    performance,
+    quality,
     registry,
     reviews,
     sources,
     studies,
+    workbench,
     workflow,
 )
 
@@ -37,6 +42,10 @@ def pick(kind="project"):
                 else 'POSIX path of (choose file with prompt "Choose Blender or its executable")'
             )
         )
+        if kind == "reference":
+            script = (
+                'POSIX path of (choose file with prompt "Choose a PNG or JPEG reference image")'
+            )
         result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
         value = result.stdout.strip()
         if kind == "blender" and value.endswith(".app/"):
@@ -75,12 +84,16 @@ def state():
         "blender": registry.find_blender(),
         "clients": clients.inventory(),
         "recipes": authoring.recipes.DEFAULTS,
+        "providers": generation.inventory(),
+        "usage_presets": performance.PRESETS,
     }
     try:
         target = registry.resolve()
         result["active"] = str(target.project_file or target.root)
         result["target"] = core.inspect_project(target.project_file or target.root)
         result["library"] = authoring.catalog(str(target.project_file or target.root))
+        result["art_brief"] = quality.brief(None)
+        result["layouts"] = compositions.templates(None)
         root = core.state_root(target.root)
         jobs = sorted(
             (root / "jobs").glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True
@@ -141,7 +154,7 @@ class Handler(BaseHTTPRequestHandler):
             "Content-Security-Policy",
             "default-src 'self'; script-src 'self' 'unsafe-inline'; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' blob: https://cdn.polyhaven.com; frame-ancestors 'none'",
+            "img-src 'self' data: blob: https://cdn.polyhaven.com; frame-ancestors 'none'",
         )
         self.end_headers()
         self.wfile.write(body)
@@ -156,16 +169,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == "/workshop.js" and self.headers.get("Host") == "127.0.0.1:" + str(
-            self.server.server_port
-        ):
+        if path in {"/workshop.js", "/workbench.js"} and self.headers.get(
+            "Host"
+        ) == "127.0.0.1:" + str(self.server.server_port):
             self.reply(
-                Path(__file__).with_name("workshop.js").read_bytes(),
+                Path(__file__).with_name(path[1:]).read_bytes(),
                 content_type="text/javascript; charset=utf-8",
             )
             return
-        if path == "/" and self.headers.get("Host") == "127.0.0.1:" + str(self.server.server_port):
-            page = Path(__file__).with_name("setup.html").read_bytes()
+        if path in {"/", "/workbench"} and self.headers.get("Host") == "127.0.0.1:" + str(
+            self.server.server_port
+        ):
+            page = (
+                Path(__file__)
+                .with_name("workbench.html" if path == "/workbench" else "setup.html")
+                .read_bytes()
+            )
             self.reply(page, content_type="text/html; charset=utf-8")
             return
         if not self.authorized():
@@ -204,7 +223,11 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Invalid request size")
             data = json.loads(self.rfile.read(length))
             operation = urlsplit(self.path).path
-            if operation == "/api/pick":
+            if operation == "/api/workbench":
+                result = workbench.dispatch(**data)
+            elif operation == "/api/provider":
+                result = generation.configure(**data)
+            elif operation == "/api/pick":
                 result = {"path": pick(data.get("kind", "project"))}
             elif operation == "/api/connect":
                 result = registry.connect(data["project"], data.get("blender") or None)

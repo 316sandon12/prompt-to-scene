@@ -109,6 +109,18 @@ def revise(project, asset_id, parameters=None, apply_project_style=False, qualit
 
 
 def edit_part(project, asset_id, part, changes=None, lock_geometry=None, lock_material=None):
+    info = workflow.inspect_asset(project, asset_id)
+    if not (info.get("metadata") or {}).get("recipe"):
+        from . import parts
+
+        return parts.edit(
+            project,
+            asset_id,
+            part,
+            changes,
+            lock_geometry=lock_geometry,
+            lock_material=lock_material,
+        )
     info, recipe = current_recipe(project, asset_id)
     if part == "all":
         updated = recipe

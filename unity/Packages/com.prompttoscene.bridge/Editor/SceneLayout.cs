@@ -14,6 +14,7 @@ namespace PromptToScene.Editor
         public string source_id, asset_id;
         public bool duplicate;
         public float[] position, rotation, scale, bounds_min, bounds_max;
+        public float[] footprint;
         public SceneObject expected;
     }
     public static class SceneLayout
@@ -40,12 +41,14 @@ namespace PromptToScene.Editor
             var bounds = new Bounds(obj.transform.position, Vector3.zero);
             if (renderers.Length > 0) { bounds = renderers[0].bounds; foreach (var r in renderers.Skip(1)) bounds.Encapsulate(r.bounds); }
             var q = obj.transform.rotation;
-            return new SceneObject { id = Id(obj), instance_id = obj.GetInstanceID(), name = obj.name,
+            var result = new SceneObject { id = Id(obj), instance_id = obj.GetInstanceID(), name = obj.name,
                 asset_id = identity == null ? "" : identity.assetId, position = Vec(obj.transform.position),
                 rotation = Vec(obj.transform.eulerAngles), quaternion = new[] {q.x,q.y,q.z,q.w}, scale = Vec(obj.transform.localScale),
                 bounds_min = Vec(bounds.min), bounds_max = Vec(bounds.max),
                 renderers = renderers.Select(r => new RendererState { path = AnimationUtility.CalculateTransformPath(r.transform, obj.transform),
                     materials = r.sharedMaterials.Select(m => m == null ? "" : AssetDatabase.GetAssetPath(m)).ToArray() }).ToArray() };
+            SceneDiagnostics.Oriented(obj,result);
+            return result;
         }
         public static GameObject Find(string id)
         {
@@ -61,7 +64,18 @@ namespace PromptToScene.Editor
             }).Distinct().Where(o => o.GetComponentsInChildren<Renderer>().Length > 0).Select(Describe).ToArray();
         }
         static bool Near(float[] a, float[] b) => a != null && b != null && a.Length == b.Length && a.Zip(b,(x,y) => Mathf.Abs(x-y) < .002f).All(v => v);
-        static bool Overlap(float[] low, float[] high, SceneObject other) => Enumerable.Range(0,3).All(i => Mathf.Min(high[i], other.bounds_max[i]) - Mathf.Max(low[i], other.bounds_min[i]) > .005f);
+        public static bool Overlap(float[] low, float[] high, float[] footprint, SceneObject other)
+        {
+            if (!Enumerable.Range(0,3).All(i => Mathf.Min(high[i], other.bounds_max[i]) - Mathf.Max(low[i], other.bounds_min[i]) > .005f)) return false;
+            if (footprint == null || footprint.Length != 8 || other.footprint == null || other.footprint.Length != 8) return true;
+            foreach (var polygon in new[]{footprint,other.footprint})
+                for(int i=0;i<4;i++)
+                { int j=(i+1)%4; var axis=new Vector2(polygon[2*i+1]-polygon[2*j+1],polygon[2*j]-polygon[2*i]).normalized;
+                  var a=Enumerable.Range(0,4).Select(n=>Vector2.Dot(axis,new Vector2(footprint[2*n],footprint[2*n+1]))).ToArray();
+                  var b=Enumerable.Range(0,4).Select(n=>Vector2.Dot(axis,new Vector2(other.footprint[2*n],other.footprint[2*n+1]))).ToArray();
+                  if(Mathf.Min(a.Max(),b.Max())-Mathf.Max(a.Min(),b.Min()) <= .005f) return false; }
+            return true;
+        }
         static void VectorValid(float[] value, bool positive = false)
         {
             if (value == null || value.Length != 3 || value.Any(v => float.IsNaN(v) || float.IsInfinity(v) || (positive && (v <= 0 || v > 100)))) throw new Exception("Invalid placement vector");
@@ -72,7 +86,9 @@ namespace PromptToScene.Editor
             var placements = request.placements;
             if (placements == null || placements.Length == 0 || placements.Length > 32 || request.anchor == null) throw new Exception("Invalid layout plan");
             var anchor = Find(request.anchor.id);
-            if (anchor == null || !Near(Describe(anchor).bounds_min, request.anchor.bounds_min) || !Near(Describe(anchor).bounds_max, request.anchor.bounds_max)) throw new Exception("Anchor changed; plan again");
+            if (anchor == null) throw new Exception("Anchor is no longer loaded");
+            var anchorState = Describe(anchor);
+            if (!Near(anchorState.position, request.anchor.position) || !Near(anchorState.rotation, request.anchor.rotation) || !Near(anchorState.scale, request.anchor.scale) || !Near(anchorState.bounds_min, request.anchor.bounds_min) || !Near(anchorState.bounds_max, request.anchor.bounds_max)) throw new Exception("Anchor changed; plan again");
             var sources = placements.Select(p => Find(p.source_id)).ToArray();
             for (int i=0; i<placements.Length; i++)
             {
@@ -85,7 +101,7 @@ namespace PromptToScene.Editor
             }
             var moved = new HashSet<string>(placements.Where(p => !p.duplicate).Select(p => p.source_id));
             foreach (var obstacle in Objects().Select(Describe).Where(o => o.id != request.anchor.id && !moved.Contains(o.id)))
-                if (placements.Any(p => Overlap(p.bounds_min,p.bounds_max,obstacle))) throw new Exception("Layout overlaps " + obstacle.name + "; plan again");
+                if (placements.Any(p => Overlap(p.bounds_min,p.bounds_max,p.footprint,obstacle))) throw new Exception("Layout overlaps " + obstacle.name + "; plan again");
             var existing = sources.Where((o,i) => !placements[i].duplicate).Distinct().ToArray();
             var before = new SceneResult { scene = sceneKey, objects = existing.Select(Describe).ToArray(), created_ids = new string[0] };
             var created = new List<GameObject>();
@@ -107,6 +123,7 @@ namespace PromptToScene.Editor
                     }
                     Undo.RecordObject(obj.transform,"Arrange generated props");
                     obj.transform.position = Vec(p.position); obj.transform.eulerAngles = Vec(p.rotation); obj.transform.localScale = Vec(p.scale);
+                    if(request.snap_to_surface) SceneDiagnostics.Ground(obj,false);
                     PrefabUtility.RecordPrefabInstancePropertyModifications(obj.transform); changed.Add(obj);
                 }
                 before.created_ids = created.Select(Id).ToArray(); AssetBridge.WriteJson(snapshot,before);

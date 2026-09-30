@@ -39,6 +39,18 @@ public static class UnityAuthoring
             var targets=Object.FindObjectsOfType<AssetIdentity>().Where(a=>command.operation=="select_all"?a.assetId.StartsWith(command.asset_id):a.assetId==command.asset_id).ToArray();
             if(targets.Length==0)throw new Exception("Fixture asset missing");
             if(command.operation=="select"||command.operation=="select_all")Selection.objects=targets.Select(t=>t.gameObject).ToArray();
+            if(command.operation=="check_facing")
+            {
+                var chair=targets[0];
+                var name=command.asset_id.Substring(0,command.asset_id.LastIndexOf('_'))+"_table";
+                var table=Object.FindObjectsOfType<AssetIdentity>().First(a=>a.assetId==name);
+                var points=chair.GetComponentsInChildren<MeshFilter>().SelectMany(f=>f.sharedMesh.vertices.Select(v=>chair.transform.InverseTransformPoint(f.transform.TransformPoint(v)))).ToArray();
+                float top=points.Max(p=>p.y);
+                var back=points.Where(p=>p.y>top*.7f).ToArray();
+                var backward=chair.transform.TransformVector(new Vector3(back.Average(p=>p.x),0,back.Average(p=>p.z)));
+                var toTable=table.transform.position-chair.transform.position;toTable.y=0;
+                if(Vector3.Dot(backward,toTable)>=-.001f)throw new Exception("Chair backrest faces the table");
+            }
             if(command.operation=="check")
             {
                 var materials=targets.SelectMany(t=>t.GetComponentsInChildren<Renderer>()).SelectMany(r=>r.sharedMaterials).Distinct();
@@ -68,6 +80,12 @@ public static class UnityAuthoring
                     if(!collider.Raycast(ray,out _,100))throw new Exception("Cooked collider cannot be hit");
                 }
                 File.WriteAllText(Path.Combine(Root,"preparation-native.json"),JsonUtility.ToJson(new GeometryEvidence{triangles=counts,colliders=collisions.Length}));
+            }
+            if(command.operation=="check_usage_preset")
+            {
+                var materials=targets[0].GetComponentsInChildren<Renderer>().SelectMany(r=>r.sharedMaterials).Distinct();
+                var textures=materials.SelectMany(m=>m.GetTexturePropertyNames().Select(n=>m.GetTexture(n))).Where(t=>t!=null).Distinct().ToArray();
+                if(textures.Length<6||textures.Any(t=>t.width!=512||t.height!=512))throw new Exception("Usage preset texture dimensions mismatch");
             }
             if(command.operation=="capture_material")
             {

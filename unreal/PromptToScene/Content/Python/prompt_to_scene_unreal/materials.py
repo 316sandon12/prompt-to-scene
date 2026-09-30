@@ -1,5 +1,7 @@
 """Explicit opaque PBR mapping. Generated material graphs belong to the bridge."""
 
+import hashlib
+
 import unreal
 
 from .protocol import digest
@@ -8,6 +10,16 @@ from .protocol import digest
 def import_texture(source, target, name, normal, linear=False):
     if not name:
         return None
+    fingerprint = hashlib.sha256((source / name).read_bytes()).hexdigest() + str((normal, linear))
+    path = target + "/T_" + name.removeprefix("tex_").removesuffix(".png")
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        old = unreal.load_asset(path)
+        if (
+            isinstance(old, unreal.Texture2D)
+            and unreal.EditorAssetLibrary.get_metadata_tag(old, "PromptToScene.ContentHash")
+            == fingerprint
+        ):
+            return old
     task = unreal.AssetImportTask()
     task.filename = str(source / name)
     task.destination_path = target
@@ -36,6 +48,7 @@ def import_texture(source, target, name, normal, linear=False):
     texture.set_editor_property("address_x", unreal.TextureAddress.TA_WRAP)
     texture.set_editor_property("address_y", unreal.TextureAddress.TA_WRAP)
     texture.set_editor_property("filter", unreal.TextureFilter.TF_BILINEAR)
+    unreal.EditorAssetLibrary.set_metadata_tag(texture, "PromptToScene.ContentHash", fingerprint)
     if not unreal.EditorAssetLibrary.save_loaded_asset(texture, only_if_is_dirty=False):
         raise RuntimeError("Could not save texture: " + name)
     return texture

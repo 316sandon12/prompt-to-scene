@@ -1,0 +1,22 @@
+<!doctype html><meta charset="utf-8"><title>MCP Apps protocol fixture</title>
+<style>body{margin:0;background:#10191c;color:#e7eeeb;font:14px system-ui}pre{padding:8px;margin:0;white-space:pre-wrap}iframe{width:100%;height:900px;border:0}</style>
+<pre id="host">MCP Apps protocol fixture · no message is sent to an AI service</pre><iframe id="app" sandbox="allow-scripts allow-same-origin"></iframe>
+<script>
+const frame=document.getElementById('app'); frame.srcdoc=PAGE;
+window.addEventListener('message',async event=>{
+ if(event.source!==frame.contentWindow || event.data?.jsonrpc!=='2.0')return;
+ const m=event.data; if(m.id==null)return;
+ let result={};
+ try {
+  if(m.method==='ui/initialize')result={protocolVersion:'2026-01-26',hostInfo:{name:'PTS protocol fixture',version:'1'},hostCapabilities:{serverTools:{}}};
+  else if(m.method==='tools/call'){
+   if(m.params.name!=='workbench_action')throw Error('Unexpected tool');
+   const response=await fetch('/api/workbench',{method:'POST',headers:{'Content-Type':'application/json','X-PTS-Token':TOKEN},body:JSON.stringify(m.params.arguments)});
+   const payload=await response.json(); if(!response.ok)throw Error(payload.error);
+   result={structuredContent:payload,content:[{type:'text',text:JSON.stringify(payload)}]};
+  } else if(['ui/message','ui/update-model-context'].includes(m.method))document.getElementById('host').textContent=m.method+' · '+JSON.stringify(m.params);
+  else throw Error('Unexpected method '+m.method);
+  frame.contentWindow.postMessage({jsonrpc:'2.0',id:m.id,result},'*');
+ }catch(error){frame.contentWindow.postMessage({jsonrpc:'2.0',id:m.id,error:{code:-32603,message:error.message}},'*');}
+});
+</script>

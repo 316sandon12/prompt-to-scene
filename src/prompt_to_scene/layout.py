@@ -1,17 +1,179 @@
 """Conservative, engine-coordinate layout planning from actual editor bounds."""
 
 import math
+from copy import deepcopy
 
 
 def overlaps(a, b, epsilon=0.005):
-    return all(
+    if not all(
         min(a["bounds_max"][i], b["bounds_max"][i]) - max(a["bounds_min"][i], b["bounds_min"][i])
         > epsilon
         for i in range(3)
-    )
+    ):
+        return False
+    if not a.get("footprint") or not b.get("footprint"):
+        return True
+    pa, pb = [list(zip(o["footprint"][::2], o["footprint"][1::2])) for o in (a, b)]
+    for polygon in (pa, pb):
+        for p, q in zip(polygon, polygon[1:] + polygon[:1]):
+            normal = (p[1] - q[1], q[0] - p[0])
+            length = math.hypot(*normal)
+            if length < 1e-8:
+                continue
+            projections = [
+                [sum(v * n for v, n in zip(corner, normal)) / length for corner in poly]
+                for poly in (pa, pb)
+            ]
+            if min(map(max, projections)) - max(map(min, projections)) <= epsilon:
+                return False
+    return True
 
 
-def plan(scene, items, relation="around", anchor_id=None, gap=0.12, fit=False, clearance=None):
+def yaw(obj, engine):
+    up = 1 if engine == "unity" else 2
+    if any(abs((v + 180) % 360 - 180) > 0.1 for i, v in enumerate(obj["rotation"]) if i != up):
+        raise ValueError("Layout supports upright objects; remove pitch/roll first")
+    return obj["rotation"][up]
+
+
+def rotate(vector, degrees, engine):
+    up = 1 if engine == "unity" else 2
+    a, b = [i for i in range(3) if i != up]
+    angle = math.radians(degrees * (-1 if engine == "unity" else 1))
+    c, s = math.cos(angle), math.sin(angle)
+    result = list(vector)
+    result[a], result[b] = c * vector[a] - s * vector[b], s * vector[a] + c * vector[b]
+    return result
+
+
+def pose(obj, position, rotation, scale, engine):
+    """Use native oriented bounds when available, retaining the original pivot offset."""
+    old_yaw = yaw(obj, engine)
+    local_low, local_high = obj.get("oriented_min"), obj.get("oriented_max")
+    if local_low is None:
+        # Older bridges supply a conservative world box. No guessed mesh geometry.
+        corners = [
+            rotate([v[i] - obj["position"][i] for i in range(3)], -old_yaw, engine)
+            for v in box_corners(obj["bounds_min"], obj["bounds_max"])
+        ]
+        local_low = [min(v[i] for v in corners) for i in range(3)]
+        local_high = [max(v[i] for v in corners) for i in range(3)]
+    factors = [scale[i] / obj["scale"][i] for i in range(3)]
+    low, high = [[v[i] * factors[i] for i in range(3)] for v in (local_low, local_high)]
+    angle = rotation[1 if engine == "unity" else 2]
+    corners = [
+        [p[i] + position[i] for i in range(3)]
+        for p in [rotate(v, angle, engine) for v in box_corners(low, high)]
+    ]
+    up = 1 if engine == "unity" else 2
+    a, b = [i for i in range(3) if i != up]
+    footprint = []
+    for x, y in ((low[a], low[b]), (high[a], low[b]), (high[a], high[b]), (low[a], high[b])):
+        p = [0, 0, 0]
+        p[a], p[b] = x, y
+        p = rotate(p, angle, engine)
+        footprint += [p[a] + position[a], p[b] + position[b]]
+    return {
+        **deepcopy(obj),
+        "position": list(position),
+        "rotation": list(rotation),
+        "scale": list(scale),
+        "oriented_min": low,
+        "oriented_max": high,
+        "bounds_min": [min(v[i] for v in corners) for i in range(3)],
+        "bounds_max": [max(v[i] for v in corners) for i in range(3)],
+        "footprint": footprint,
+    }
+
+
+def box_corners(low, high):
+    return [[(high if n & (1 << i) else low)[i] for i in range(3)] for n in range(8)]
+
+
+def placement(obj, placed, duplicate=False):
+    return {
+        **{
+            k: placed[k]
+            for k in ("position", "rotation", "scale", "bounds_min", "bounds_max", "footprint")
+        },
+        "source_id": obj["id"],
+        "asset_id": obj["asset_id"],
+        "duplicate": duplicate,
+        "expected": {
+            k: obj[k] for k in ("id", "position", "rotation", "scale", "bounds_min", "bounds_max")
+        },
+    }
+
+
+def plan(
+    scene,
+    items,
+    relation="around",
+    anchor_id=None,
+    gap=0.12,
+    fit=False,
+    clearance=None,
+    face_anchor=False,
+):
+    engine = scene.get("engine", "unity")
+    context = scene.get("context", []) + scene.get("selected_context", [])
+    if anchor_id is None and len(scene.get("selected_context", [])) == 1:
+        anchor_id = scene["selected_context"][0]["id"]
+    anchor = next((o for o in context if o["id"] == anchor_id), None)
+    if not anchor:
+        raise ValueError("Select one anchor object in the editor, or specify anchor_id")
+    angle = yaw(anchor, engine)
+    up = 1 if engine == "unity" else 2
+    local = deepcopy(scene)
+    originals = {o["id"]: o for o in context + scene.get("assets", [])}
+    for key in ("context", "selected_context", "assets", "selected"):
+        local[key] = []
+        for obj in scene.get(key, []):
+            rotation = list(obj["rotation"])
+            rotation[up] -= angle
+            local[key].append(
+                pose(obj, rotate(obj["position"], -angle, engine), rotation, obj["scale"], engine)
+            )
+    planned = _axis_plan(local, items, relation, anchor_id, gap, fit, clearance)
+    rows = []
+    for row in planned["placements"]:
+        obj = originals[row["source_id"]]
+        position = rotate(row["position"], angle, engine)
+        rotation = list(obj["rotation"])
+        if face_anchor and relation == "around":
+            delta = [anchor["position"][i] - position[i] for i in range(3)]
+            rotation[up] = (
+                math.degrees(math.atan2(delta[0], delta[2]))
+                if engine == "unity"
+                else math.degrees(math.atan2(delta[1], delta[0]))
+            )
+        placed = pose(obj, position, rotation, row["scale"], engine)
+        rows.append(placement(obj, placed, row["duplicate"]))
+    check_placements(scene, rows, anchor_id)
+    return {
+        **planned,
+        "anchor": anchor,
+        "placements": rows,
+        "message": "Upright oriented layout; native editor rechecks scene state before applying",
+    }
+
+
+def check_placements(scene, rows, anchor_id):
+    moved = {r["source_id"] for r in rows if not r["duplicate"]}
+    for i, row in enumerate(rows):
+        for other in rows[:i]:
+            if overlaps(row, other):
+                raise ValueError("Planned instances overlap; increase spacing")
+        for obstacle in scene.get("context", []):
+            if obstacle["id"] not in moved | {anchor_id} and overlaps(row, obstacle):
+                raise ValueError(
+                    "Layout would overlap " + obstacle["name"] + "; choose a clearer area"
+                )
+
+
+def _axis_plan(
+    scene, items, relation="around", anchor_id=None, gap=0.12, fit=False, clearance=None
+):
     if relation not in {"around", "along", "under", "right", "front"}:
         raise ValueError("Relation must be around, along, under, right or front")
     if not isinstance(gap, (int, float)) or not math.isfinite(gap) or not 0 <= gap <= 10:

@@ -61,7 +61,29 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                     "edit_selected_prop",
                     "capture_review",
                     "get_review",
+                    "open_workbench",
+                    "workbench_action",
+                    "compose_scene",
+                    "edit_imported_part",
+                    "set_art_brief",
+                    "get_art_reference",
+                    "review_quality",
+                    "repair_quality",
+                    "inspect_performance",
+                    "apply_usage_preset",
+                    "list_generation_providers",
+                    "generate_model",
+                    "resume_workflow",
                 }
+                app_tool = next(t for t in catalog.tools if t.name == "open_workbench")
+                assert app_tool.meta["ui"]["resourceUri"] == "ui://prompt-to-scene/workbench.html"
+                resources = await session.list_resources()
+                assert any(
+                    str(r.uri) == app_tool.meta["ui"]["resourceUri"] for r in resources.resources
+                )
+                resource = await session.read_resource(app_tool.meta["ui"]["resourceUri"])
+                assert resource.contents[0].mimeType == "text/html;profile=mcp-app"
+                assert "ui/initialize" in resource.contents[0].text
                 result = await session.call_tool("get_asset_status", {"asset_id": "crate"})
                 assert not result.isError
                 payload = result.structuredContent or json.loads(result.content[0].text)

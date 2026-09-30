@@ -1,5 +1,44 @@
 # Verification
 
+## v0.6 — recorded on 2026-10-01
+
+Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in and URP 14.0.11, Unreal Editor 5.7.2. The following use real Blender and native editors. The generation fixture returns an existing textured model; it is not an AI model-quality test.
+
+| Check | Result |
+| --- | --- |
+| Python/MCP/protocol | 130 tests passed; lint, formatting and shared skill validation passed. Includes provider contracts, paid-submission recovery, GLB dependency isolation, locks, rotated layouts and optional UI resources. |
+| Furnished scenes | Reading-corner set built and placed at 37°; native upper-chair vertices verify that the seat faces its table. Saving, copying a three-object layout and undo passed. Rotated-anchor placement and native support queries passed. |
+| Visual repair | A measured 12 cm support gap was corrected; a subsequent seat-material repair refreshed the after image using the original frame. Both PNGs returned through MCP. A third repair was rejected. |
+| Imported parts | Real textured GLB intake, grouping, independent geometry lock, material-only update, unlocking and source replacement passed. The untouched ceramic body's geometry hash remained unchanged. |
+| Incremental updates | Actual receipts confirmed reuse of native geometry and unchanged material bakes. A separate real Blender check verifies invalidation for RGB/value outputs, edited packed pixels and normal-source geometry; untracked dependencies bypass the cache. |
+| Usage presets | Applying the mobile preset reduces the 14,976-triangle source to at most 8,000; native texture dimensions become 512 × 512 and native LOD geometry is checked. Asset identity and existing placement survive. Metrics use actual editor geometry/material data; texture memory is explicitly an estimate. |
+| Optional providers | Self-hosted HTTP fixture → GLB → Blender preparation → isolated candidate → selected publication passed in all three editor paths. Text, image and multi-image Meshy request contracts passed without a paid live API call. |
+| AI hosts | Actual isolated Codex app-server discovered 47 tools and invoked the plugin. Actual Harness 0.2.0-rc.1 bundle/ToolRuntime invocation passed. |
+| Local workbench / MCP App | Browser selection, part controls and real previews checked. A local MCP Apps protocol fixture exercised initialization, tool calls, selected-object model context and explicit user-message handoff. This is not certification of Codex/Harness in-chat UI support. |
+| Local portable macOS app | Frozen 47-tool stdio, embedded HTML/JS and bridges passed. Detached Blender recipe and external-model jobs completed after the MCP parent exited. |
+
+Native fixed-frame examples: [Unity before](images/workbench-unity-before.png) / [after](images/workbench-unity-after.png), [UE before](images/workbench-unreal-before.png) / [after](images/workbench-unreal-after.png). These are draft assets in sparsely lit test scenes, not beauty renders or an aesthetic score. Source rendering and native project lighting remain separate.
+
+Detailed measurements, package/download verification and recorded limitations are in [verification-v0.6.json](verification-v0.6.json). Windows editor runs and paid live Meshy generation are not covered. One intermediate UE run completed all functional assertions but crashed during editor shutdown in the EOS SDK; that run was rejected and rerun. The local workbench had no observed console errors; the protocol-fixture tab reported one unclassified `MutationObserver` exception despite successful functional exchanges.
+
+### Reproduce v0.6
+
+Use disposable `.local/*smoke-*` projects. These commands create a fresh test scene and install the current bridge into that disposable project.
+
+```bash
+uv run pytest -q
+/path/to/blender --background --factory-startup --python tools/external_fixture.py -- .local/v05-fixtures
+/path/to/blender --background --factory-startup --python tools/cache_checks.py
+uv run python tools/authoring_smoke.py --project /repo/.local/unity-smoke-EXAMPLE --editor /path/to/Unity --workbench
+uv run python tools/authoring_smoke.py --project /repo/.local/unreal-smoke-EXAMPLE --editor /path/to/UnrealEditor --workbench
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /path/to/blender
+```
+
+Run the Unity scenario once in Built-in and once in URP. `--usage-preset` runs only the focused mobile-preset scenario; it is also included in `--workbench`. The fixture provider is implemented in `tools/workbench_checks.py`. `tools/ui_host_smoke.py` serves a developer-only protocol host fixture; real host tool verification uses the two separate client scripts above.
+
 ## v0.5 — recorded on 2026-09-30
 
 Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in and URP 14.0.11, Unreal Editor 5.7.2. These are real Blender/editor runs; no LLM was asked to simulate results.

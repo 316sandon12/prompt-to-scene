@@ -19,6 +19,8 @@ namespace PromptToScene.Editor
         public SceneObject anchor;
         public Placement[] placements;
         public string view, frame_id, review_stage;
+        public string object_id;
+        public bool snap_to_surface;
     }
     [Serializable] public class PreviewFrame
     {
@@ -32,6 +34,7 @@ namespace PromptToScene.Editor
         public string id, name, asset_id;
         public int instance_id;
         public float[] position, rotation, quaternion, scale, bounds_min, bounds_max;
+        public float[] oriented_min, oriented_max, footprint;
         public RendererState[] renderers;
     }
     [Serializable] public class SceneResult
@@ -40,6 +43,7 @@ namespace PromptToScene.Editor
         public SceneObject[] selected, assets, objects, context, selected_context;
         public string[] created_ids;
         public int changed;
+        public AssetMetrics[] metrics;
     }
 
     public static class SceneActions
@@ -148,6 +152,9 @@ namespace PromptToScene.Editor
             var result = new SceneResult { request_id = a.request_id, scene = SceneKey };
             if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); return result; }
             if (a.operation == "arrange") return SceneLayout.Arrange(a, SceneKey);
+            if (a.operation == "select")
+            { var obj = SceneLayout.Find(a.object_id); if (obj == null) throw new Exception("Object is no longer loaded");
+              Selection.activeGameObject = obj; result.selected = new[]{SceneLayout.Describe(obj)}; return result; }
             if (a.operation == "undo")
             {
                 if (!Id(a.undo_id)) throw new Exception("Invalid undo ID");
@@ -164,6 +171,7 @@ namespace PromptToScene.Editor
             }
             var targets = (a.scope == "asset" ? All : Selected).Where(o => string.IsNullOrEmpty(a.asset_id) || o.assetId == a.asset_id).ToArray();
             if (targets.Length == 0) throw new Exception("Select a Prompt-to-Scene prop, or choose an asset scope");
+            if (a.operation == "analyze") { result.metrics = targets.Select(t=>SceneDiagnostics.Inspect(t.gameObject)).ToArray(); result.objects=targets.Select(Describe).ToArray(); return result; }
             if (a.operation == "focus") { Focus(targets.Select(t => t.gameObject).ToArray()); result.objects = targets.Select(Describe).ToArray(); return result; }
             if (a.operation == "preview")
             {
@@ -171,7 +179,7 @@ namespace PromptToScene.Editor
                 Capture(targets, Path.Combine(Root, result.preview), a);
                 return result;
             }
-            if (a.operation != "transform" && a.operation != "tint") throw new Exception("Unknown action");
+            if (a.operation != "transform" && a.operation != "tint" && a.operation != "ground") throw new Exception("Unknown action");
             if (a.operation == "tint" && a.color == null) throw new Exception("Tint needs a color");
             var before = new SceneResult { scene = SceneKey, objects = targets.Select(Describe).ToArray() };
             AssetBridge.WriteJson(Path.Combine(Root, "edits", a.request_id + ".json"), before);
@@ -179,7 +187,8 @@ namespace PromptToScene.Editor
             {
                 foreach (var target in targets)
                 {
-                    if (a.operation == "transform")
+                    if (a.operation == "ground") { SceneDiagnostics.Ground(target.gameObject); result.changed++; }
+                    else if (a.operation == "transform")
                     {
                         Undo.RecordObject(target.transform, "Prompt-to-Scene transform");
                         if (a.move != null) target.transform.position += Vec(a.move);

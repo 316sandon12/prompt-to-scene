@@ -5,7 +5,7 @@ import uuid
 from . import core, registry, workflow
 
 
-def capture(project, asset_id, review_id=None, stage="before", view="studio"):
+def capture(project, asset_id, review_id=None, stage="before", view="studio", refresh=False):
     core.asset_id(asset_id)
     if stage not in {"before", "after"} or view not in {"studio", "front", "back"}:
         raise ValueError("Choose before/after and studio/front/back")
@@ -33,7 +33,7 @@ def capture(project, asset_id, review_id=None, stage="before", view="studio"):
         }
     if stage == "after" and workflow.job_status(project, record["before"])["status"] != "completed":
         raise ValueError("Wait for the before image to finish")
-    if record.get(stage):
+    if record.get(stage) and not (stage == "after" and refresh):
         state = workflow.job_status(project, record[stage])
         if state["status"] not in {"error", "cancelled"}:
             return {**state, "review_id": review_id}
@@ -44,6 +44,8 @@ def capture(project, asset_id, review_id=None, stage="before", view="studio"):
         scope="asset",
         values={"view": view, "frame_id": review_id, "review_stage": stage},
     )
+    if record.get(stage) and refresh:
+        record.setdefault("previous_after", []).append(record[stage])
     record[stage] = task["request_id"]
     core.atomic_json(path, record)
     return {**task, "review_id": review_id}

@@ -42,7 +42,10 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 34
+                    assert len((await client.list_tools()).tools) == 47
+                    resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
+                    assert "ui/initialize" in resource.contents[0].text
+                    assert "repairButton" in resource.contents[0].text
                     response = await client.call_tool(
                         "connect_project", {"project_path": str(project)}
                     )
@@ -87,6 +90,8 @@ def main():
             assert (work / "studio.png").stat().st_size > 5000
             assert (work / "blender_recipe.py").is_file()
             assert (work / "blender_prepare.py").is_file()
+            assert (work / "blender_cache.py").is_file()
+            assert (work / "blender_edit.py").is_file()
             assert (work / "lod_1.fbx").is_file()
 
             async def intake():
@@ -132,6 +137,12 @@ def main():
             with urllib.request.urlopen(origin + "/workshop.js") as response:
                 assert response.headers["Content-Type"].startswith("text/javascript")
                 assert b"importSource" in response.read()
+            for route, marker in (
+                ("/workbench", b"qualityButton"),
+                ("/workbench.js", b"ui/initialize"),
+            ):
+                with urllib.request.urlopen(origin + route) as response:
+                    assert marker in response.read()
             request = urllib.request.Request(origin + "/api/state", headers={"X-PTS-Token": token})
             with urllib.request.urlopen(request) as response:
                 assert json.load(response)["active"] == str(project.resolve())

@@ -9,15 +9,22 @@ from mcp.server.fastmcp import FastMCP, Image
 
 from . import (
     authoring,
+    background,
+    compositions,
     core,
+    generation,
     kits,
     layout,
+    parts,
+    performance,
+    quality,
     recipes,
     registry,
     reviews,
     sources,
     studies,
     styles,
+    workbench,
     workflow,
 )
 from .core import inspect_project, wait_for_status
@@ -26,6 +33,16 @@ mcp = FastMCP(
     "Prompt-to-Scene",
     instructions="""
 Create static opaque PBR assets in Blender, then publish to the configured Unity or Unreal project.
+open_workbench offers an optional MCP App; normal tools work without an embedded UI.
+Use compose_scene to build and furnish a kit, or save/place a reusable layout, with arbitrary yaw.
+Use edit_imported_part for grouping, locks and local replacements on existing source meshes.
+Use set_art_brief/get_art_reference for saved references. review_quality measures native issues
+and captures before/after. Inspect the images with client vision, apply concrete repair_quality
+changes at most twice, and inspect the refreshed images. No aesthetic pass is inferred.
+inspect_performance reads native counts; apply_usage_preset prepares for a target use case.
+Optional generate_model calls a configured Meshy or self-hosted service. Paid Meshy calls need
+user authorization for provider/count. Default candidates are isolated until publish_prepared.
+resume_workflow continues saved multi-step jobs; never resubmit paid tasks just to poll.
 If no project is connected, use list_projects then connect_project with the user's chosen project.
 Use inspect_library for nine designed recipes, semantic parts, styles and quality budgets.
 Use search_assets to find credited CC0 Poly Haven models, or import_asset for a local GLB/glTF,
@@ -290,7 +307,7 @@ async def edit_selected_prop(
 
     Changes the selected asset's shared recipe (all its instances). Requires exactly one
     selected managed asset. If inspection is queued, resume with inspection_request_id.
-    External models support native transform/tint via edit_scene, not recipe part editing.
+    Imported static models also support named-part geometry/material edits and locks.
     """
     task = (
         await get_task_status(inspection_request_id, 10)
@@ -360,11 +377,12 @@ def edit_prop_part(
     lock_geometry: bool | None = None,
     lock_material: bool | None = None,
 ) -> dict:
-    """Edit or lock one semantic part of a shared recipe; inspect_asset lists its parts.
+    """Edit or lock one named part of a recipe or imported model; inspect_asset lists parts.
 
     Changes: scale XYZ factors, offset XYZ meters, rotation XYZ degrees, color linear RGB,
     material wood/metal/paint/stone, roughness and wear. Part coordinates are Blender Z-up.
-    Geometry transforms pivot around the part's bottom center. Locks retain their saved
+    Recipe transforms pivot at the bottom center; imported parts use their bounds center.
+    Locks retain their saved
     geometry/material on later changes; explicitly unlock before changing locked properties.
     """
     return authoring.edit_part(
@@ -427,12 +445,14 @@ async def arrange_props(
     gap: float = 0.12,
     fit: bool = False,
     inspection_request_id: str | None = None,
+    face_anchor: bool = False,
+    snap_to_surface: bool = True,
 ) -> dict:
     """Place managed props relative to a selected real scene anchor, with collision checks/undo.
 
     items: [{asset_id, count=1, object_id?}], up to 32 instances. Relations: around, along,
-    under, right, front. fit can shrink under-anchor props. Uses world-axis bounds; anchor
-    should align to 90-degree axes. Existing instances move, additional ones are duplicated.
+    under, right, front. fit can shrink under-anchor props. Uses oriented bounds for upright
+    objects and any horizontal anchor yaw. Existing instances move, extra ones are duplicated.
     If inspection is queued, retry with inspection_request_id. If arrangement is queued,
     poll its exact request with get_task_status; do not submit the layout again.
     """
@@ -463,9 +483,14 @@ async def arrange_props(
                 )
                 * anchor["scale"][up]
             ) - gap
-    planned = layout.plan(scene, items, relation, anchor_id, gap, fit, clearance)
+    planned = layout.plan(scene, items, relation, anchor_id, gap, fit, clearance, face_anchor)
     task = workflow.action(
-        target, "arrange", values={k: planned[k] for k in ("scene", "anchor", "placements")}
+        target,
+        "arrange",
+        values={
+            **{k: planned[k] for k in ("scene", "anchor", "placements")},
+            "snap_to_surface": snap_to_surface,
+        },
     )
     return await get_task_status(task["request_id"], 10)
 
@@ -495,15 +520,15 @@ async def inspect_scene() -> dict:
 async def edit_scene(
     operation: str, values: dict | None = None, scope: str = "selected", asset_id: str | None = None
 ) -> dict:
-    """Direct engine edit: transform, tint or focus, without a Blender rebuild.
+    """Direct engine edit: transform, tint, ground or focus, without a Blender rebuild.
 
     selected scope changes selected managed instances only. asset scope changes all LOADED
     instances of asset_id in this scene. transform values: move=[x,y,z] meters, rotate=[x,y,z]
     degrees, scale=[x,y,z] multipliers. tint values: color=[r,g,b] linear, optional material=
     original Blender material name. Result contains undo_id for restoring the edit.
     """
-    if operation not in {"transform", "tint", "focus"}:
-        raise ValueError("Use transform, tint or focus")
+    if operation not in {"transform", "tint", "focus", "ground"}:
+        raise ValueError("Use transform, tint, ground or focus")
     task = workflow.action(
         str(project()["project"]), operation, asset_id=asset_id, scope=scope, values=values
     )
@@ -548,6 +573,213 @@ async def get_preview(
     if not path.is_relative_to(root) or path.stat().st_size > 10 * 1024 * 1024:
         raise ValueError("Invalid preview path/size")
     return Image(data=Path(path).read_bytes(), format="png")
+
+
+@mcp.resource(
+    workbench.URI,
+    mime_type="text/html;profile=mcp-app",
+    meta={"ui": {"prefersBorder": True, "csp": {"connectDomains": [], "resourceDomains": []}}},
+)
+def workbench_resource() -> str:
+    """Optional task UI; clients without MCP Apps use the normal tools or local app."""
+    return workbench.page()
+
+
+@mcp.tool(meta={"ui": {"resourceUri": workbench.URI}})
+def open_workbench() -> dict:
+    """Show the unified task, selection, preview, generation and review workbench.
+
+    MCP Apps-capable hosts can display this in chat. Other clients can use all normal tools
+    and the double-click local app; an embedded UI is never required for the workflow.
+    """
+    return workbench.dispatch("state")
+
+
+@mcp.tool(meta={"ui": {"resourceUri": workbench.URI, "visibility": ["app"]}})
+def workbench_action(action: str, values: dict | None = None) -> dict:
+    """Perform a workbench button action. Uses the same validated workflows as normal tools."""
+    return workbench.dispatch(action, values)
+
+
+@mcp.tool()
+def compose_scene(
+    kit: str = "reading_corner",
+    prefix: str = "corner",
+    position: list[float] | None = None,
+    yaw: float = 0,
+    anchor_id: str | None = None,
+    mode: str = "create",
+    template: str | None = None,
+    asset_ids: list[str] | None = None,
+) -> dict:
+    """Build and furnish a small scene, or save/place a reusable layout in this project.
+
+    create builds a matching kit then places it around its table; selected upright anchors
+    supply position/yaw. An explicit position is metres in engine axes. mode=save records
+    selected instances (or asset_ids) as template; mode=place duplicates saved instances.
+    Poll the returned workflow ID. Interrupted workflows resume without repeating completed
+    stages. Result has undo_id. Arbitrary horizontal yaw is supported, tilted anchors are not.
+    """
+    return compositions.submit(
+        str(project()["project"]), kit, prefix, position, yaw, anchor_id, mode, template, asset_ids
+    )
+
+
+@mcp.tool()
+def edit_imported_part(
+    asset_id: str,
+    part: str,
+    changes: dict | None = None,
+    members: list[str] | None = None,
+    lock_geometry: bool | None = None,
+    lock_material: bool | None = None,
+    replacement_path: str | None = None,
+) -> dict:
+    """Group, edit, lock or replace parts of an imported static model.
+
+    inspect_asset.report.parts lists source parts. members groups existing named parts into
+    part. Changes: scale/offset/rotation XYZ in Blender Z-up, linear color RGB, roughness,
+    metallic. replacement_path is a local GLB/glTF/FBX/BLEND fitted to the chosen part bounds.
+    Unlock explicitly before changes. Untouched parts and engine instances retain identity.
+    A single fused mesh is one part: this tool does not invent semantic segmentation.
+    """
+    return parts.edit(
+        str(project()["project"]),
+        asset_id,
+        part,
+        changes,
+        members,
+        lock_geometry,
+        lock_material,
+        replacement_path,
+    )
+
+
+@mcp.tool()
+def set_art_brief(
+    image_path: str | None = None,
+    reference_asset: str | None = None,
+    notes: str = "",
+    overrides: dict | None = None,
+) -> dict:
+    """Persist a reference image and art direction; optionally adopt a recipe style/palette.
+
+    Use the client's vision for interpretation. Images are reference evidence, not a claim of
+    automatic style extraction or reconstruction. Existing assets require explicit edits.
+    """
+    return quality.set_brief(
+        str(project()["project"]), image_path, reference_asset, notes, overrides
+    )
+
+
+@mcp.tool()
+def get_art_reference():
+    """Return the saved reference image for client visual review; notes are in open_workbench."""
+    import base64
+
+    uri = workbench.image("reference")["url"]
+    header, data = uri.split(",", 1)
+    return Image(data=base64.b64decode(data), format=header.split("/")[1].split(";")[0])
+
+
+@mcp.tool()
+def review_quality(asset_id: str, auto_fix: bool = False, preset: str = "scene_prop") -> dict:
+    """Measure native issues and capture same-camera before/after with a two-repair limit.
+
+    auto_fix aligns to a detected collision surface only when the measured gap is <=0.5m.
+    Visual findings need client vision, using get_preview and get_art_reference. No aesthetic
+    score or visual-pass claim is generated. repair_quality applies concrete part edits and
+    refreshes the comparison automatically. Poll the exact workflow via get_task_status.
+    """
+    return quality.start(str(project()["project"]), asset_id, auto_fix, preset)
+
+
+@mcp.tool()
+def repair_quality(request_id: str, part: str, changes: dict) -> dict:
+    """Apply a concrete part repair to a completed quality review, then recapture and recheck.
+
+    At most two repairs including automatic grounding; rejects assets changed outside this
+    review. Wait for the returned review request, then inspect its fresh before/after images.
+    """
+    return quality.repair(str(project()["project"]), request_id, part, changes)
+
+
+@mcp.tool()
+def inspect_performance(
+    asset_id: str | None = None,
+    request_id: str | None = None,
+    preset: str = "scene_prop",
+    wait_seconds: float = 0,
+) -> dict:
+    """Read actual native triangles, vertices, material slots, textures and LOD counts.
+
+    If queued, retry with request_id. Presets mobile_prop/scene_prop/hero_prop expose budgets.
+    Texture bytes are an RGBA8+mip estimate, not measured VRAM. Shared meshes are identified;
+    FPS and draw calls require an actual engine profiler and are never inferred here.
+    """
+    return performance.inspect(
+        str(project()["project"]), asset_id, request_id, preset, wait_seconds
+    )
+
+
+@mcp.tool()
+def apply_usage_preset(asset_id: str, preset: str = "scene_prop") -> dict:
+    """Prepare a retained source for mobile_prop, scene_prop or hero_prop with measured LODs.
+
+    Uses the preset's triangle budget, texture resolution and LOD ratios. Reduction may fail
+    explicitly when its deviation limit cannot be met; existing imported geometry stays usable.
+    """
+    return performance.optimize(str(project()["project"]), asset_id, preset)
+
+
+@mcp.tool()
+def list_generation_providers() -> dict:
+    """List optional configured Meshy/self-hosted generation adapters; never return secrets."""
+    return {
+        "providers": generation.inventory(),
+        "usage_presets": performance.PRESETS,
+        "layouts": compositions.templates(str(project()["project"])),
+    }
+
+
+@mcp.tool()
+def generate_model(
+    asset_id: str,
+    prompt: str,
+    provider: str = "local",
+    image_paths: list[str] | None = None,
+    candidate_count: int = 1,
+    preview_only: bool = True,
+    allow_paid: bool = False,
+    settings: dict | None = None,
+    position: list[float] | None = None,
+) -> dict:
+    """Generate 1-3 textured GLB candidates, then use the existing preparation/import pipeline.
+
+    Configure providers in the local app. Meshy consumes credits: allow_paid only when user
+    authorization covers this provider/count. Self-hosted adapter implements docs/PROVIDERS.md.
+    Optional 1-4 PNG/JPEG references. Default candidates stay outside the scene for review;
+    publish_prepared selects one. Saved provider IDs survive interruption without resubmission.
+    Cancellation stops local work; an already submitted provider task may still consume credits.
+    """
+    return generation.submit(
+        str(project()["project"]),
+        asset_id,
+        prompt,
+        provider,
+        image_paths,
+        candidate_count,
+        preview_only,
+        allow_paid,
+        settings,
+        position,
+    )
+
+
+@mcp.tool()
+def resume_workflow(request_id: str) -> dict:
+    """Resume an interrupted composition, quality or generation task using its saved stages."""
+    return background.resume(str(project()["project"]), request_id)
 
 
 def main():

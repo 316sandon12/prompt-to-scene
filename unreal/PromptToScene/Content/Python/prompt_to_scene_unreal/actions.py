@@ -29,10 +29,13 @@ def vector(value):
 
 
 def describe(actor):
+    from .diagnostics import oriented
+
     component = actor.static_mesh_component
     rotation = actor.get_actor_rotation()
     center, extent = actor.get_actor_bounds(False)
     return {
+        **oriented(actor),
         "bounds_min": [(getattr(center, k) - getattr(extent, k)) / 100 for k in ("x", "y", "z")],
         "bounds_max": [(getattr(center, k) + getattr(extent, k)) / 100 for k in ("x", "y", "z")],
         "id": guid(actor),
@@ -159,6 +162,20 @@ def execute(request, root):
             "selected": [describe(a) for a in targets({"scope": "selected"})],
             "assets": [describe(a) for a in targets({"scope": "asset"})],
         }
+    if operation == "select":
+        from .layout import context
+
+        chosen = [a for a in context() if guid(a) == request.get("object_id")]
+        if len(chosen) != 1:
+            raise ValueError("Object is no longer loaded; refresh the scene")
+        actors().set_selected_level_actors(chosen)
+        return {"selected": [describe(a) for a in chosen]}
+    if operation == "analyze":
+        from .diagnostics import inspect
+
+        if not selected:
+            raise ValueError("Select a managed prop or choose an asset")
+        return {"metrics": [inspect(a) for a in selected], "scene": scene()}
     if operation == "arrange":
         from .layout import arrange
 
@@ -185,7 +202,9 @@ def execute(request, root):
                     unreal.Vector(*(v * 100 for v in row["position"])), False, False
                 )
                 actor.set_actor_rotation(
-                    unreal.Rotator(row["rotation"][1], row["rotation"][2], row["rotation"][0]),
+                    unreal.Rotator(
+                        pitch=row["rotation"][1], yaw=row["rotation"][2], roll=row["rotation"][0]
+                    ),
                     False,
                 )
                 actor.set_actor_scale3d(unreal.Vector(*row["scale"]))
@@ -247,7 +266,7 @@ def execute(request, root):
         task = unreal.AutomationLibrary.take_high_res_screenshot(1024, 768, str(path), delay=0.3)
         _captures[revision] = (path, time.monotonic(), task, old_camera)
         return None
-    if operation not in {"transform", "tint"}:
+    if operation not in {"transform", "tint", "ground"}:
         raise ValueError("Unknown editor action")
     snapshot = {"scene": scene(), "objects": [describe(a) for a in selected]}
     write_json(root / "edits" / (revision + ".json"), snapshot)
@@ -255,7 +274,12 @@ def execute(request, root):
     with unreal.ScopedEditorTransaction("Prompt-to-Scene: " + operation):
         for actor in selected:
             actor.modify()
-            if operation == "transform":
+            if operation == "ground":
+                from .diagnostics import ground
+
+                ground(actor)
+                changed += 1
+            elif operation == "transform":
                 if "move" in request:
                     actor.set_actor_location(
                         actor.get_actor_location()
@@ -267,7 +291,10 @@ def execute(request, root):
                     old = actor.get_actor_rotation()
                     r = request["rotate"]
                     actor.set_actor_rotation(
-                        unreal.Rotator(old.pitch + r[1], old.yaw + r[2], old.roll + r[0]), False
+                        unreal.Rotator(
+                            pitch=old.pitch + r[1], yaw=old.yaw + r[2], roll=old.roll + r[0]
+                        ),
+                        False,
                     )
                 if "scale" in request:
                     old = vector(actor.get_actor_scale3d())

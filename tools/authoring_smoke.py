@@ -24,6 +24,8 @@ def main():
     parser.add_argument("--editor", required=True)
     parser.add_argument("--variants", action="store_true")
     parser.add_argument("--preparation", action="store_true")
+    parser.add_argument("--workbench", action="store_true")
+    parser.add_argument("--usage-preset", action="store_true")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
     target = registry.resolve(str(args.project))
@@ -120,6 +122,26 @@ def main():
 
                 def position(x, y):
                     return [x, 0, y] if target.engine == "unity" else [x, y, 0]
+
+                if args.usage_preset:
+                    from workbench_checks import exercise_usage_preset
+
+                    await exercise_usage_preset(
+                        call, wait, fixture, scene, position, target, prefix
+                    )
+                    (project / "usage-evidence.json").write_text(json.dumps(evidence, indent=2))
+                    await fixture("stop", prefix)
+                    return
+
+                if args.workbench:
+                    from workbench_checks import exercise_workbench
+
+                    await exercise_workbench(
+                        client, call, wait, fixture, scene, position, target, prefix
+                    )
+                    (project / "workbench-evidence.json").write_text(json.dumps(evidence, indent=2))
+                    await fixture("stop", prefix)
+                    return
 
                 if args.preparation:
                     from preparation_checks import exercise_preparation

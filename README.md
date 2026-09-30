@@ -2,11 +2,11 @@
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
-[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [Authoring guide](docs/AUTHORING.zh-CN.md) · [Verified results](docs/verification.md)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [v0.6 workbench guide](docs/WORKBENCH.zh-CN.md) · [Verified results](docs/verification.md)
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.5 is experimental and targets static opaque props. Install Blender, an engine editor and a working AI client first. The local workshop also prepares existing models and operates the library without an LLM.
+> v0.6 is experimental and targets static opaque props. Install Blender, an engine editor and a working AI client first. The local workshop also prepares existing models and operates the library without an LLM.
 
 ![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 
@@ -28,6 +28,19 @@ Or choose a prop in **创作工作台 / Workshop**, compare candidates and publi
 
 Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
 
+## v0.6: one workbench, six workflow improvements
+
+| Feature | Implemented behavior |
+| --- | --- |
+| Unified workbench | Local UI plus optional MCP App; shared task cards, editor object selection, real previews, cancellation and workflow resume. Normal tools also work without an embedded UI. |
+| Furnished scene kits | Build and arrange three matching kits, arbitrary upright yaw, surface alignment, face-anchor placement, saved layout reuse and undo. |
+| Art review loop | Persistent reference images/notes, native diagnostics, same-camera evidence and at most two concrete repairs with automatic recapture. No fabricated aesthetic score. |
+| External part editing | Group source meshes, edit or replace one part, independent locks, preserved untouched geometry, validated bake reuse and native material-only updates. |
+| Usage-aware preparation | Native geometry/material/texture/LOD measurements; mobile, scene and hero presets. Texture memory is labeled as an estimate; no inferred FPS. |
+| Optional model generation | Meshy text/image adapters or a documented self-hosted API, 1–3 candidates, saved remote IDs, preview → preparation → native import. Paid provider use is explicit. |
+
+Say **“Make and furnish a reading corner rotated 35 degrees”**, **“Only change this imported model's rim”**, or **“Compare this prop to our saved art reference and fix the specific differences.”** [Full v0.6 guide](docs/WORKBENCH.zh-CN.md) · [Provider contract and test boundaries](docs/PROVIDERS.md).
+
 ## v0.5: existing models into game assets
 
 | Improvement | What is implemented |
@@ -36,7 +49,7 @@ Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on 
 | Game preparation | Retained original; size/axis correction; measured simplification; opaque PBR and source-normal baking; native Unity LODGroup / UE LODs; box/convex/no collision. Failed geometry budgets never enter the import queue. |
 | Better visual iteration | Three curated matching kits, three structural variants for each of nine recipes, consistent source studio framing, native before/after captures with a saved camera, and selection-driven recipe edits. |
 
-Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 meters, generate LODs and send it to Unity.”** Or **“Find a Poly Haven ceramic vase and show its prepared preview before importing.”** This is an asset workflow; it does not contain a new text-to-3D model or bill generation services. [Usage guide](docs/AUTHORING.zh-CN.md#v05-素材接入自动整理与效果对比).
+Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 meters, generate LODs and send it to Unity.”** Or **“Find a Poly Haven ceramic vase and show its prepared preview before importing.”** File intake never bills generation services. The optional v0.6 generation adapter is a separate, explicitly selected workflow. [Usage guide](docs/AUTHORING.zh-CN.md#v05-素材接入自动整理与效果对比).
 
 ## Six foundation authoring features
 
@@ -49,7 +62,7 @@ Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 m
 | Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
 | Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-These features are available through both AI hosts and the local workshop. The MCP server exposes 34 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
+These features are available through both AI hosts and the local workshop. The MCP server exposes 47 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
 
 ## Refine by conversation
 
@@ -75,7 +88,7 @@ Background jobs, exact-request receipts, cancellation, source history and engine
 
 Static meshes, opaque PBR, Unity Built-in/URP, and UE native Static Mesh assets. Custom shapes use AI-authored Blender Python or existing GLB/glTF, FBX and Blender files. Each revision retains source/provenance and reports geometry/material/UV/budget checks.
 
-Automatic baking covers recipe surfaces and common opaque Principled PBR graphs. Mixed shaders, transparency, emission, rigs/animation, HDRP, image-to-3D reconstruction and Blueprint generation are outside this release. Shape error uses bidirectional surface sampling, not a guaranteed maximum distance; inspect textures and silhouettes. Collision is approximate: UE falls back to a native 26-DOP convex hull with an explicit warning if decomposition produces no hulls. Candidates are deterministic structural alternatives. Layout uses world-axis bounds and preserves orientation. Reports do not score beauty. Generated Python is trusted local code.
+Automatic baking covers recipe surfaces and common opaque Principled PBR graphs. Mixed shaders, transparency, emission, rigs/animation, HDRP and Blueprint generation are outside this release. Image-to-3D requires an optional external provider; no inference model is bundled. Shape error uses bidirectional surface sampling, not a guaranteed maximum distance; inspect textures and silhouettes. Collision is approximate: UE falls back to a native 26-DOP convex hull with an explicit warning if decomposition produces no hulls. Recipe candidates are deterministic structural alternatives; service candidates depend on the provider. Layout supports upright yaw with conservative oriented bounds, not exact concave collision. Reports do not score beauty. Generated Python is trusted local code.
 
 [Asset contract](docs/asset-contract.md) · [Unreal details](docs/unreal.md) · [Authoring walkthrough in Chinese](docs/AUTHORING.zh-CN.md)
 

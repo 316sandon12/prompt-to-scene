@@ -30,12 +30,31 @@ def near(a, b):
 
 
 def overlap(row, other):
-    return all(
+    broad = all(
         min(row["bounds_max"][i], other["bounds_max"][i])
         - max(row["bounds_min"][i], other["bounds_min"][i])
         > 0.005
         for i in range(3)
     )
+    if not broad:
+        return False
+    a, b = row.get("footprint"), other.get("footprint")
+    if not a or not b:
+        return True
+    for shape in (a, b):
+        for i in range(0, len(shape), 2):
+            j = (i + 2) % len(shape)
+            axis = (-(shape[j + 1] - shape[i + 1]), shape[j] - shape[i])
+            length = math.hypot(*axis)
+            if length < 1e-8:
+                continue
+            projections = [
+                [(p[k] * axis[0] + p[k + 1] * axis[1]) / length for k in range(0, len(p), 2)]
+                for p in (a, b)
+            ]
+            if min(max(p) for p in projections) - max(min(p) for p in projections) <= 0.005:
+                return False
+    return True
 
 
 def arrange(request, root):
@@ -53,7 +72,8 @@ def arrange(request, root):
         raise ValueError("Anchor is no longer loaded")
     current_anchor = actions.describe(anchor)
     if any(
-        not near(current_anchor[k], expected_anchor.get(k)) for k in ("bounds_min", "bounds_max")
+        not near(current_anchor[k], expected_anchor.get(k))
+        for k in ("position", "rotation", "scale", "bounds_min", "bounds_max")
     ):
         raise ValueError("Anchor changed; plan again")
     moved = set()
@@ -123,10 +143,16 @@ def arrange(request, root):
                     unreal.Vector(*(v * 100 for v in row["position"])), False, False
                 )
                 actor.set_actor_rotation(
-                    unreal.Rotator(row["rotation"][1], row["rotation"][2], row["rotation"][0]),
+                    unreal.Rotator(
+                        pitch=row["rotation"][1], yaw=row["rotation"][2], roll=row["rotation"][0]
+                    ),
                     False,
                 )
                 actor.set_actor_scale3d(unreal.Vector(*row["scale"]))
+                if request.get("snap_to_surface"):
+                    from .diagnostics import ground
+
+                    ground(actor, required=False)
                 changed.append(actor)
             snapshot["created_ids"] = [actions.guid(a) for a in created]
             write_json(path, snapshot)

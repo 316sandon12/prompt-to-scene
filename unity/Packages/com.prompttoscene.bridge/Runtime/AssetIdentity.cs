@@ -9,5 +9,6 @@ namespace PromptToScene
     {
         [HideInInspector] public string assetId;
         [HideInInspector] public string revision;
+        [HideInInspector] public string geometryHash;
     }
 }

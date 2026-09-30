@@ -43,8 +43,14 @@ Explicit `PTS_PROJECT` / legacy `PTS_UNITY_PROJECT` settings override the active
 | `search_assets`, `import_asset`, `publish_prepared`, `prepare_asset` | Credited Poly Haven search, common model intake, preview publication and reprocessing from retained originals. |
 | `create_style_kit`, `edit_selected_prop` | Curated matching sets and selection-driven recipe edits. |
 | `capture_review`, `get_review` | Persisted native before/after image pairs sharing one camera frame. |
+| `open_workbench`, `workbench_action` | Optional MCP App and the shared local/embedded UI action routes. |
+| `compose_scene`, `resume_workflow` | Furnished sets, saved layouts, and resuming durable multi-step jobs. |
+| `edit_imported_part` | Group, lock, edit and replace existing mesh parts in imported models. |
+| `set_art_brief`, `get_art_reference`, `review_quality`, `repair_quality` | Persistent art references, native diagnostics and bounded same-camera repair loops. |
+| `inspect_performance`, `apply_usage_preset` | Real geometry/material/LOD measurements and explicit use-case preparation. |
+| `list_generation_providers`, `generate_model` | Optional Meshy/self-hosted candidates through the normal preparation pipeline. |
 
-There are 34 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
+There are 47 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
 
 The separate schema 1 action queue supports selection, transforms, tint, focus, contextual arrangement, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
 
@@ -60,7 +66,7 @@ Each work revision retains its Blender helper scripts alongside `model.py`, pres
 
 `studies/<id>.json` groups two or three drafts. Each uses a unique asset/request identity and `preview_only`: the worker exports source and views but never writes an engine inbox request. The chosen candidate is rebuilt with final project quality and published under the intended asset ID. Repeating the same successful choice returns the original task. Drafts are deterministic structural variants, not image-to-3D or unconstrained concept synthesis.
 
-`inspect_scene` adds bounds for static context: Unity renderer objects and UE StaticMeshActors in the active scene/level. `layout.py` plans around/along/under/right/front positions in target-engine meters. It reuses eligible instances, clones extras, keeps existing orientation and can uniformly shrink objects to fit below an anchor. Only world-axis-aligned anchors are supported. Conservative AABB checks reject overlaps; known table/stool recipes supply clearance, with a conservative fallback for other objects.
+`inspect_scene` adds bounds for static context: Unity renderer objects and UE StaticMeshActors in the active scene/level. `layout.py` plans around/along/under/right/front positions in target-engine meters. It reuses eligible instances, clones extras, optionally faces the anchor and can uniformly shrink objects to fit below an anchor. Upright anchors can have arbitrary yaw. Native oriented bounds and projected SAT checks reject potential overlaps; known table/stool recipes supply clearance, with a conservative fallback for other objects.
 
 Native adapters recheck the scene, source poses, anchor bounds and obstacles before mutation. Layout snapshots include original poses and newly created IDs; undo restores originals and removes those copies. If the initial scene read is queued, resume `arrange_props` with `inspection_request_id`. Once the layout itself is queued, poll that request ID; resubmitting can create another layout. Undo requires the original loaded scene and surviving objects.
 
@@ -103,3 +109,16 @@ Blender creates studio/front/back views from the actual exported source with con
 Unity renders the current managed objects through a temporary camera/light into a PNG and removes those temporary objects. UE captures its actual focused editor viewport asynchronously. These images show native engine assets, with that engine's lighting/color handling; they are not generated images or pixel-matched Blender renders. Working graphics and an editor viewport are required.
 
 Supported materials and geometry are described in the [asset contract](asset-contract.md). Python is trusted local code, not a sandbox. Import errors can leave partially updated engine assets; backups, source history and edit snapshots do not provide whole-project rollback. Native operations stay on the editor thread.
+
+
+## v0.6 workflows and optional UI
+
+`open_workbench` attaches `ui://prompt-to-scene/workbench.html` with MCP Apps metadata and the `text/html;profile=mcp-app` MIME type. `workbench_action` routes buttons through the same validated functions as the normal tools. The HTML/JS is shared with the loopback `/workbench` page; the embedded page uses JSON-RPC postMessage and does not fetch the local HTTP server. It handles initialization, tool calls, selected-object model context and explicit user messages. No external script or image CDN is needed. Host UI support is optional.
+
+New normal tools: `compose_scene`, `edit_imported_part`, `set_art_brief`, `get_art_reference`, `review_quality`, `repair_quality`, `inspect_performance`, `apply_usage_preset`, `list_generation_providers`, `generate_model`, `resume_workflow`.
+
+`background.py` persists composition, quality and generation specifications and child IDs under the ordinary jobs directory. Resume uses saved stages. Composition waits for actual engine imports before a checked layout; templates reference current-project assets. Quality retains the original camera frame, limits repairs to two, rejects outside revisions and recaptures after each part repair. Native diagnostics return counts and measured support gaps, with possible overlaps explicitly marked for visual inspection.
+
+Imported part edits retain the high-detail source. Unchanged objects keep their previous per-object reduction ratio; remaining budget is assigned to edited/replaced geometry. `cache/bakes` keys include Blender version, mesh geometry/normals/UVs, normal-source geometry, material graph input/output defaults and current image pixels. A conservative node allowlist excludes implicit object/view/attribute/animated dependencies and cross-material projection from cache reuse; these still bake normally. SHA-256 checks protect reuse; cache writes publish whole directories. Repeated geometry signatures also let both engine adapters skip FBX/LOD/collision recreation. Collision enablement, material slot/binding names and LOD parameters participate in that signature. Unchanged texture files avoid native reimport.
+
+The art brief and copied references live in `art-brief.json` and `references/`. Source layout templates live in `layouts/`. Provider endpoints are user configuration, while keys are in OS credential stores or environment overrides. API credentials are never passed to model downloads. Remote job IDs are persisted before polling; an ambiguous POST outcome stops automatic retry. See [provider contract](PROVIDERS.md) and [usage](WORKBENCH.zh-CN.md).

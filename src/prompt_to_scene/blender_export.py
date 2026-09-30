@@ -163,6 +163,7 @@ def export_material(material, folder):
 
 def main():
     folder = Path(sys.argv[sys.argv.index("--") + 1])
+    bpy.context.scene.pop("pts_preserve_ratios", None)
     script = folder / "model.py"
     if script.read_text().strip():
         runpy.run_path(str(script), run_name="__main__")
@@ -240,6 +241,14 @@ def main():
         row["bounds_min"] = [min(v[i] for v in vertices) for i in range(3)]
         row["bounds_max"] = [max(v[i] for v in vertices) for i in range(3)]
         row["materials"] = sorted(set(row["materials"]))
+    locks = json.loads(scene.get("pts_part_locks", "{}")) or json.loads(
+        scene.get("pts_recipe", "{}")
+    ).get("locks", {})
+    for name, row in parts.items():
+        row["locks"] = locks.get(name, {})
+        row["source_paths"] = sorted(
+            {o.get("pts_source_path", o.name) for o in meshes if o.get("pts_part", o.name) == name}
+        )
     recipe = json.loads(scene.get("pts_recipe", "{}"))
     quality = recipe.get("style", {}).get("quality", "custom")
     budget = (config or {}).get("triangle_budget") or {
@@ -262,8 +271,25 @@ def main():
         "parts": parts,
         "warnings": [],
         "visual_review": "Human review required for appearance; no aesthetic score is fabricated",
+        "bake_cache": json.loads(scene.get("pts_bake_cache", "{}")),
     }
     levels = preparer["make_lods"](meshes, config, prep) if config else []
+    geometry = runpy.run_path(str(Path(__file__).with_name("blender_cache.py")))["geometry"]
+    signature = {
+        "meshes": [
+            {
+                "name": o.name,
+                "geometry": geometry(o),
+                "materials": [(m.name, m.get("pts_reuse_path", "")) for m in o.data.materials],
+            }
+            for o in meshes
+        ],
+        "lods": [[geometry(o) for o in objects] for objects, _ in levels],
+        "collision": config["collision"] if config else None,
+        "screen_heights": [level[1]["screen_height"] for level in levels],
+    }
+    geometry_hash = hashlib.sha256(json.dumps(signature, sort_keys=True).encode()).hexdigest()
+    report["geometry_hash"] = geometry_hash
     if prep:
         report["preparation"] = prep
         report["warnings"] += prep["warnings"]
@@ -326,6 +352,7 @@ def main():
                 "preparation": prep,
                 "lods": [info for _, info in levels],
                 "collision_mode": config["collision"] if config else None,
+                "geometry_hash": geometry_hash,
             }
         )
     )

@@ -1,6 +1,9 @@
 """Curated procedural PBR surfaces and lighting-independent texture baking in Blender."""
 
 import hashlib
+import json
+import runpy
+from pathlib import Path
 
 import bpy
 
@@ -86,87 +89,96 @@ def bake(meshes, folder, size, unwrap=True, normal_sources=None):
                 bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.025)
                 bpy.ops.object.mode_set(mode="OBJECT")
             obj.data.uv_layers.active_index = 0
+    cache = runpy.run_path(str(Path(__file__).with_name("blender_cache.py")))
+    stats = {"reused_materials": [], "baked_materials": []}
     materials = {slot.material for obj in meshes for slot in obj.material_slots}
     for mat in materials:
         nodes, links = mat.node_tree.nodes, mat.node_tree.links
         shader = next(n for n in nodes if n.type == "BSDF_PRINCIPLED")
         output = next(n for n in nodes if n.type == "OUTPUT_MATERIAL" and n.is_active_output)
         selected = [obj for obj in meshes if mat in list(obj.data.materials)]
-        bpy.ops.object.select_all(action="DESELECT")
-        for obj in selected:
-            obj.select_set(True)
-        bpy.context.view_layer.objects.active = selected[0]
-        images = {}
-        emission = nodes.new("ShaderNodeEmission")
-        target = nodes.new("ShaderNodeTexImage")
-        for field, socket_name in (
-            ("base", "Base Color"),
-            ("roughness", "Roughness"),
-            ("metallic", "Metallic"),
-            ("normal", "Normal"),
-        ):
-            image = bpy.data.images.new(
-                mat.name + "_" + field, width=size, height=size, alpha=False
-            )
-            image.colorspace_settings.name = "sRGB" if field == "base" else "Non-Color"
-            target.image = image
-            nodes.active = target
-            if field == "normal":
-                links.new(shader.outputs["BSDF"], output.inputs["Surface"])
-                if normal_sources:
-                    # Transfer source shading to the reduced surface, including its normal map.
-                    # Pair objects so rays cannot land on an adjacent part of the asset.
-                    for index, obj in enumerate(selected):
-                        source = normal_sources[obj.name]
+        cache_path = cache["location"](folder, mat, selected, size, normal_sources)
+        images = cache["read"](cache_path)
+        if images:
+            stats["reused_materials"].append(mat.name)
+        else:
+            bpy.ops.object.select_all(action="DESELECT")
+            for obj in selected:
+                obj.select_set(True)
+            bpy.context.view_layer.objects.active = selected[0]
+            images = {}
+            emission = nodes.new("ShaderNodeEmission")
+            target = nodes.new("ShaderNodeTexImage")
+            for field, socket_name in (
+                ("base", "Base Color"),
+                ("roughness", "Roughness"),
+                ("metallic", "Metallic"),
+                ("normal", "Normal"),
+            ):
+                image = bpy.data.images.new(
+                    mat.name + "_" + field, width=size, height=size, alpha=False
+                )
+                image.colorspace_settings.name = "sRGB" if field == "base" else "Non-Color"
+                target.image = image
+                nodes.active = target
+                if field == "normal":
+                    links.new(shader.outputs["BSDF"], output.inputs["Surface"])
+                    if normal_sources:
+                        # Transfer source shading to the reduced surface, including its normal map.
+                        # Pair objects so rays cannot land on an adjacent part of the asset.
+                        for index, obj in enumerate(selected):
+                            source = normal_sources[obj.name]
+                            bpy.ops.object.select_all(action="DESELECT")
+                            source.hide_render = False
+                            source.select_set(True)
+                            obj.select_set(True)
+                            bpy.context.view_layer.objects.active = obj
+                            distance = max(source.dimensions.length * 0.04, 0.0001)
+                            try:
+                                bpy.ops.object.bake(
+                                    type="NORMAL",
+                                    normal_space="TANGENT",
+                                    use_selected_to_active=True,
+                                    use_clear=index == 0,
+                                    cage_extrusion=distance,
+                                    max_ray_distance=distance * 2,
+                                )
+                            finally:
+                                source.hide_render = True
                         bpy.ops.object.select_all(action="DESELECT")
-                        source.hide_render = False
-                        source.select_set(True)
-                        obj.select_set(True)
-                        bpy.context.view_layer.objects.active = obj
-                        distance = max(source.dimensions.length * 0.04, 0.0001)
-                        try:
-                            bpy.ops.object.bake(
-                                type="NORMAL",
-                                normal_space="TANGENT",
-                                use_selected_to_active=True,
-                                use_clear=index == 0,
-                                cage_extrusion=distance,
-                                max_ray_distance=distance * 2,
-                            )
-                        finally:
-                            source.hide_render = True
-                    bpy.ops.object.select_all(action="DESELECT")
-                    for obj in selected:
-                        obj.select_set(True)
-                    bpy.context.view_layer.objects.active = selected[0]
+                        for obj in selected:
+                            obj.select_set(True)
+                        bpy.context.view_layer.objects.active = selected[0]
+                    else:
+                        bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
                 else:
-                    bpy.ops.object.bake(type="NORMAL", normal_space="TANGENT")
-            else:
-                socket = shader.inputs[socket_name]
-                for link in list(emission.inputs["Color"].links):
-                    links.remove(link)
-                if socket.is_linked:
-                    links.new(socket.links[0].from_socket, emission.inputs["Color"])
-                else:
-                    value = socket.default_value
-                    emission.inputs["Color"].default_value = (
-                        value if field == "base" else (value, value, value, 1)
-                    )
-                links.new(emission.outputs["Emission"], output.inputs["Surface"])
-                bpy.ops.object.bake(type="EMIT")
-            filename = (
-                "bake_"
-                + hashlib.sha256((mat.name + field + "_baked").encode()).hexdigest()[:16]
-                + ".png"
-            )
-            image.filepath_raw = str(folder / filename)
-            image.file_format = "PNG"
-            image.save()
-            image.pack()
-            images[field] = image
-        links.new(shader.outputs["BSDF"], output.inputs["Surface"])
-        nodes.remove(emission)
-        nodes.remove(target)
+                    socket = shader.inputs[socket_name]
+                    for link in list(emission.inputs["Color"].links):
+                        links.remove(link)
+                    if socket.is_linked:
+                        links.new(socket.links[0].from_socket, emission.inputs["Color"])
+                    else:
+                        value = socket.default_value
+                        emission.inputs["Color"].default_value = (
+                            value if field == "base" else (value, value, value, 1)
+                        )
+                    links.new(emission.outputs["Emission"], output.inputs["Surface"])
+                    bpy.ops.object.bake(type="EMIT")
+                filename = (
+                    "bake_"
+                    + hashlib.sha256((mat.name + field + "_baked").encode()).hexdigest()[:16]
+                    + ".png"
+                )
+                image.filepath_raw = str(folder / filename)
+                image.file_format = "PNG"
+                image.save()
+                image.pack()
+                images[field] = image
+            links.new(shader.outputs["BSDF"], output.inputs["Surface"])
+            nodes.remove(emission)
+            nodes.remove(target)
+            cache["write"](cache_path, images)
+            stats["baked_materials"].append(mat.name)
         for field, socket_name in (
             ("base", "Base Color"),
             ("roughness", "Roughness"),
@@ -181,6 +193,7 @@ def bake(meshes, folder, size, unwrap=True, normal_sources=None):
                 links.new(normal.outputs["Normal"], shader.inputs["Normal"])
             else:
                 links.new(texture.outputs["Color"], shader.inputs[socket_name])
+    scene["pts_bake_cache"] = json.dumps(stats)
     scene["pts_bake_needed"] = False
     for obj in meshes:
         while len(obj.data.uv_layers) > 1:

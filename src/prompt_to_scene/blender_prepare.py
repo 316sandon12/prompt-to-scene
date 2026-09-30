@@ -221,15 +221,28 @@ def prepare(meshes, folder, config):
         runpy.run_path(str(Path(__file__).with_name("blender_preview.py")))["render"](
             meshes, folder, views=[("before", (1.4, -2, 1.25))]
         )
-    ratio = min(
-        1.0,
-        config["triangle_budget"]
-        / max(1, total)
-        * (0.96 if total > config["triangle_budget"] else 1),
-    )
     original_meshes = {obj.name: obj.data for obj in meshes}
+    preserve = json.loads(scene.get("pts_preserve_ratios", "{}"))
+
+    def reduce(obj, ratio):
+        result = reduce_object(obj, ratio, config["max_deviation_percent"])
+        result["ratio"] = ratio if result["accepted"] else 1.0
+        report["objects"][obj.name] = result
+
     for obj in meshes:
-        report["objects"][obj.name] = reduce_object(obj, ratio, config["max_deviation_percent"])
+        if obj.name in preserve:
+            reduce(obj, preserve[obj.name])
+    fixed = sum(triangle_count(obj.data) for obj in meshes if obj.name in preserve)
+    editable = sum(triangle_count(obj.data) for obj in meshes if obj.name not in preserve)
+    remaining = config["triangle_budget"] - fixed
+    if remaining < 0 or (editable and remaining < 12):
+        raise ValueError(
+            "Unchanged parts use the triangle budget; increase the budget before replacing"
+        )
+    ratio = min(1.0, remaining / max(1, editable) * (0.96 if editable > remaining else 1))
+    for obj in meshes:
+        if obj.name not in preserve:
+            reduce(obj, ratio)
     report["triangles_after"] = sum(triangle_count(o.data) for o in meshes)
     report["budget_passed"] = report["triangles_after"] <= config["triangle_budget"]
     (folder / "preparation.json").write_text(json.dumps(report))

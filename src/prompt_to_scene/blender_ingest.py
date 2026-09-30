@@ -6,19 +6,21 @@ import bpy
 from mathutils import Matrix
 
 
-def load(filename):
+def load(filename, clear=True):
     path = Path(filename)
-    bpy.ops.object.select_all(action="SELECT")
-    bpy.ops.object.delete(use_global=False)
-    for collection in list(bpy.data.collections):
-        bpy.data.collections.remove(collection)
+    if clear:
+        bpy.ops.object.select_all(action="SELECT")
+        bpy.ops.object.delete(use_global=False)
+        for collection in list(bpy.data.collections):
+            bpy.data.collections.remove(collection)
+    existing = set(bpy.context.scene.objects)
     if path.suffix.lower() in {".glb", ".gltf"}:
         bpy.ops.import_scene.gltf(filepath=str(path), import_pack_images=True)
     elif path.suffix.lower() == ".fbx":
         bpy.ops.import_scene.fbx(filepath=str(path), use_anim=False)
     elif path.suffix.lower() == ".blend":
         with bpy.data.libraries.load(str(path), link=False) as (source, target):
-            if "Export" in source.collections:
+            if clear and "Export" in source.collections:
                 target.collections = ["Export"]
             else:
                 target.objects = source.objects
@@ -29,7 +31,7 @@ def load(filename):
                 bpy.context.scene.collection.objects.link(obj)
     else:
         raise ValueError("Unsupported model format")
-    original = list(bpy.context.scene.objects)
+    original = [o for o in bpy.context.scene.objects if o not in existing]
     if any(obj.type == "ARMATURE" for obj in original):
         raise ValueError("This asset contains a rig; import a static mesh version")
     meshes = [obj for obj in original if obj.type == "MESH"]
@@ -42,6 +44,11 @@ def load(filename):
     for obj in meshes:
         if obj.animation_data or obj.data.shape_keys:
             raise ValueError("Animated or shape-key meshes need a static export first")
+        ancestors, parent = [], obj.parent
+        while parent:
+            ancestors.insert(0, parent.name)
+            parent = parent.parent
+        obj["pts_source_path"] = "/".join(ancestors + [obj.name])
         matrix = obj.matrix_world.copy()
         evaluated = obj.evaluated_get(graph)
         obj.data = bpy.data.meshes.new_from_object(evaluated, depsgraph=graph)
@@ -88,3 +95,4 @@ def load(filename):
         for polygon in obj.data.polygons:
             polygon.material_index = 0
     bpy.context.scene["pts_external"] = True
+    return [o for o in collection.all_objects if o.type == "MESH" and o not in existing]

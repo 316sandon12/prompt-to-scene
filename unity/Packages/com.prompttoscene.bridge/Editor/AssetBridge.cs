@@ -41,7 +41,7 @@ namespace PromptToScene.Editor
         public MaterialData[] materials;
         public TransferFile[] files;
         public LodData[] lods;
-        public string collision_mode;
+        public string collision_mode, geometry_hash;
     }
     [Serializable] public class ImportReceipt
     {
@@ -60,6 +60,7 @@ namespace PromptToScene.Editor
         public float[] bounds_size;
         public string bounds_unit = "meters";
         public int scene_instances;
+        public bool geometry_reused;
         public string error;
         public string completed_utc;
     }
@@ -215,16 +216,24 @@ namespace PromptToScene.Editor
             if (!scene.IsValid() || !scene.isLoaded) throw new Exception("Open a scene before importing");
             string target = "Assets/PromptToScene/" + request.asset_id;
             var overrides = SceneActions.RememberTints(request.asset_id);
+            string prefabPath = target + "/" + request.asset_id + ".prefab";
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            bool existing = prefab != null;
+            bool reuseGeometry = existing && !string.IsNullOrEmpty(request.geometry_hash)
+                && prefab.GetComponent<AssetIdentity>()?.geometryHash == request.geometry_hash
+                && prefab.transform.Find("Visual/LOD0") != null;
             string absoluteTarget = Path.Combine(ProjectRoot, target);
             Directory.CreateDirectory(absoluteTarget);
             foreach (TransferFile file in request.files)
             {
-                File.Copy(Path.Combine(StateRoot, request.work_dir, file.name),
-                    Path.Combine(absoluteTarget, file.name), true);
+                if (reuseGeometry && file.name.EndsWith(".fbx")) continue;
+                string destination = Path.Combine(absoluteTarget, file.name);
+                if (!File.Exists(destination) || Sha256(File.ReadAllBytes(destination)) != file.sha256)
+                    File.Copy(Path.Combine(StateRoot, request.work_dir, file.name), destination, true);
             }
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             string modelPath = target + "/model.fbx";
-            var model = ImportModel(modelPath);
+            var model = reuseGeometry ? AssetDatabase.LoadAssetAtPath<GameObject>(modelPath) : ImportModel(modelPath);
             if (model == null) throw new Exception("FBX import produced no model");
             var materials = new Dictionary<string, Material>();
             foreach (MaterialData data in request.materials)
@@ -274,8 +283,6 @@ namespace PromptToScene.Editor
             var slots = request.materials.ToDictionary(
                 data => string.IsNullOrEmpty(data.fbx_name) ? data.name : data.fbx_name,
                 data => materials[data.name]);
-            string prefabPath = target + "/" + request.asset_id + ".prefab";
-            bool existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null;
             GameObject root = existing ? PrefabUtility.LoadPrefabContents(prefabPath) : new GameObject(request.asset_id);
             Bounds bounds;
             int triangles;
@@ -283,13 +290,25 @@ namespace PromptToScene.Editor
             int collisionCount = 0;
             try
             {
-                Transform previous = root.transform.Find("Visual");
-                if (previous != null) Object.DestroyImmediate(previous.gameObject);
-                GameObject visual = new GameObject("Visual");
-                visual.transform.SetParent(root.transform, false);
-                GameObject lod0 = Object.Instantiate(model, visual.transform, false);
-                lod0.name = "LOD0";
-                MapMaterials(lod0, slots);
+                GameObject visual, lod0;
+                if (reuseGeometry)
+                {
+                    visual = root.transform.Find("Visual").gameObject;
+                    lod0 = visual.transform.Find("LOD0").gameObject;
+                    var byName = request.materials.ToDictionary(data => data.name, data => materials[data.name]);
+                    foreach (var renderer in visual.GetComponentsInChildren<Renderer>())
+                        renderer.sharedMaterials = renderer.sharedMaterials.Select(m => m != null && byName.ContainsKey(m.name) ? byName[m.name] : m).ToArray();
+                }
+                else
+                {
+                    Transform previous = root.transform.Find("Visual");
+                    if (previous != null) Object.DestroyImmediate(previous.gameObject);
+                    visual = new GameObject("Visual");
+                    visual.transform.SetParent(root.transform, false);
+                    lod0 = Object.Instantiate(model, visual.transform, false);
+                    lod0.name = "LOD0";
+                    MapMaterials(lod0, slots);
+                }
                 var meshes = lod0.GetComponentsInChildren<MeshFilter>();
                 if (meshes.Length == 0 || meshes.Any(m => m.sharedMesh == null))
                     throw new Exception("No valid static meshes imported");
@@ -301,41 +320,46 @@ namespace PromptToScene.Editor
                 var identity = root.GetComponent<AssetIdentity>() ?? root.AddComponent<AssetIdentity>();
                 identity.assetId = request.asset_id;
                 identity.revision = request.request_id;
-                var lods = new List<LOD>();
-                var levels = request.lods ?? Array.Empty<LodData>();
-                if (levels.Length > 0)
+                identity.geometryHash = request.geometry_hash;
+                if (reuseGeometry) collisionCount = root.GetComponentsInChildren<Collider>().Length;
+                else
                 {
-                    lods.Add(new LOD(levels[0].screen_height, renderers));
-                    for (int i = 0; i < levels.Length; i++)
+                    var lods = new List<LOD>();
+                    var levels = request.lods ?? Array.Empty<LodData>();
+                    if (levels.Length > 0)
                     {
-                        GameObject next = Object.Instantiate(ImportModel(target + "/" + levels[i].file), visual.transform, false);
-                        next.name = "LOD" + (i + 1);
-                        MapMaterials(next, slots);
-                        if (next.GetComponentsInChildren<MeshFilter>().Sum(m => m.sharedMesh.triangles.Length / 3) != levels[i].triangles)
-                            throw new Exception("Imported LOD geometry differs from the prepared mesh");
-                        lods.Add(new LOD(i + 1 < levels.Length ? levels[i + 1].screen_height : 0.01f, next.GetComponentsInChildren<Renderer>()));
+                        lods.Add(new LOD(levels[0].screen_height, renderers));
+                        for (int i = 0; i < levels.Length; i++)
+                        {
+                            GameObject next = Object.Instantiate(ImportModel(target + "/" + levels[i].file), visual.transform, false);
+                            next.name = "LOD" + (i + 1);
+                            MapMaterials(next, slots);
+                            if (next.GetComponentsInChildren<MeshFilter>().Sum(m => m.sharedMesh.triangles.Length / 3) != levels[i].triangles)
+                                throw new Exception("Imported LOD geometry differs from the prepared mesh");
+                            lods.Add(new LOD(i + 1 < levels.Length ? levels[i + 1].screen_height : 0.01f, next.GetComponentsInChildren<Renderer>()));
+                        }
+                        var group = visual.AddComponent<LODGroup>();
+                        group.SetLODs(lods.ToArray()); group.RecalculateBounds();
                     }
-                    var group = visual.AddComponent<LODGroup>();
-                    group.SetLODs(lods.ToArray()); group.RecalculateBounds();
-                }
-                BoxCollider box = root.GetComponent<BoxCollider>();
-                string collision = request.collision_mode ?? (request.collider ? "box" : "none");
-                if (request.collider && collision == "box")
-                {
-                    if (box == null) box = root.AddComponent<BoxCollider>();
-                    box.center = root.transform.InverseTransformPoint(bounds.center);
-                    box.size = bounds.size;
-                    collisionCount = 1;
-                }
-                else if (box != null) Object.DestroyImmediate(box);
-                if (request.collider && collision == "convex")
-                {
-                    foreach (var mesh in meshes)
+                    BoxCollider box = root.GetComponent<BoxCollider>();
+                    string collision = request.collision_mode ?? (request.collider ? "box" : "none");
+                    if (request.collider && collision == "box")
                     {
-                        var collider = mesh.gameObject.AddComponent<MeshCollider>();
-                        collider.sharedMesh = mesh.sharedMesh; collider.convex = true;
-                        Physics.BakeMesh(mesh.sharedMesh.GetInstanceID(), true);
-                        collisionCount++;
+                        if (box == null) box = root.AddComponent<BoxCollider>();
+                        box.center = root.transform.InverseTransformPoint(bounds.center);
+                        box.size = bounds.size;
+                        collisionCount = 1;
+                    }
+                    else if (box != null) Object.DestroyImmediate(box);
+                    if (request.collider && collision == "convex")
+                    {
+                        foreach (var mesh in meshes)
+                        {
+                            var collider = mesh.gameObject.AddComponent<MeshCollider>();
+                            collider.sharedMesh = mesh.sharedMesh; collider.convex = true;
+                            Physics.BakeMesh(mesh.sharedMesh.GetInstanceID(), true);
+                            collisionCount++;
+                        }
                     }
                 }
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
@@ -368,6 +392,7 @@ namespace PromptToScene.Editor
                 mesh_count = meshCount, triangles = triangles,
                 lod_count = 1 + (request.lods?.Length ?? 0), collision_count = collisionCount,
                 bounds_size = new[] { bounds.size.x, bounds.size.y, bounds.size.z },
+                geometry_reused = reuseGeometry,
                 scene_instances = Math.Max(1, instances.Length)
             };
         }
@@ -399,9 +424,14 @@ namespace PromptToScene.Editor
             string path = target + "/" + name;
             var importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null) throw new Exception("Texture import failed: " + name);
-            importer.textureType = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            importer.sRGBTexture = !normal && !linear;
-            importer.SaveAndReimport();
+            var type = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            bool srgb = !normal && !linear;
+            if (importer.textureType != type || importer.sRGBTexture != srgb)
+            {
+                importer.textureType = type;
+                importer.sRGBTexture = srgb;
+                importer.SaveAndReimport();
+            }
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 

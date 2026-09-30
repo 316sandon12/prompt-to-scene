@@ -57,6 +57,10 @@ def main():
         ("src/prompt_to_scene/blender_preview.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_ingest.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_prepare.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_cache.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/blender_edit.py", "prompt_to_scene"),
+        ("src/prompt_to_scene/workbench.html", "prompt_to_scene"),
+        ("src/prompt_to_scene/workbench.js", "prompt_to_scene"),
         ("src/prompt_to_scene/setup.html", "prompt_to_scene"),
         ("src/prompt_to_scene/workshop.js", "prompt_to_scene"),
     ):
