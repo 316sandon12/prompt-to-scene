@@ -253,7 +253,29 @@
   },
   "portable": {
     "macos_local": "frozen app, detached Blender baking after MCP exit, 26 tools, embedded bridge, setup HTML/API passed",
-    "windows_engine": "not tested"
+    "windows_engine": "not tested",
+    "github_actions": {
+      "result": "passed",
+      "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/36715117293",
+      "platforms": [
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "checks": [
+        "71 unit/protocol/setup tests on each OS",
+        "actual frozen stdio tool discovery and embedded bridge",
+        "local setup HTML and authenticated API"
+      ]
+    },
+    "public_release_download": {
+      "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.4.0",
+      "sha256": {
+        "Prompt-to-Scene-macos-arm64.zip": "6f0d6c98b02a5c61925bded7a5607c442752da7e94338854c06d31889e24b06e",
+        "Prompt-to-Scene-windows-x64.zip": "f33c7c9ed426b20d5e6ea6a778e892761dc1197e2022c2401883186925fc5202"
+      },
+      "macos_downloaded_app": "passed: signature, stdio tools, detached Blender PBR baking, source preview, setup HTML/API",
+      "windows_download": "checksum matches; execution tested in Windows CI"
+    }
   },
   "boundaries": [
     "Curated recipe baking only; no arbitrary shader conversion",
@@ -261,5 +283,17 @@
     "No aesthetics scoring or image-to-3D",
     "No Windows native editor claim",
     "Native scenes use sparse test lighting, not production art direction"
-  ]
+  ],
+  "source_commit": "99c3293c39e7d0f72e531b600da4d3bec595eb57",
+  "workshop_browser": {
+    "result": "passed",
+    "actions": [
+      "saved project style through the UI",
+      "submitted three barrel draft builds",
+      "observed all three actual previews and selected-candidate state",
+      "loaded semantic part names and existing backrest scale",
+      "loaded studio/front/back views"
+    ],
+    "browser_warnings_errors": 0
+  }
 }

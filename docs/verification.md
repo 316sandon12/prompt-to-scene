@@ -14,7 +14,9 @@ Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 (Chin
 | Draft selection | Two real cabinet drafts leave Unity scene instance count unchanged; source image returns through MCP; choosing a draft bakes and imports a final cabinet. |
 | Codex and Harness | Isolated real host registration and tool invocation passed. Codex discovered all 26 tools. No paid LLM calls needed. |
 | Local portable macOS app | Frozen stdio tools, embedded bridge, local setup HTML/API and detached Blender baking pass after MCP exits. |
-| Workshop UI | Local browser checked style controls, semantic-part selection, candidate cards and multi-view image loading; no browser warnings/errors observed. |
+| Windows/macOS portable CI | Both builds, 71 tests per OS and actual frozen stdio/setup checks passed in [release workflow 36715117293](https://github.com/316sandon12/prompt-to-scene/actions/runs/36715117293). |
+| Public release download | Both archive SHA-256 values matched. The downloaded macOS app passed signature verification, 26-tool stdio, a detached Blender PBR/preview job and setup HTML/API checks. |
+| Workshop UI | Saved style and submitted three real barrel drafts through the browser; semantic parts, completed candidate cards, selected-candidate status and multi-view images checked. No browser warnings/errors observed. |
 
 [Sanitized results](verification-v0.4.json). Actual renders: [Blender chair](images/authoring-chair.png), [cabinet](images/authoring-cabinet.png), [barrel](images/authoring-barrel.png), [Unity scene](images/authoring-unity.png), [UE scene](images/authoring-unreal.png). The native scenes use sparse fixture lighting; they verify engine geometry/material state, not production lighting or visual equivalence. Blender views use consistent studio lighting. These are actual model renders, not generated concept images.
 
