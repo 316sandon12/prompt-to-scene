@@ -60,7 +60,8 @@ def runtime():
 
 
 def create_bundles():
-    root = registry.home() / "plugins" / __version__
+    marketplace = registry.home() / "plugins"
+    root = marketplace / __version__
     root.mkdir(parents=True, exist_ok=True)
     command = runtime()
     environment = {"PTS_HOME": str(registry.home())}
@@ -86,7 +87,7 @@ def create_bundles():
             }
         },
     )
-    market = root / ".agents/plugins/marketplace.json"
+    market = marketplace / ".agents/plugins/marketplace.json"
     atomic_json(
         market,
         {
@@ -95,7 +96,7 @@ def create_bundles():
             "plugins": [
                 {
                     "name": "prompt-to-scene",
-                    "source": {"source": "local", "path": "./codex"},
+                    "source": {"source": "local", "path": "./" + __version__ + "/codex"},
                     "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
                 }
             ],
@@ -134,7 +135,7 @@ def create_bundles():
         }
     ]
     (harness / "cordis.patch.yml").write_text(json.dumps(patch, indent=2), encoding="utf-8")
-    return {"codex": codex, "harness": harness, "marketplace": root, "command": command}
+    return {"codex": codex, "harness": harness, "marketplace": marketplace, "command": command}
 
 
 def run(command):

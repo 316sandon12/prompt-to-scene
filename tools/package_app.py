@@ -1,11 +1,13 @@
 """Build a portable app on its target OS: uv run --group build python tools/package_app.py."""
 
 import hashlib
+import importlib.metadata
 import platform
 import plistlib
 import shutil
 import subprocess
 import sys
+import sysconfig
 import zipfile
 from pathlib import Path
 
@@ -89,6 +91,29 @@ def main():
     else:
         shutil.copy2(DIST / "bin/prompt-to-scene-core", stage / "Prompt-to-Scene")
     shutil.copy2(REPO / "LICENSE", stage / "LICENSE.txt")
+    notices = [
+        "Third-party components in the build environment\n"
+        "The app contains CPython and dependencies collected by PyInstaller.\n"
+    ]
+    python_license = Path(sysconfig.get_path("stdlib")) / "LICENSE.txt"
+    if python_license.is_file():
+        notices.append("CPython\n" + python_license.read_text(encoding="utf-8"))
+    for distribution in sorted(
+        importlib.metadata.distributions(), key=lambda d: d.metadata.get("Name", "")
+    ):
+        licenses = [
+            file
+            for file in (distribution.files or [])
+            if ".dist-info/" in str(file)
+            and ("license" in file.name.lower() or "copying" in file.name.lower())
+        ]
+        if licenses:
+            notices.append("\n" + distribution.metadata["Name"] + " " + distribution.version)
+            for file in licenses:
+                path = Path(distribution.locate_file(file))
+                if path.is_file():
+                    notices.append(path.read_text(encoding="utf-8", errors="replace"))
+    (stage / "THIRD_PARTY_LICENSES.txt").write_text("\n\n".join(notices), encoding="utf-8")
     (stage / "START_HERE.txt").write_text(
         "Prompt-to-Scene " + __version__ + "\n\n"
         "Open Prompt-to-Scene to select your engine project and install the AI client plugin.\n"

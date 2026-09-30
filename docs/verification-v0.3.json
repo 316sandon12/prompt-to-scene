@@ -112,12 +112,17 @@
     }
   },
   "hosts": {
-    "Codex CLI 0.159.0": "native plugin + app-server MCP call passed",
+    "Codex CLI 0.159.0": "native install, version upgrade, 16 tools and app-server MCP call passed",
     "DeepSeek Harness 0.2.0-rc.1": "native bundle + ToolRuntime call passed"
   },
   "limits": [
     "No arbitrary natural-language modeling quality evaluation",
     "Engine verification performed on macOS; Windows package checks are separate",
     "Source restore and edit undo are not whole-project rollback"
-  ]
+  ],
+  "package_checks": {
+    "macos": "Frozen stdio, embedded bridges, local setup and detached real Blender job passed",
+    "windows": "GitHub Actions portable build, pytest and frozen stdio/setup check passed",
+    "ci_workflow": "https://github.com/316sandon12/prompt-to-scene/actions/workflows/package.yml"
+  }
 }

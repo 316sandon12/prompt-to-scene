@@ -163,6 +163,9 @@ def main():
                 key = "prefab_guid" if target.engine == "unity" else "actor_guid"
                 assert revision[key] == initial[key]
                 state = await scene()
+                assert {o["id"] for o in state["selected"]} == {chosen}, (
+                    "Revision changed selection"
+                )
                 assert {o["id"] for o in state["assets"] if o["asset_id"] == name} == set(baseline)
                 current = next(o for o in state["assets"] if o["id"] == chosen)
                 assert current[materials] == tinted[chosen][materials], (

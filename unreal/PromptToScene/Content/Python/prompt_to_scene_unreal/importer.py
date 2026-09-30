@@ -102,6 +102,7 @@ def import_asset(request, source):
         for actor in actors.get_all_level_actors()
         if actor.get_level() == level and tag in [str(t) for t in actor.tags]
     ]
+    created = not instances
     with unreal.ScopedEditorTransaction("Prompt-to-Scene: place/update " + asset_id):
         if not instances:
             from .actions import auto_position
@@ -128,7 +129,7 @@ def import_asset(request, source):
                 tags.append(tag)
             tags.append("PTS.Revision:" + request["request_id"])
             actor.set_editor_property("tags", [unreal.Name(t) for t in tags])
-    if request.get("auto_place"):
+    if created and request.get("auto_place"):
         from .actions import focus
 
         focus(instances)

@@ -262,7 +262,7 @@ def main():
     try:
         mcp.run(transport="stdio")
     finally:
-        # The SDK closes its TextIOWrapper over stdout on clean disconnect.
-        # PyInstaller flushes stdout once more during shutdown; keep that flush valid.
-        if sys.stdout is not None and sys.stdout.closed:
-            sys.stdout = open(os.devnull, "w")
+        # SDK wrappers can close stdout during garbage collection after disconnect.
+        # PyInstaller flushes it again during shutdown, so give that flush a live sink.
+        if getattr(sys, "frozen", False):
+            sys.stdout = sys.__stdout__ = open(os.devnull, "w")

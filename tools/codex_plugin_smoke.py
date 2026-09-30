@@ -16,6 +16,13 @@ def main():
         os.environ["PTS_HOME"] = str(root / "pts")
         Path(os.environ["CODEX_HOME"]).mkdir()
         clients.install("codex")
+        original_version = clients.__version__
+        try:
+            clients.__version__ = original_version + "-upgrade-test"
+            assert json.loads(clients.install("codex")["details"])["version"] == clients.__version__
+        finally:
+            clients.__version__ = original_version
+        clients.install("codex")
         with (root / "server.log").open("w") as log:
             process = subprocess.Popen(
                 [clients.executable("codex"), "app-server", "--stdio"],
