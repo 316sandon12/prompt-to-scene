@@ -124,7 +124,8 @@
         "selected backrest edit leaves other part hashes unchanged"
       ],
       "existing_authoring_regression": "material reuse, instance tint, contextual placement, undo and native preview passed",
-      "collision_raycast": "passed"
+      "collision_raycast": "passed",
+      "lod_import_manifest_count_check": "passed after final adapter validation change"
     },
     "unity_urp": {
       "result": "passed",
@@ -199,7 +200,8 @@
         "selected backrest edit leaves other part hashes unchanged"
       ],
       "existing_authoring_regression": "material reuse, instance tint, contextual placement, undo and native preview passed",
-      "collision_raycast": "not exercised"
+      "collision_raycast": "not exercised",
+      "lod_import_manifest_count_check": "passed after final adapter validation change"
     }
   },
   "hosts": {
@@ -210,7 +212,27 @@
     "macos_local": "frozen app: 34 tools, embedded bridges and new JavaScript, detached recipe and external .blend intake after MCP parent exit passed",
     "windows_engine": "not tested",
     "github_actions": {
-      "result": "pending release build"
+      "result": "passed",
+      "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/36726686142",
+      "platforms": [
+        "macos-arm64",
+        "windows-x64"
+      ],
+      "checks": [
+        "100 tests on each OS",
+        "frozen stdio tools and embedded bridge",
+        "setup HTML/authenticated API/new JavaScript",
+        "release assets published"
+      ]
+    },
+    "public_release_download": {
+      "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.5.0",
+      "sha256": {
+        "Prompt-to-Scene-windows-x64.zip": "feac19944e22f125286d5551f889e5603a99a8101377801e875e983c00bae768",
+        "Prompt-to-Scene-macos-arm64.zip": "4361cad51380117ea28e6aec9c89ef67c59ed3382f7fdbfcd786d97c6a7eae1c"
+      },
+      "windows_download": "checksum matches; executable tested in Windows CI",
+      "macos_downloaded_app": "passed: ad-hoc signature, 34 tools, detached recipe and external-model Blender jobs, setup HTML/API/JavaScript"
     }
   },
   "workshop_browser": {
@@ -231,5 +253,6 @@
     "Native project lighting differs from source studio lighting",
     "Older recipe revisions adopt current structural designs; saved source remains restorable",
     "Windows native engine tests have not been run"
-  ]
+  ],
+  "source_commit": "4522cc9028190d8a5a584c39dd31c445151b5801"
 }

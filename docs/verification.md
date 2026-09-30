@@ -15,6 +15,9 @@ Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built
 | Kits and selection | Reading-corner kit imported in all three paths; selecting its chair and editing the backrest preserved every other part's geometry hash. |
 | Structural alternatives | All 27 drafts (nine kinds × three variants) rendered three source views and remained outside engine imports. |
 | Hosts and portable app | Real isolated Codex app-server discovered 34 tools; Harness ToolRuntime invocation passed. Local frozen macOS app served MCP/setup/JS and completed detached recipe and external-model jobs after the MCP parent exited. |
+| Windows/macOS portable CI | Both OS builds, 100 tests per OS and frozen app/setup checks passed in [release workflow 36726686142](https://github.com/316sandon12/prompt-to-scene/actions/runs/36726686142); both download archives published. |
+| Public downloads | Both ZIP SHA-256 values matched. The downloaded macOS app passed signature verification, 34-tool stdio/setup checks and real detached Blender recipe/external-intake jobs. Windows executable was tested in CI. |
+| Browser workshop | Actual Poly Haven search → isolated source preview → comparison → publication to Unity passed; real source views and native review gallery loaded with zero observed console warnings/errors. |
 
 Actual images: [original fixture](images/prepared-model-before.png), [prepared fixture](images/prepared-model.png), [Poly Haven model](images/polyhaven-prepared.png), [Unity before](images/prepared-unity-before.png) / [after](images/prepared-unity-after.png), [UE before](images/prepared-unreal-before.png) / [after](images/prepared-unreal-after.png). The Poly Haven example is [Ceramic Vase 03 by James Ray Cock](https://polyhaven.com/a/ceramic_vase_03), CC0; Powered by Poly Haven. The native fixture uses sparse project lighting, not a final art presentation.
 
