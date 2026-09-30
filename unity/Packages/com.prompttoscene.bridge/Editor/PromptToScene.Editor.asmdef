@@ -1,0 +1,6 @@
+{
+  "name": "PromptToScene.Editor",
+  "rootNamespace": "PromptToScene.Editor",
+  "references": ["PromptToScene.Runtime"],
+  "includePlatforms": ["Editor"]
+}

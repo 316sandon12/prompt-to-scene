@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.local/
+.DS_Store
+.prompt-to-scene/
+Library/
+Temp/
+Logs/
+Obj/
+UserSettings/
+*.blend1

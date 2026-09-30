@@ -1,0 +1,197 @@
+{
+  "date": "2026-09-30",
+  "environment": {
+    "os": "macOS 15.8 arm64",
+    "python": "3.11.16",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11"
+  },
+  "fast_tests_passed": 14,
+  "engine_runs": {
+    "Built-in": [
+      {
+        "status": "imported",
+        "asset_id": "crate",
+        "request_id": "29e5bdf717c14e78bcef06f07612eb32",
+        "prefab_path": "Assets/PromptToScene/crate/crate.prefab",
+        "prefab_guid": "43a75201e93184865a6394ab0ea28ba8",
+        "scene": "",
+        "pipeline": "Built-in",
+        "material_names": [
+          "Wood",
+          "Iron"
+        ],
+        "mesh_count": 13,
+        "triangles": 1404,
+        "bounds_size": [
+          0.9919999837875366,
+          1.000000238418579,
+          1.005000114440918
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:51:06.9924240Z"
+      },
+      {
+        "status": "imported",
+        "asset_id": "crate",
+        "request_id": "948de6f88d1141f4b2b86d53caf8fd09",
+        "prefab_path": "Assets/PromptToScene/crate/crate.prefab",
+        "prefab_guid": "43a75201e93184865a6394ab0ea28ba8",
+        "scene": "Assets/Smoke.unity",
+        "pipeline": "Built-in",
+        "material_names": [
+          "Wood",
+          "Iron"
+        ],
+        "mesh_count": 13,
+        "triangles": 1404,
+        "bounds_size": [
+          0.9919999837875366,
+          1.000000238418579,
+          1.005000114440918
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:51:10.5973640Z"
+      },
+      {
+        "status": "imported",
+        "asset_id": "textured_cube",
+        "request_id": "aef1db6f713e488f8eb1d57ca35a7e9f",
+        "prefab_path": "Assets/PromptToScene/textured_cube/textured_cube.prefab",
+        "prefab_guid": "df30d7ae65eb54f34aa5d68a2ba64728",
+        "scene": "Assets/Smoke.unity",
+        "pipeline": "Built-in",
+        "material_names": [
+          "Paint"
+        ],
+        "mesh_count": 1,
+        "triangles": 12,
+        "bounds_size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:51:14.5894160Z"
+      },
+      {
+        "status": "imported",
+        "asset_id": "saved_cube",
+        "request_id": "f8166df5f18740d599fe8a31e69ca595",
+        "prefab_path": "Assets/PromptToScene/saved_cube/saved_cube.prefab",
+        "prefab_guid": "b8a7bc37d6f9f4bff8002a5d9fdcd253",
+        "scene": "Assets/Smoke.unity",
+        "pipeline": "Built-in",
+        "material_names": [
+          "Paint"
+        ],
+        "mesh_count": 1,
+        "triangles": 12,
+        "bounds_size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:51:14.5027430Z"
+      }
+    ],
+    "URP": [
+      {
+        "status": "imported",
+        "asset_id": "crate",
+        "request_id": "0061d59a9ebb400ba60e796b4b72c320",
+        "prefab_path": "Assets/PromptToScene/crate/crate.prefab",
+        "prefab_guid": "f26e067d02a7e45af8531b72620dc17b",
+        "scene": "",
+        "pipeline": "UniversalRenderPipelineAsset",
+        "material_names": [
+          "Wood",
+          "Iron"
+        ],
+        "mesh_count": 13,
+        "triangles": 1404,
+        "bounds_size": [
+          0.9919999837875366,
+          1.000000238418579,
+          1.005000114440918
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:52:38.3754750Z"
+      },
+      {
+        "status": "imported",
+        "asset_id": "crate",
+        "request_id": "ce3611ffd02e4e8a895390c775c80246",
+        "prefab_path": "Assets/PromptToScene/crate/crate.prefab",
+        "prefab_guid": "f26e067d02a7e45af8531b72620dc17b",
+        "scene": "Assets/Smoke.unity",
+        "pipeline": "UniversalRenderPipelineAsset",
+        "material_names": [
+          "Wood",
+          "Iron"
+        ],
+        "mesh_count": 13,
+        "triangles": 1404,
+        "bounds_size": [
+          0.9919999837875366,
+          1.000000238418579,
+          1.005000114440918
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:52:45.6249070Z"
+      },
+      {
+        "status": "imported",
+        "asset_id": "textured_cube",
+        "request_id": "176725cc050949e4ba3354c277310378",
+        "prefab_path": "Assets/PromptToScene/textured_cube/textured_cube.prefab",
+        "prefab_guid": "6e64f732e3ccc4dfcbc88f104990a39f",
+        "scene": "Assets/Smoke.unity",
+        "pipeline": "UniversalRenderPipelineAsset",
+        "material_names": [
+          "Paint"
+        ],
+        "mesh_count": 1,
+        "triangles": 12,
+        "bounds_size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:52:52.9491150Z"
+      },
+      {
+        "status": "imported",
+        "asset_id": "saved_cube",
+        "request_id": "8ea9b8269b0c463ea5c6682f67665804",
+        "prefab_path": "Assets/PromptToScene/saved_cube/saved_cube.prefab",
+        "prefab_guid": "61b93ef54aa8a44d29ddcb8b7453fc85",
+        "scene": "Assets/Smoke.unity",
+        "pipeline": "UniversalRenderPipelineAsset",
+        "material_names": [
+          "Paint"
+        ],
+        "mesh_count": 1,
+        "triangles": 12,
+        "bounds_size": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "scene_instances": 1,
+        "error": "",
+        "completed_utc": "2026-09-30T02:52:52.7443420Z"
+      }
+    ]
+  }
+}
