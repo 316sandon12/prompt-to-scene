@@ -396,7 +396,16 @@
     "detached_external_source_after_parent_exit": "passed"
   },
   "release_ci": {
-    "status": "pending"
+    "status": "passed",
+    "run_id": 36745451575,
+    "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/36745451575",
+    "platforms": [
+      "macos-14",
+      "windows-latest"
+    ],
+    "tests_passed_per_platform": 130,
+    "frozen_stdio_and_setup": "passed",
+    "publish": "passed"
   },
   "limitations": [
     "Static opaque PBR only",
@@ -416,5 +425,29 @@
     "wheel": "passed",
     "sdist": "passed",
     "new_resources_and_final_modules": "verified"
+  },
+  "source_commit": "989839bee3872604eb1b227f663303570627d37d",
+  "public_downloads": {
+    "release_url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.6.0",
+    "archives": {
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "sha256": "872dc704df9d1f24d80280b9418112834c152105d1e2b57b1477cb242b748910",
+        "checksum_matches": true
+      },
+      "Prompt-to-Scene-windows-x64.zip": {
+        "sha256": "a54901cdb3089e21efc9ed0bb0ec1e65efc70fde815fb8998c8ba989cb43a325",
+        "checksum_matches": true
+      }
+    },
+    "macos_signature": "verified ad-hoc signature; not notarized",
+    "macos_actual_download_smoke": {
+      "status": "passed",
+      "stdio_tools": 47,
+      "embedded_ui_resource": "passed",
+      "setup_html_js": "passed",
+      "detached_blender_recipe": "passed",
+      "detached_external_model": "passed"
+    },
+    "windows_executable": "tested in CI; native Windows Unity/UE not tested"
   }
 }

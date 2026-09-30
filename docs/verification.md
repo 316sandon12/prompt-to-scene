@@ -16,6 +16,8 @@ Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built
 | AI hosts | Actual isolated Codex app-server discovered 47 tools and invoked the plugin. Actual Harness 0.2.0-rc.1 bundle/ToolRuntime invocation passed. |
 | Local workbench / MCP App | Browser selection, part controls and real previews checked. A local MCP Apps protocol fixture exercised initialization, tool calls, selected-object model context and explicit user-message handoff. This is not certification of Codex/Harness in-chat UI support. |
 | Local portable macOS app | Frozen 47-tool stdio, embedded HTML/JS and bridges passed. Detached Blender recipe and external-model jobs completed after the MCP parent exited. |
+| Windows/macOS portable CI | Both builds, 130 tests per OS and frozen stdio/setup checks passed in [release workflow 36745451575](https://github.com/316sandon12/prompt-to-scene/actions/runs/36745451575). |
+| Public release downloads | Both ZIP SHA-256 values matched. The downloaded macOS app passed signature verification, 47-tool discovery, optional UI resource checks and actual detached Blender recipe/external-model jobs. The Windows executable was verified in CI. |
 
 Native fixed-frame examples: [Unity before](images/workbench-unity-before.png) / [after](images/workbench-unity-after.png), [UE before](images/workbench-unreal-before.png) / [after](images/workbench-unreal-after.png). These are draft assets in sparsely lit test scenes, not beauty renders or an aesthetic score. Source rendering and native project lighting remain separate.
 
