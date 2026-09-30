@@ -3,19 +3,24 @@ import os
 import sys
 
 import anyio
+import pytest
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 
-def test_real_stdio_tool_discovery_and_error_reporting(tmp_path):
-    (tmp_path / "Assets").mkdir()
-    (tmp_path / "ProjectSettings").mkdir()
+@pytest.mark.parametrize("engine", ["unity", "unreal"])
+def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
+    if engine == "unity":
+        (tmp_path / "Assets").mkdir()
+        (tmp_path / "ProjectSettings").mkdir()
+    else:
+        (tmp_path / "Test.uproject").write_text(json.dumps({"FileVersion": 3}))
 
     async def exercise():
         parameters = StdioServerParameters(
             command=sys.executable,
             args=["-c", "from prompt_to_scene.server import main; main()"],
-            env={**os.environ, "PTS_UNITY_PROJECT": str(tmp_path)},
+            env={**os.environ, "PTS_PROJECT": str(tmp_path), "PTS_ENGINE": engine},
         )
         async with stdio_client(parameters) as (read, write):
             async with ClientSession(read, write) as session:
@@ -33,5 +38,13 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path):
                 assert payload["status"] == "unknown"
                 rejected = await session.call_tool("get_asset_status", {"asset_id": "../escape"})
                 assert rejected.isError
+                no_revision = await session.call_tool(
+                    "get_asset_status",
+                    {
+                        "asset_id": "crate",
+                        "wait_seconds": 1,
+                    },
+                )
+                assert no_revision.isError
 
     anyio.run(exercise)

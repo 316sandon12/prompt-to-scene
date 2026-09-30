@@ -6,4 +6,4 @@ For a bug report include OS, Blender/Unity versions, render pipeline, a minimal 
 
 Before a pull request run `uv run pytest`, `uv run ruff check .` and `uv run ruff format --check .`. Changes to the exporter/importer should include a real-engine reproduction when possible. State exactly which engines you ran; do not mark unrun engine checks as passed.
 
-Keep the core transport independent of any particular LLM provider. New material features must specify validation, import mapping, revision behavior and an example. UE support should be a separate adapter using the same request/receipt semantics.
+Keep the core transport independent of any particular LLM provider. New material features must specify validation, import mapping, revision behavior and an example. Keep Unity and Unreal adapters consistent with the versioned request/receipt contract. Run the relevant real-engine smoke test after changing an adapter; do not substitute engine mocks for an actual import claim.

@@ -10,14 +10,17 @@ Python MCP server + CLI
 Blender asset validator + FBX / PBR exporter
   │ atomic request, file hashes, stable asset ID
   ▼
-Unity editor package (polls local project inbox)
-  │ import → material mapping → prefab → scene instance
+Target editor adapter (polls the local project inbox)
+  ├ Unity: FBX → Standard/URP materials → prefab → scene instance
+  └ Unreal: FBX → Default Lit materials → Static Mesh → Actor
   ▼
 Import receipt returned to the AI on its next status call
 ```
 
-MCP uses stdio. No project-facing HTTP listener, cloud service or model API is required by this implementation. The AI client is separately responsible for its model connection and tool permissions. The Unity destination is configured once with `PTS_UNITY_PROJECT`, rather than selected from arbitrary model-generated paths on every request.
+MCP uses stdio. No project-facing HTTP listener, cloud service or model API is required by this implementation. The AI client is separately responsible for its model connection and tool permissions. The destination is configured once with `PTS_PROJECT` and optional `PTS_ENGINE`. Legacy Unity configuration is retained. Blender execution and bounded status waits run outside the MCP event loop so other requests stay responsive.
 
-The v0.1 exporter uses native FBX for geometry and an explicit small PBR manifest. This avoids requiring a glTF Unity package and makes supported material conversion deliberate. It does not claim to translate arbitrary Blender shader graphs. The transport can accept a future glTF exporter or UE adapter without changing the user's conversational workflow.
+The exporter uses native FBX geometry and an explicit small PBR manifest. A schema 2 envelope names the target engine and meter-based position unit. Stable ASCII export material IDs bridge different engine name-sanitization rules while editable source names are preserved. Unsupported Blender shader graphs fail validation instead of relying on a lossy automatic conversion.
+
+Unity owns AssetDatabase mutations on its editor thread. Unreal owns native asset and level changes through a content-only editor Python plugin. It explicitly chooses the FBX factory, generates supported PBR graphs and uses tagged StaticMeshActors for revisions. Neither adapter modifies the other engine's project or silently saves the user's level.
 
 Stable IDs, deterministic paths and receipts are the project's central contribution. Blender Python authors the mesh; the bridge handles the repeatable cross-application lifecycle.

@@ -1,4 +1,4 @@
-"""Local file-based transport. Unity owns all writes to its AssetDatabase."""
+"""Local file transport. Each editor owns its engine assets and scene mutations."""
 
 from __future__ import annotations
 
@@ -10,8 +10,12 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
+
+from .targets import resolve_target
 
 ASSET_ID = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 
@@ -24,17 +28,14 @@ def asset_id(value: str) -> str:
     return value
 
 
-def project_path(value: str | Path) -> Path:
-    path = Path(value).expanduser().resolve()
-    if not (path / "Assets").is_dir() or not (path / "ProjectSettings").is_dir():
-        raise ValueError(f"Not a Unity project (Assets and ProjectSettings required): {path}")
-    return path
+def project_path(value: str | Path, engine: str = "auto") -> Path:
+    return resolve_target(value, engine).root
 
 
 def position_values(value: list[float] | None) -> list[float]:
     result = [0.0, 0.0, 0.0] if value is None else value
     if len(result) != 3 or any(not math.isfinite(float(v)) for v in result):
-        raise ValueError("position must contain three finite numbers, in Unity meters")
+        raise ValueError("position must contain three finite numbers, in engine XYZ meters")
     return [float(v) for v in result]
 
 
@@ -71,13 +72,14 @@ def state_root(project: Path) -> Path:
     return root
 
 
-def status(project: str | Path, name: str) -> dict:
-    project = project_path(project)
+def status(project: str | Path, name: str, *, engine: str = "auto") -> dict:
+    target = resolve_target(project, engine)
+    project = target.root
     name = asset_id(name)
     root = state_root(project)
     request_file = root / "inbox" / f"{name}.json"
     receipt_file = root / "receipts" / f"{name}.json"
-    # Unity writes the receipt before removing the request. Read in that order's reverse
+    # Editors write the receipt before removing the request. Read in that order's reverse
     # so a request consumed during this call cannot expose a stale success or raise ENOENT.
     request = read_optional_json(request_file)
     receipt = read_optional_json(receipt_file)
@@ -88,9 +90,44 @@ def status(project: str | Path, name: str) -> dict:
             "status": "queued",
             "asset_id": name,
             "request_id": request["request_id"],
-            "message": "Waiting for Unity. Open the project with Prompt-to-Scene installed.",
+            "engine": target.engine,
+            "message": "Waiting for the editor. Open this project with Prompt-to-Scene installed.",
         }
     return receipt or {"status": "unknown", "asset_id": name}
+
+
+def wait_for_status(
+    project: str | Path,
+    name: str,
+    request_id: str | None = None,
+    wait_seconds: float = 0,
+    *,
+    engine: str = "auto",
+) -> dict:
+    if not math.isfinite(wait_seconds) or not 0 <= wait_seconds <= 30:
+        raise ValueError("wait_seconds must be between 0 and 30")
+    if request_id is not None and not re.fullmatch(r"[a-f0-9]{32}", request_id):
+        raise ValueError("request_id must be the 32-character ID returned by build_asset")
+    if wait_seconds and not request_id:
+        raise ValueError("Pass request_id when waiting, so an old receipt cannot confirm success")
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        result = status(project, name, engine=engine)
+        latest = result.get("request_id")
+        if request_id and latest and latest != request_id:
+            return {
+                "status": "superseded",
+                "asset_id": name,
+                "request_id": request_id,
+                "latest_request_id": latest,
+                "message": "A different revision is current; this is not confirmation of yours.",
+            }
+        if result["status"] in {"imported", "error"} or not wait_seconds:
+            return result
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return {**result, "wait_timed_out": True}
+        time.sleep(min(0.25, remaining))
 
 
 def build(
@@ -102,9 +139,11 @@ def build(
     *,
     blend_file: str | Path | None = None,
     timeout: int = 180,
+    engine: str = "auto",
 ) -> dict:
     """Run a trusted AI/user-authored script in a separate Blender process, then queue import."""
-    project = project_path(project)
+    target = resolve_target(project, engine)
+    project = target.root
     name = asset_id(name)
     position = position_values(position)
     if not script.strip() and blend_file is None:
@@ -124,7 +163,9 @@ def build(
         raise ValueError(f"A build of {name} is already running") from exc
     try:
         if (root / "inbox" / f"{name}.json").exists():
-            raise ValueError("Previous import is still queued; inspect Unity before rebuilding")
+            raise ValueError(
+                "Previous import is still queued; inspect the editor before rebuilding"
+            )
         revision = uuid.uuid4().hex
         work = root / "work" / name / revision
         work.mkdir(parents=True)
@@ -154,7 +195,9 @@ def build(
                     {"name": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
                 )
         request = {
-            "schema_version": 1,
+            "schema_version": 2,
+            "target_engine": target.engine,
+            "position_unit": "meters",
             "asset_id": name,
             "request_id": revision,
             "work_dir": work.relative_to(root).as_posix(),
@@ -166,27 +209,41 @@ def build(
         atomic_json(root / "inbox" / f"{name}.json", request)
         return {
             "status": "queued",
+            "engine": target.engine,
             "asset_id": name,
             "request_id": revision,
             "source_blend": str(work / "source.blend"),
             "triangles": exported["triangles"],
-            "message": "Blender finished. Call get_asset_status to verify the Unity import.",
+            "message": "Blender finished. Call get_asset_status with request_id to verify import.",
         }
     finally:
         lock.rmdir()
 
 
-def inspect_project(project: str | Path) -> dict:
-    project = project_path(project)
+def inspect_project(project: str | Path, *, engine: str = "auto") -> dict:
+    target = resolve_target(project, engine)
+    project = target.root
     root = state_root(project)
     root.mkdir(parents=True, exist_ok=True)
     heartbeat = root / "editor.json"
+    editor = read_optional_json(heartbeat)
+    age = None
+    if editor and editor.get("updated_utc"):
+        try:
+            updated = datetime.fromisoformat(editor["updated_utc"].replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - updated).total_seconds()
+        except (ValueError, TypeError):
+            pass
     return {
         "project": str(project),
+        "project_file": str(target.project_file) if target.project_file else None,
+        "engine": target.engine,
+        "coordinates": "XYZ meters; Y-up" if target.engine == "unity" else "XYZ meters; Z-up",
         "blender": blender_path(),
-        "editor": read_optional_json(heartbeat),
+        "editor": editor,
+        "editor_responding": age is not None and -5 <= age <= 15,
         "assets": [
-            status(project, name)
+            status(target.project_file or project, name, engine=target.engine)
             for name in sorted(
                 {p.stem for folder in ("inbox", "receipts") for p in (root / folder).glob("*.json")}
             )

@@ -15,3 +15,6 @@ Logs/
 Obj/
 UserSettings/
 *.blend1
+Saved/
+Intermediate/
+DerivedDataCache/

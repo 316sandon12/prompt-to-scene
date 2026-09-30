@@ -17,6 +17,7 @@ namespace PromptToScene.Editor
     [Serializable] public class MaterialData
     {
         public string name;
+        public string fbx_name;
         public float[] color;
         public float metallic;
         public float roughness;
@@ -27,6 +28,8 @@ namespace PromptToScene.Editor
     [Serializable] public class TransferRequest
     {
         public int schema_version;
+        public string target_engine;
+        public string position_unit;
         public string asset_id;
         public string request_id;
         public string work_dir;
@@ -38,6 +41,7 @@ namespace PromptToScene.Editor
     [Serializable] public class ImportReceipt
     {
         public string status;
+        public string engine = "unity";
         public string asset_id;
         public string request_id;
         public string prefab_path;
@@ -48,6 +52,7 @@ namespace PromptToScene.Editor
         public int mesh_count;
         public int triangles;
         public float[] bounds_size;
+        public string bounds_unit = "meters";
         public int scene_instances;
         public string error;
         public string completed_utc;
@@ -55,6 +60,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
+        public string engine = "unity";
         public string pipeline;
         public string scene;
         public bool playing;
@@ -129,7 +135,11 @@ namespace PromptToScene.Editor
 
         public static void ValidateRequest(TransferRequest request, string filename)
         {
-            if (request.schema_version != 1) throw new Exception("Unsupported schema_version");
+            if (request.schema_version != 1 && request.schema_version != 2)
+                throw new Exception("Unsupported schema_version; update the editor package");
+            if (request.schema_version == 2 &&
+                (request.target_engine != "unity" || request.position_unit != "meters"))
+                throw new Exception("This request does not target Unity in meters");
             if (request.asset_id == null || !Regex.IsMatch(request.asset_id, "^[a-z][a-z0-9_-]{0,63}$") ||
                 request.asset_id != filename) throw new Exception("Invalid asset_id");
             if (request.request_id == null || !Regex.IsMatch(request.request_id, "^[a-f0-9]{32}$"))
@@ -157,6 +167,9 @@ namespace PromptToScene.Editor
                 throw new Exception("Missing or duplicate material definitions");
             foreach (MaterialData material in request.materials)
             {
+                if (request.schema_version == 2 && material.fbx_name !=
+                    "PTS_" + Sha256(Encoding.UTF8.GetBytes(material.name ?? "")).Substring(0, 16))
+                    throw new Exception("Invalid FBX material identity");
                 if (string.IsNullOrEmpty(material.name) || material.color == null || material.color.Length != 4 ||
                     material.color.Any(v => float.IsNaN(v) || float.IsInfinity(v) || v < 0 || v > 1) ||
                     !UnitInterval(material.metallic) || !UnitInterval(material.roughness) ||
@@ -224,6 +237,9 @@ namespace PromptToScene.Editor
                 EditorUtility.SetDirty(material);
                 materials.Add(data.name, material);
             }
+            var slots = request.materials.ToDictionary(
+                data => string.IsNullOrEmpty(data.fbx_name) ? data.name : data.fbx_name,
+                data => materials[data.name]);
             string prefabPath = target + "/" + request.asset_id + ".prefab";
             bool existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath) != null;
             GameObject root = existing ? PrefabUtility.LoadPrefabContents(prefabPath) : new GameObject(request.asset_id);
@@ -239,7 +255,7 @@ namespace PromptToScene.Editor
                 foreach (Renderer renderer in visual.GetComponentsInChildren<Renderer>())
                 {
                     renderer.sharedMaterials = renderer.sharedMaterials.Select(m => {
-                        if (m == null || !materials.TryGetValue(m.name, out Material mapped))
+                        if (m == null || !slots.TryGetValue(m.name, out Material mapped))
                             throw new Exception("Cannot map imported material: " + (m == null ? "null" : m.name));
                         return mapped;
                     }).ToArray();

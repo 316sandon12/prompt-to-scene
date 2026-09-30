@@ -24,7 +24,7 @@ def export_material(material, folder):
         raise ValueError(f"{material.name}: bake complex shaders to standard PBR before publishing")
     for socket in principled.inputs:
         if socket.is_linked and socket.name not in {"Base Color", "Normal"}:
-            raise ValueError(f"{material.name}: {socket.name} cannot be linked in v0.1")
+            raise ValueError(f"{material.name}: {socket.name} cannot be linked in v0.2")
     for name in (
         "Alpha",
         "Transmission Weight",
@@ -36,7 +36,7 @@ def export_material(material, folder):
         socket = principled.inputs.get(name)
         expected = 1 if name == "Alpha" else 0
         if socket and (socket.is_linked or abs(socket.default_value - expected) > 0.0001):
-            raise ValueError(f"{material.name}: {name} is unsupported in v0.1 (opaque PBR only)")
+            raise ValueError(f"{material.name}: {name} is unsupported in v0.2 (opaque PBR only)")
     for name, expected in (("IOR", 1.5), ("Specular IOR Level", 0.5)):
         if abs(principled.inputs[name].default_value - expected) > 0.0001:
             raise ValueError(f"{material.name}: keep {name} at its default ({expected})")
@@ -50,9 +50,10 @@ def export_material(material, folder):
         and strength.default_value > 0
         and any(v > 0.0001 for v in emission.default_value[:3])
     ):
-        raise ValueError(f"{material.name}: emission is not supported in v0.1")
+        raise ValueError(f"{material.name}: emission is not supported in v0.2")
     info = {
         "name": material.name,
+        "fbx_name": "PTS_" + hashlib.sha256(material.name.encode()).hexdigest()[:16],
         "color": list(principled.inputs["Base Color"].default_value),
         "metallic": float(principled.inputs["Metallic"].default_value),
         "roughness": float(principled.inputs["Roughness"].default_value),
@@ -87,7 +88,7 @@ def export_material(material, folder):
             or node.interpolation != "Linear"
         ):
             raise ValueError(
-                "v0.1 textures require default UVs, flat projection, repeat and linear filtering"
+                "v0.2 textures require default UVs, flat projection, repeat and linear filtering"
             )
         image = node.image
         if image.source not in {"FILE", "GENERATED"} or image.size[0] == 0:
@@ -134,18 +135,25 @@ def main():
         if not obj.material_slots:
             raise ValueError(f"{obj.name}: assign a Principled BSDF material")
         for slot in obj.material_slots:
-            info = export_material(slot.material, folder)
+            key = slot.material.name if slot.material else None
+            info = materials.get(key) or export_material(slot.material, folder)
             if (info["base_color_texture"] or info["normal_texture"]) and len(
                 obj.data.uv_layers
             ) != 1:
                 raise ValueError(f"{obj.name}: textured meshes require exactly one UV map")
             materials[info["name"]] = info
     if triangles == 0 or triangles > 200000:
-        raise ValueError("v0.1 accepts between 1 and 200,000 triangles per asset")
+        raise ValueError("v0.2 accepts between 1 and 200,000 triangles per asset")
     scene = bpy.context.scene
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1
     bpy.ops.wm.save_as_mainfile(filepath=str(folder / "source.blend"))
+    # Save editable names in the source, then give FBX a stable ASCII identity. Engine
+    # importers otherwise sanitize punctuation/Unicode differently and lose slot mapping.
+    for name, info in materials.items():
+        if bpy.data.materials.get(info["fbx_name"]):
+            raise ValueError("Reserved FBX material name collision: " + info["fbx_name"])
+        bpy.data.materials[name].name = info["fbx_name"]
     bpy.ops.object.select_all(action="DESELECT")
     for obj in meshes:
         obj.select_set(True)

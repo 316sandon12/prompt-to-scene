@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prompt-to-scene"
-version = "0.1.0"
-description = "An MCP workflow from AI-authored Blender assets to verified Unity scene instances."
+version = "0.2.0"
+description = "An MCP workflow from AI-authored Blender assets to verified Unity and Unreal scenes."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
