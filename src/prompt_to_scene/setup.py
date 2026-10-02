@@ -104,14 +104,38 @@ def state():
                 (root / "studies").glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
             )[:5]
         ]
-        result["assets"] = [
-            core.read_optional_json(p)
-            for p in (root / "receipts").glob("*.json")
-            if (core.read_optional_json(p) or {}).get("status") == "imported"
-        ]
+        result["assets"] = []
+        moving_parts = {
+            (core.read_optional_json(p) or {}).get("moving_asset_id")
+            for p in (root / "interactions").glob("*.json")
+        }
+        for path in (root / "receipts").glob("*.json"):
+            if path.stem in moving_parts:
+                continue
+            receipt = core.read_optional_json(path) or {}
+            if receipt.get("status") != "imported":
+                history = [
+                    core.read_optional_json(p)
+                    for p in (root / "history" / path.stem).glob("*.json")
+                ]
+                imported = [r for r in history if r and r.get("status") == "imported"]
+                receipt = max(imported, key=lambda r: r.get("completed_utc", ""), default={})
+            if receipt:
+                result["assets"].append(receipt)
+        task_paths = [(p.stat().st_mtime, p.parent.name) for p in jobs]
+        for folder in ("actions", "action-receipts"):
+            for path in sorted(
+                (root / folder).glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
+            )[:30]:
+                item = core.read_optional_json(path) or {}
+                if item.get("operation") == "develop" or item.get("development"):
+                    task_paths.append((path.stat().st_mtime, path.stem))
+        revisions = list(
+            dict.fromkeys(revision for _, revision in sorted(task_paths, reverse=True))
+        )[:20]
         result["tasks"] = [
-            workflow.job_status(str(target.project_file or target.root), p.parent.name)
-            for p in jobs
+            workflow.job_status(str(target.project_file or target.root), revision)
+            for revision in revisions
         ]
         result["reviews"] = [
             reviews.read(None, p.stem)

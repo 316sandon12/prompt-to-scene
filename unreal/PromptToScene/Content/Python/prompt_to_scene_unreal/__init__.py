@@ -72,13 +72,13 @@ def tick(_delta):
         if not root.is_dir():
             return
         levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
-        level = levels.get_current_level()
         playing = is_playing()
+        level = levels.get_current_level() if not playing else None
         write_json(
             root / "editor.json",
             {
                 "engine": "unreal",
-                "bridge_version": "0.5.0",
+                "bridge_version": "0.7.0",
                 "capabilities": ["actions", "preview", "instance_undo", "auto_place"],
                 "unreal_version": unreal.SystemLibrary.get_engine_version(),
                 "scene": level.get_outer().get_path_name() if level else None,

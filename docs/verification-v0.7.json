@@ -1,0 +1,172 @@
+{
+  "version": "0.7.0",
+  "recorded_date": "2026-10-03",
+  "timezone": "Asia/Shanghai",
+  "source_ref": "v0.7.0",
+  "environment": {
+    "os": "macOS 15.8",
+    "hardware": "Apple M3 Pro",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2"
+  },
+  "python": {
+    "tests_passed": 151,
+    "lint": "passed",
+    "format": "passed",
+    "shared_skill": "passed"
+  },
+  "native": {
+    "unity_builtin": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "create_interactive_prop": 4,
+        "get_task_status": 22,
+        "configure_interaction": 1,
+        "inspect_scene": 2,
+        "protect_asset": 1,
+        "build_asset": 2,
+        "set_scene_look": 5,
+        "build_level": 3,
+        "search_project_assets": 2,
+        "tag_project_asset": 1,
+        "reuse_project_asset": 2,
+        "run_playcheck": 1
+      },
+      "play": {
+        "passed": true,
+        "frames": 19464,
+        "mean_frame_ms": 0.10586202144622803,
+        "p95_frame_ms": 0.1114170029759407
+      },
+      "assertions": {
+        "runtime_component": 4,
+        "range_rejection": 4,
+        "interaction_event": 4,
+        "opens_geometry": 3,
+        "pickup_hidden": 1,
+        "level_loaded": 1,
+        "walk_clearance": 1,
+        "closes_again": 3,
+        "runtime_errors": 1,
+        "runtime_frames": 1
+      },
+      "screenshots": 2,
+      "protected_update_conflict_rejected": true,
+      "material_interaction_socket_identity_preserved": true,
+      "blocked_level_detected": true,
+      "look_restored": true,
+      "execution_mode": "Batch editor; frame sampling without a continuously rendered Game view"
+    },
+    "unity_urp": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "create_interactive_prop": 4,
+        "get_task_status": 24,
+        "configure_interaction": 1,
+        "inspect_scene": 3,
+        "protect_asset": 1,
+        "build_asset": 2,
+        "set_scene_look": 6,
+        "build_level": 3,
+        "search_project_assets": 2,
+        "tag_project_asset": 1,
+        "reuse_project_asset": 2,
+        "run_playcheck": 1
+      },
+      "play": {
+        "passed": true,
+        "frames": 19330,
+        "mean_frame_ms": 0.1104709729552269,
+        "p95_frame_ms": 0.117249995470047
+      },
+      "assertions": {
+        "runtime_component": 4,
+        "range_rejection": 4,
+        "interaction_event": 4,
+        "opens_geometry": 3,
+        "pickup_hidden": 1,
+        "level_loaded": 1,
+        "walk_clearance": 1,
+        "closes_again": 3,
+        "runtime_errors": 1,
+        "runtime_frames": 1
+      },
+      "screenshots": 2,
+      "protected_update_conflict_rejected": true,
+      "material_interaction_socket_identity_preserved": true,
+      "blocked_level_detected": true,
+      "look_restored": true,
+      "execution_mode": "Batch editor; frame sampling without a continuously rendered Game view"
+    },
+    "unreal": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "create_interactive_prop": 4,
+        "get_task_status": 24,
+        "configure_interaction": 1,
+        "inspect_scene": 3,
+        "protect_asset": 1,
+        "build_asset": 2,
+        "set_scene_look": 6,
+        "build_level": 3,
+        "search_project_assets": 2,
+        "tag_project_asset": 1,
+        "reuse_project_asset": 2,
+        "run_playcheck": 1
+      },
+      "play": {
+        "passed": true,
+        "frames": 138,
+        "mean_frame_ms": 15.236347238870634,
+        "p95_frame_ms": 16.05900004506111
+      },
+      "assertions": {
+        "runtime_actor": 3,
+        "range_rejection": 4,
+        "interaction_event": 4,
+        "opens_geometry": 3,
+        "pickup_hidden": 1,
+        "walk_clearance": 1,
+        "closes_again": 3,
+        "runtime_frames": 1,
+        "runtime_errors": 1
+      },
+      "screenshots": 2,
+      "protected_update_conflict_rejected": true,
+      "material_interaction_socket_identity_preserved": true,
+      "blocked_level_detected": true,
+      "look_restored": true,
+      "execution_mode": "RenderOffscreen PIE",
+      "legacy_component_material_override_preserved": true
+    }
+  },
+  "hosts": {
+    "codex": "Actual isolated app-server: 57 tools and native call passed",
+    "harness": "Actual 0.2.0-rc.1 bundle and ToolRuntime call passed"
+  },
+  "local_portable_macos": {
+    "result": "passed",
+    "tools": 57,
+    "detached_blender_recipe_and_external_intake": "passed"
+  },
+  "limitations": [
+    "Native Windows editors, shipping builds and older UE asset compatibility are unverified.",
+    "Templates are door/chest/pickup, not arbitrary game logic or Blueprint graph generation.",
+    "Clearance uses sampled capsules, not NavMesh or controller traversal.",
+    "Frame intervals describe this editor/machine and are not a target-device benchmark.",
+    "Local library ranking uses keywords/tags/size, not visual embeddings.",
+    "Generated geometry/material properties stay managed. Protection covers supported bindings and root/Actor settings.",
+    "UI appearance and three template designs do not establish general aesthetic quality."
+  ],
+  "workbench": {
+    "read_only_level_plan": "passed",
+    "play_before_after_images": "passed",
+    "console_errors_observed": 0,
+    "embedded_host_ui_certified": false
+  }
+}

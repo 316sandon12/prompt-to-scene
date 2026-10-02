@@ -12,11 +12,14 @@ from . import (
     background,
     compositions,
     core,
+    development,
     generation,
     kits,
     layout,
+    levels,
     parts,
     performance,
+    project_library,
     quality,
     recipes,
     registry,
@@ -76,6 +79,16 @@ Unreal Z-up (converted to centimeters by the adapter). Reuse asset_id for revisi
 Existing scene instance transforms are preserved. Unity retains prefab root components; Unreal
 retains its StaticMeshActor. Generated geometry and managed material properties are replaced.
 This is not an image-to-3D model. Author bpy Python or publish a saved .blend from another tool.
+For playable static props use create_interactive_prop (door/chest/pickup), or configure_interaction
+with a separate moving asset. Native runtime components/Blueprints expose a range-checked event.
+protect_asset keeps custom material assignments and sibling attachment points; review_asset_update
+compares a prepared candidate before publishing. Missing protected slots stop reimport.
+set_scene_look applies/restores an owned lighting/sky/post/camera rig; capture it to inspect beauty.
+build_level connects room/corridor/stair modules and checks capsule clearance; it is a blockout,
+not a whole-game generator. run_playcheck enters and exits the real editor Play/PIE session,
+tests interactions/clearance and measures frame deltas. Check development.passed and all checks.
+search_project_assets indexes local models/prefabs; reuse_project_asset previews/places originals.
+tag_project_asset saves notes/tags and declared source/license; keep unknowns explicit.
 """,
 )
 
@@ -552,7 +565,11 @@ def restore_asset(asset_id: str, revision: str | None = None) -> dict:
 async def get_preview(
     asset_id: str | None = None, request_id: str | None = None, view: str = "studio"
 ):
-    """Return an engine PNG of selected props or asset. If queued, retry with request_id."""
+    """Return an engine PNG. Retry queued captures with their request_id.
+
+    For a completed playcheck with captures, view='before' returns the initial image;
+    the default returns the post-interaction image.
+    """
     if request_id is None:
         task = workflow.action(
             str(project()["project"]),
@@ -565,8 +582,13 @@ async def get_preview(
     result = await get_task_status(request_id, 30)
     if result.get("status") != "completed":
         return result
+    expected = "previews/" + workflow.identifier(request_id) + ".png"
     relative = result.get("preview")
-    if relative != "previews/" + workflow.identifier(request_id) + ".png":
+    check = result.get("development", {})
+    if check.get("command") == "playcheck":
+        expected = "previews/" + request_id + ("_before" if view == "before" else "") + ".png"
+        relative = expected if expected in check.get("screenshots", []) else None
+    if relative != expected:
         raise ValueError("This request is not a preview")
     root = core.state_root(registry.resolve().root)
     path = (root / relative).resolve()
@@ -780,6 +802,141 @@ def generate_model(
 def resume_workflow(request_id: str) -> dict:
     """Resume an interrupted composition, quality or generation task using its saved stages."""
     return background.resume(str(project()["project"]), request_id)
+
+
+@mcp.tool()
+def create_interactive_prop(
+    kind: str,
+    asset_id: str,
+    dimensions: list[float] | None = None,
+    position: list[float] | None = None,
+    color: list[float] | None = None,
+) -> dict:
+    """Build a door, chest or pickup with Blender geometry and native gameplay behavior.
+
+    Dimensions are width/depth/height in meters; position uses target engine axes. Retains
+    separate base/moving meshes and a reusable Unity prefab or UE Blueprint. Poll this workflow
+    until completed. Aim the game camera and press E for the optional demo, or bind your own input.
+    """
+    return development.interactive(None, kind, asset_id, dimensions, position, color)
+
+
+@mcp.tool()
+def configure_interaction(
+    asset_id: str,
+    kind: str,
+    moving_asset_id: str | None = None,
+    angle: float = 90,
+    distance: float = 2.5,
+    pivot: list[float] | None = None,
+    moving_offset: list[float] | None = None,
+    demo_input: bool = True,
+) -> dict:
+    """Attach/update door/chest/pickup behavior. Pivot/offset are local engine XYZ meters.
+
+    A door/chest requires a separate prepared moving asset. The first UE attachment converts
+    the plain managed StaticMeshActor to a native Blueprint; later revisions keep that Actor.
+    """
+    return development.configure(
+        None, asset_id, kind, moving_asset_id, angle, distance, pivot, moving_offset, demo_input
+    )
+
+
+@mcp.tool()
+def protect_asset(
+    asset_id: str,
+    mode: str = "inspect",
+    bindings: list[dict] | None = None,
+    sockets: list[dict] | None = None,
+) -> dict:
+    """Inspect/set/clear custom material overrides and persistent root attachment points.
+
+    bindings: [{slot, material_path}] in Assets/ or /Game/. sockets: [{name, position, rotation}]
+    use engine XYZ meters/degrees. Missing protected slots block later imports. Generated material
+    property edits and arbitrary generated hierarchy changes are outside the preservation contract.
+    """
+    return development.protection(None, asset_id, mode, bindings, sockets)
+
+
+@mcp.tool()
+def review_asset_update(asset_id: str, candidate_request_id: str) -> dict:
+    """Read native protected slot conflicts before publishing a completed prepared candidate."""
+    return development.review_update(None, asset_id, candidate_request_id)
+
+
+@mcp.tool()
+def set_scene_look(
+    preset: str = "warm_cartoon", mode: str = "apply", position: list[float] | None = None
+) -> dict:
+    """Apply/inspect/capture/restore warm_cartoon, cool_scifi, moonlit or neutral scene lighting.
+
+    Owns a native lighting/sky/post-process/camera rig; saves prior lighting for restore. The
+    presentation camera stays fixed across preset changes. Poll request; get_preview(request_id)
+    reads captures. Existing scene lights are disabled while the owned look is active.
+    """
+    return development.look(None, preset, mode, position)
+
+
+@mcp.tool()
+def build_level(level_id: str, mode: str = "build", settings: dict | None = None) -> dict:
+    """Plan/build/check/remove a connected modular level with real collision clearance.
+
+    settings: modules=[{cell:[grid_x,grid_y,floor],kind:room|corridor|stair,direction:0..3}],
+    cell_size, story_height, door_width/height, player_radius/height, max_step, position, yaw.
+    Directions: south/east/north/west. Stairs need a lower and upper connected landing. Max 24
+    modules. Disconnected/too-small plans fail before editor mutation. Native checking uses sampled
+    standing capsules, not a baked NavMesh or a complete character-controller simulation.
+    """
+    return levels.build(None, level_id, mode, **(settings or {}))
+
+
+@mcp.tool()
+def run_playcheck(
+    asset_ids: list[str] | None = None,
+    level_id: str | None = None,
+    duration: float = 3,
+    capture: bool = True,
+) -> dict:
+    """Run interaction/range/geometry and optional level-clearance checks in real Play/PIE.
+
+    Requires Edit mode. Restores Edit mode after completion/cancellation; existing game scripts
+    run normally. Poll the same ID; inspect development.passed, checks and warnings. Frame deltas
+    are measured on this editor/machine, not a target-device benchmark. No paid AI is used.
+    """
+    return development.playcheck(None, asset_ids, level_id, duration, capture)
+
+
+@mcp.tool()
+def search_project_assets(
+    query: str = "", request_id: str | None = None, size: float | None = None, limit: int = 20
+) -> dict:
+    """Index project meshes/prefabs, then rank names, tags, materials, notes and desired size.
+
+    First call queues the native index. Poll then call again with the same request_id and query.
+    Returns paths, dimensions, measured geometry and declared license. Preview before placement
+    using reuse_project_asset(mode='preview'). This is local keyword search with Chinese aliases.
+    """
+    return project_library.search(None, query, request_id, size, limit)
+
+
+@mcp.tool()
+def reuse_project_asset(
+    path: str, mode: str = "place", position: list[float] | None = None
+) -> dict:
+    """Preview or place an existing project model/prefab/Blueprint by its returned native path.
+
+    Reuses the original native asset; does not duplicate asset files or claim new authorship.
+    get_preview(request_id) reads the preview PNG after the action completes.
+    """
+    return project_library.reuse(None, path, mode, position)
+
+
+@mcp.tool()
+def tag_project_asset(
+    path: str, tags: list[str] | None = None, notes: str = "", license: str = "", source: str = ""
+) -> dict:
+    """Save searchable local annotations and user-declared source/license for an asset path."""
+    return project_library.annotate(None, path, tags, notes, license, source)
 
 
 def main():

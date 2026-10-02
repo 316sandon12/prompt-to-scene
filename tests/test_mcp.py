@@ -74,6 +74,16 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                     "list_generation_providers",
                     "generate_model",
                     "resume_workflow",
+                    "create_interactive_prop",
+                    "configure_interaction",
+                    "protect_asset",
+                    "review_asset_update",
+                    "set_scene_look",
+                    "build_level",
+                    "run_playcheck",
+                    "search_project_assets",
+                    "reuse_project_asset",
+                    "tag_project_asset",
                 }
                 app_tool = next(t for t in catalog.tools if t.name == "open_workbench")
                 assert app_tool.meta["ui"]["resourceUri"] == "ui://prompt-to-scene/workbench.html"

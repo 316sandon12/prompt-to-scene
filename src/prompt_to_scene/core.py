@@ -322,6 +322,13 @@ def build(
             "auto_place": automatic_placement,
             "collider": collider,
             "materials": exported["materials"],
+            "object_names": sorted(
+                {
+                    name
+                    for part in exported.get("report", {}).get("parts", {}).values()
+                    for name in part.get("objects", [])
+                }
+            ),
             "files": files,
             "lods": exported.get("lods", []),
             "collision_mode": exported.get("collision_mode") or ("box" if collider else "none"),

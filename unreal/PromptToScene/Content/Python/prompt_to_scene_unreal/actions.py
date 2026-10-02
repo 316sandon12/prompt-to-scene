@@ -149,6 +149,10 @@ def execute(request, root):
     operation = request["operation"]
     revision = request["request_id"]
     selected = targets(request)
+    if operation == "develop":
+        from .development import execute as develop
+
+        return develop(request, root)
     if operation == "inspect":
         from . import layout
 
@@ -381,13 +385,19 @@ def process(root):
             ).set_level_viewport_camera_info(*old_camera)
             del _captures[revision]
     for path in sorted((root / "actions").glob("*.json")):
+        from . import playchecks
+
+        if playchecks._state:
+            break
         receipt = {"status": "error", "request_id": path.stem, "engine": "unreal"}
         try:
-            if path.is_symlink() or path.stat().st_size > 100000:
+            if path.is_symlink() or path.stat().st_size > 512000:
                 raise ValueError("Invalid action file")
             request = json.loads(path.read_text())
             validate(request, path.stem)
-            if request.get("operation") == "preview" and _captures:
+            from . import presentation
+
+            if _captures or presentation._pending:
                 continue  # The editor has one viewport: preserve each queued capture's camera.
             if (root / "cancel" / path.stem).exists():
                 receipt["status"] = "cancelled"
@@ -396,7 +406,7 @@ def process(root):
                 if result is None:
                     path.unlink()
                     continue
-                receipt.update(result, status="completed")
+                receipt.update({"status": "completed", **result})
         except Exception as error:
             receipt["error"] = str(error)
             snapshot = root / "edits" / (path.stem + ".json")

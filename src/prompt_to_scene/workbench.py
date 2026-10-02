@@ -8,9 +8,12 @@ from . import (
     background,
     compositions,
     core,
+    development,
     generation,
+    levels,
     parts,
     performance,
+    project_library,
     quality,
     registry,
     reviews,
@@ -38,8 +41,9 @@ def image(kind, request_id=None, asset_id=None, view="studio"):
             raise ValueError("No reference image saved")
     elif kind == "studio":
         path = studies.preview_path(None, asset_id, request_id, view)
-    elif kind == "engine":
-        path = root / "previews" / (workflow.identifier(request_id) + ".png")
+    elif kind in {"engine", "play_before"}:
+        suffix = "_before" if kind == "play_before" else ""
+        path = root / "previews" / (workflow.identifier(request_id) + suffix + ".png")
         if workflow.job_status(None, request_id)["status"] != "completed":
             raise ValueError("Wait for this capture to finish")
     else:
@@ -85,6 +89,16 @@ def dispatch(action, values=None):
         "performance": lambda **v: performance.inspect(None, **v),
         "optimize": lambda **v: performance.optimize(None, **v),
         "generate": lambda **v: generation.submit(None, **v),
+        "interactive": lambda **v: development.interactive(None, **v),
+        "interaction": lambda **v: development.configure(None, **v),
+        "protection": lambda **v: development.protection(None, **v),
+        "update_review": lambda **v: development.review_update(None, **v),
+        "look": lambda **v: development.look(None, **v),
+        "level": lambda **v: levels.build(None, **v),
+        "playcheck": lambda **v: development.playcheck(None, **v),
+        "library": lambda **v: project_library.search(None, **v),
+        "reuse": lambda **v: project_library.reuse(None, **v),
+        "tag": lambda **v: project_library.annotate(None, **v),
         "publish": lambda **v: sources.publish(None, **v),
         "preview": lambda asset_id: workflow.action(
             None, "preview", asset_id=asset_id, scope="asset"

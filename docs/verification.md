@@ -1,5 +1,43 @@
 # Verification
 
+## v0.7 — recorded on 2026-10-03
+
+Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, Unreal 5.7.2. Native tests use disposable scenes and real MCP calls. See [sanitized measurements](verification-v0.7.json).
+
+| Check | Result |
+| --- | --- |
+| Python / MCP / contracts | 151 tests passed; lint, formatting, JS syntax and shared skill validation passed. Includes graph/door/capsule validation, protected candidate fields, failed-stage resume, successful-asset retention, provenance and Play screenshots through normal MCP. |
+| Interactive templates | Actual Blender door/chest/pickup generation, UV/PBR baking, Unity prefabs and UE child Blueprints passed. UE test project contains no template-builder C++ module. Its generator also rebuilt an existing template successfully in a separate project. |
+| Protected regeneration | Custom material, socket, 3.5 m interaction range and native instance identity survive base-mesh and complete two-mesh regeneration. Missing protected Body slot rejects the candidate before native replacement. No loose duplicate moving mesh remains. An additional UE migration case removes v0.7 slot metadata and verifies that an existing component material override survives the first update. |
+| Reuse | Native index, keyword query, annotation, thumbnail and original-reference placement pass. A newly reused door retains its managed identity and is exercised alongside the original in URP and UE. |
+| Scene looks | Warm and moonlit native PNGs captured from fixed presentation cameras. Previous lighting restored. URP Volume and UE PostProcessVolume run in their actual editors; UE uses explicit manual exposure and movable lighting. |
+| Modular levels | Room → staircase → upper room builds with matched ports. Native standing-capsule clearance passes, then fails after a real blocking cube is added, and passes after removal. |
+| Real Play / PIE | Range rejection, interaction events, displaced geometry, closing, pickup, level clearance, runtime errors and before/after screenshots pass. Checks return to Edit mode; editor processes exit with code 0. Behaviors are invoked through their native APIs; physical keyboard input and arbitrary player controllers are not certified by this test. |
+| Hosts | Actual isolated Codex app-server discovers 57 tools and invokes the plugin. Actual Harness bundle/ToolRuntime invocation passes without an LLM request. |
+| Local workbench | New gameplay/level/library panels render; read-only level planning and recorded Play image pairs work in the browser. No observed console warnings/errors. This is not certification of embedded Codex/Harness MCP App UI support. |
+| Portable macOS | Frozen 57-tool MCP server, embedded UI/bridges and actual detached Blender recipe/external-intake jobs pass after the MCP parent exits. |
+
+Unity test frame sampling runs in a batch editor without a continuously rendered Game view; UE uses offscreen PIE. The recorded intervals describe those execution modes and must **not** be converted into expected game FPS or GPU performance. Native Windows editors, shipping builds, older UE `.uasset` compatibility, networked gameplay and NavMesh/controller traversal are not covered.
+
+Actual engine captures: [URP warm](images/development-unity_urp-warm_cartoon.png) / [moonlit](images/development-unity_urp-moonlit.png), [UE warm](images/development-unreal-warm_cartoon.png) / [moonlit](images/development-unreal-moonlit.png). Interaction pairs: [URP before](images/development-unity_urp-play-before.png) / [after](images/development-unity_urp-play-after.png), [UE before](images/development-unreal-play-before.png) / [after](images/development-unreal-play-after.png). They show template assets in test scenes; they are not an aesthetic score or finished game art.
+
+### Reproduce v0.7
+
+```bash
+uv sync --locked
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+uv run python tools/development_smoke.py --project /repo/.local/unity-smoke-EXAMPLE --editor /path/to/Unity
+uv run python tools/development_smoke.py --project /repo/.local/unreal-smoke-EXAMPLE --editor /path/to/UnrealEditor
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /path/to/blender
+```
+
+Use the native scenario once with Built-in and once with URP. It installs the current bridge, starts a fresh test scene and records evidence before exiting the isolated editor. Do not point it at a working game project.
+
 ## v0.6 — recorded on 2026-10-01
 
 Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in and URP 14.0.11, Unreal Editor 5.7.2. The following use real Blender and native editors. The generation fixture returns an existing textured model; it is not an AI model-quality test.

@@ -21,6 +21,7 @@ namespace PromptToScene.Editor
         public string view, frame_id, review_stage;
         public string object_id;
         public bool snap_to_surface;
+        public string development_json;
     }
     [Serializable] public class PreviewFrame
     {
@@ -44,6 +45,7 @@ namespace PromptToScene.Editor
         public string[] created_ids;
         public int changed;
         public AssetMetrics[] metrics;
+        public DevelopmentResult development;
     }
 
     public static class SceneActions
@@ -55,7 +57,7 @@ namespace PromptToScene.Editor
         static Vector3 Vec(float[] v) => new Vector3(v[0], v[1], v[2]);
         static bool Id(string s) => s != null && Regex.IsMatch(s, "^[a-f0-9]{32}$");
         static AssetIdentity[] All => Resources.FindObjectsOfTypeAll<AssetIdentity>().Where(a =>
-            !EditorUtility.IsPersistent(a) && a.gameObject.scene == Scene).ToArray();
+            !EditorUtility.IsPersistent(a) && !a.nestedPart && a.gameObject.scene == Scene).ToArray();
         static AssetIdentity[] Selected => Selection.gameObjects.Select(g => g.GetComponentInParent<AssetIdentity>())
             .Where(a => a != null && a.gameObject.scene == Scene).Distinct().ToArray();
 
@@ -119,7 +121,7 @@ namespace PromptToScene.Editor
                 var result = new SceneResult { request_id = id, scene = SceneKey };
                 try
                 {
-                    if (!Id(id) || new FileInfo(path).Length > 100000 || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                    if (!Id(id) || new FileInfo(path).Length > 512000 || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
                         throw new Exception("Invalid action file");
                     var request = JsonUtility.FromJson<SceneAction>(File.ReadAllText(path));
                     if (request.schema_version != 1 || request.target_engine != "unity" || request.request_id != id)
@@ -150,6 +152,7 @@ namespace PromptToScene.Editor
         static SceneResult Execute(SceneAction a)
         {
             var result = new SceneResult { request_id = a.request_id, scene = SceneKey };
+            if (a.operation == "develop") return DevelopmentActions.Execute(a);
             if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); return result; }
             if (a.operation == "arrange") return SceneLayout.Arrange(a, SceneKey);
             if (a.operation == "select")

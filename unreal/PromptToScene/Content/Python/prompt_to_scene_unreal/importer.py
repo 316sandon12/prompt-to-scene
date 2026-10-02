@@ -1,5 +1,7 @@
 """Native FBX -> one StaticMesh asset and persistent StaticMeshActor instances."""
 
+import json
+
 import unreal
 
 from .materials import build_material
@@ -38,6 +40,17 @@ def import_asset(request, source):
         if unreal.EditorAssetLibrary.does_asset_exist(expected_path)
         else None
     )
+    from . import protection
+
+    preserved = protection.capture(
+        mesh, asset_id, {m["fbx_name"]: m["name"] for m in request["materials"]}
+    )
+    conflicts = protection.conflicts(preserved, [m["name"] for m in request["materials"]])
+    if conflicts:
+        raise ValueError(
+            "; ".join(conflicts)
+            + ". Review the candidate or explicitly remap/clear overrides first."
+        )
     geometry_hash = request.get("geometry_hash", "")
     reuse_geometry = bool(
         geometry_hash
@@ -121,6 +134,20 @@ def import_asset(request, source):
         if name not in materials:
             raise RuntimeError("Unmapped FBX material slot: " + name)
         mesh.set_material(index, materials[name])
+    canonical = {m["fbx_name"]: m["name"] for m in request["materials"]}
+    unreal.EditorAssetLibrary.set_metadata_tag(
+        mesh,
+        "PromptToScene.SlotNames",
+        json.dumps(
+            [canonical[str(s.get_editor_property("imported_material_slot_name"))] for s in slots]
+        ),
+    )
+    unreal.EditorAssetLibrary.set_metadata_tag(
+        mesh,
+        "PromptToScene.GeneratedMaterials",
+        json.dumps([mesh.get_material(i).get_path_name() for i in range(len(slots))]),
+    )
+    protection.restore(mesh, preserved)
     if not reuse_geometry:
         if not static_meshes.remove_collisions(mesh):
             raise RuntimeError("Could not clear generated collision")
@@ -167,6 +194,14 @@ def import_asset(request, source):
         for actor in actors.get_all_level_actors()
         if actor.get_level() == level and tag in [str(t) for t in actor.tags]
     ]
+    part_tag = "PTS.Part:" + asset_id
+    part_owners = [
+        actor
+        for actor in actors.get_all_level_actors()
+        if actor.get_level() == level and part_tag in map(str, actor.tags)
+    ]
+    if not instances and part_owners:
+        instances = part_owners
     created = not instances
     with unreal.ScopedEditorTransaction("Prompt-to-Scene: place/update " + asset_id):
         if not instances:
@@ -186,9 +221,15 @@ def import_asset(request, source):
             if not isinstance(actor, unreal.StaticMeshActor):
                 raise RuntimeError("An asset identity is attached to a non-StaticMeshActor")
             actor.modify()
-            component = actor.static_mesh_component
+            component = (
+                actor.get_editor_property("MovingMesh")
+                if actor in part_owners
+                else actor.static_mesh_component
+            )
             component.modify()
             component.set_static_mesh(mesh)
+            if actor in part_owners:
+                continue
             tags = [str(t) for t in actor.tags if not str(t).startswith("PTS.Revision:")]
             if tag not in tags:
                 tags.append(tag)
@@ -198,6 +239,10 @@ def import_asset(request, source):
         from .actions import focus
 
         focus(instances)
+    if any(any(str(t).startswith("PTS.Interaction:") for t in a.tags) for a in instances):
+        from .development import enable_collision
+
+        enable_collision(mesh)
     # Asset packages are saved; the user's level stays dirty until they save it.
     extent = mesh.get_bounds().box_extent
     triangles = mesh.get_num_triangles(0)

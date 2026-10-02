@@ -2,11 +2,11 @@
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
-[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [v0.6 workbench guide](docs/WORKBENCH.zh-CN.md) · [Verified results](docs/verification.md)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [v0.7 guide](docs/DEVELOPMENT.zh-CN.md) · [Verified results](docs/verification.md)
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.6 is experimental and targets static opaque props. Install Blender, an engine editor and a working AI client first. The local workshop also prepares existing models and operates the library without an LLM.
+> v0.7 is experimental and targets opaque props, three interaction templates and modular blockouts. Install Blender, an engine editor and a working AI client first. The local workshop also works without an LLM.
 
 ![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 
@@ -27,6 +27,21 @@ Keep the editor open outside Play mode. Restart UE once after installing the bri
 Or choose a prop in **创作工作台 / Workshop**, compare candidates and publish your favorite. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
 
 Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
+
+## v0.7: build, reuse and test a playable scene
+
+| Feature | Implemented behavior |
+| --- | --- |
+| Interactive props | Beveled, textured door/chest/pickup templates; separate moving geometry; Unity prefab components and UE child Blueprints. Range checks, aim-and-E demo input and project event hooks. |
+| Protected updates | Preserve native material assignments, interaction settings, root attachments and instance identity. Preview missing-slot conflicts before publication; incompatible updates stop before replacing native content. |
+| Scene looks | Four lighting/sky/color presets, a fixed presentation camera, native comparisons and restoration of saved lighting. Built-in, URP and UE adapters. |
+| Modular levels | Rooms, corridors and stairs with matched ports, connected graphs, dimensional validation and native sampled capsule clearance. Staged replacement keeps the old blockout if validation fails. |
+| Real play checks | Enter Unity Play / UE PIE, exercise interactions and clearance, capture before/after, measure actual frame intervals, collect runtime errors and return to Edit mode. |
+| Project asset reuse | Search local models, prefabs and compatible Blueprints by name/tags/size; native thumbnails, original-reference placement and source/license annotations. |
+
+Try **“Make an interactive wooden door, apply a warm scene look and check that it opens in Play mode”**, or **“Find an existing chest in this project before generating another one.”** Workbench tabs: **玩法 / 关卡 / 素材库**, with scene looks in **视觉**. [Complete guide](docs/DEVELOPMENT.zh-CN.md).
+
+UE users need no C++ compiler. The shipped Blueprint template was saved with UE 5.7.2 and must remain available through the plugin's content. This is template instantiation, not arbitrary Blueprint generation. Levels are blockouts, not NavMesh/controller traversal guarantees. Asset search uses keywords, not image embeddings. Play measurements describe the current editor/machine.
 
 ## v0.6: one workbench, six workflow improvements
 
@@ -62,7 +77,7 @@ Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 m
 | Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
 | Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-These features are available through both AI hosts and the local workshop. The MCP server exposes 47 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
+These features are available through both AI hosts and the local workshop. The MCP server exposes 57 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
 
 ## Refine by conversation
 
@@ -88,7 +103,7 @@ Background jobs, exact-request receipts, cancellation, source history and engine
 
 Static meshes, opaque PBR, Unity Built-in/URP, and UE native Static Mesh assets. Custom shapes use AI-authored Blender Python or existing GLB/glTF, FBX and Blender files. Each revision retains source/provenance and reports geometry/material/UV/budget checks.
 
-Automatic baking covers recipe surfaces and common opaque Principled PBR graphs. Mixed shaders, transparency, emission, rigs/animation, HDRP and Blueprint generation are outside this release. Image-to-3D requires an optional external provider; no inference model is bundled. Shape error uses bidirectional surface sampling, not a guaranteed maximum distance; inspect textures and silhouettes. Collision is approximate: UE falls back to a native 26-DOP convex hull with an explicit warning if decomposition produces no hulls. Recipe candidates are deterministic structural alternatives; service candidates depend on the provider. Layout supports upright yaw with conservative oriented bounds, not exact concave collision. Reports do not score beauty. Generated Python is trusted local code.
+Automatic baking covers recipe surfaces and common opaque Principled PBR graphs. Mixed shaders, transparency, emission, skeletal rigs/animation, HDRP and arbitrary Blueprint generation are outside this release. Image-to-3D requires an optional external provider; no inference model is bundled. Shape error uses bidirectional surface sampling, not a guaranteed maximum distance; inspect textures and silhouettes. Collision is approximate: UE falls back to a native 26-DOP convex hull with an explicit warning if decomposition produces no hulls. Recipe candidates are deterministic structural alternatives; service candidates depend on the provider. Layout supports upright yaw with conservative oriented bounds, not exact concave collision. Reports do not score beauty. Generated Python is trusted local code.
 
 [Asset contract](docs/asset-contract.md) · [Unreal details](docs/unreal.md) · [Authoring walkthrough in Chinese](docs/AUTHORING.zh-CN.md)
 

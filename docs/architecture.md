@@ -49,8 +49,12 @@ Explicit `PTS_PROJECT` / legacy `PTS_UNITY_PROJECT` settings override the active
 | `set_art_brief`, `get_art_reference`, `review_quality`, `repair_quality` | Persistent art references, native diagnostics and bounded same-camera repair loops. |
 | `inspect_performance`, `apply_usage_preset` | Real geometry/material/LOD measurements and explicit use-case preparation. |
 | `list_generation_providers`, `generate_model` | Optional Meshy/self-hosted candidates through the normal preparation pipeline. |
+| `create_interactive_prop`, `configure_interaction` | Retained door/chest/pickup workflows and native component/Blueprint configuration. |
+| `protect_asset`, `review_asset_update` | Canonical material overrides, root sockets and pre-publication conflict checks. |
+| `set_scene_look`, `build_level`, `run_playcheck` | Owned presentation rigs, connected blockouts and bounded real Play/PIE checks. |
+| `search_project_assets`, `reuse_project_asset`, `tag_project_asset` | Local native indexing, keyword ranking, preview, reuse and provenance annotations. |
 
-There are 47 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
+There are 57 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
 
 The separate schema 1 action queue supports selection, transforms, tint, focus, contextual arrangement, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
 
@@ -110,6 +114,16 @@ Unity renders the current managed objects through a temporary camera/light into 
 
 Supported materials and geometry are described in the [asset contract](asset-contract.md). Python is trusted local code, not a sandbox. Import errors can leave partially updated engine assets; backups, source history and edit snapshots do not provide whole-project rollback. Native operations stay on the editor thread.
 
+
+## v0.7 native development workflows
+
+The `develop` action carries a validated JSON command inside the existing action queue. It handles native interactions, material/attachment protection, presentation rigs, modular levels, library indexing and Play checks. Long Play/PIE and screenshot actions own their original request until a final receipt; other editor operations wait while the runtime check owns the scene. The importer preflights canonical material-slot conflicts before replacing generated content. Unity additionally checks renderer names from the schema-2 `object_names` field.
+
+Interactive workflows retain base/moving Blender builds and the final native configuration task. Resume reuses completed stages and retries failed/cancelled stages. Stable semantic mesh names support protected renderer bindings. Automatic Blender-to-FBX hinge conversion was measured as Unity `(-x,z,-y)` and UE `(-y,-x,z)`; native command positions still use each engine's XYZ meters.
+
+Unity runtime behaviors live outside the Editor assembly. UE ships an engine-only parent Blueprint and configures reusable child Blueprint component templates; its maintainer C++ graph builder is not installed. Runtime automation enters native Play/PIE, calls the actual behavior, checks geometry displacement/range/closing/pickup, samples frame intervals and returns to Edit before writing completion. A completed receipt can have `development.passed=false`. Source and native state remain distinct; no whole-project transaction is claimed.
+
+Level planning checks a port graph before queuing bounded native cubes. Native standing-capsule samples include stair heights and ignore obstacles under the configured step allowance. This is not NavMesh or full controller traversal. Project asset indexing is bounded to 2,000 entries; keyword ranking and saved annotations are portable, while thumbnails and original-reference placement stay native.
 
 ## v0.6 workflows and optional UI
 

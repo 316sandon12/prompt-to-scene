@@ -303,6 +303,7 @@ def action(project, operation, *, asset_id=None, scope="selected", values=None, 
         "analyze",
         "ground",
         "select",
+        "develop",
     }:
         raise ValueError("Unknown editor action")
     if scope not in {"selected", "asset"}:
@@ -326,6 +327,7 @@ def action(project, operation, *, asset_id=None, scope="selected", values=None, 
         "review_stage",
         "object_id",
         "snap_to_surface",
+        "development_json",
     }:
         raise ValueError("Unknown edit field")
     if "view" in values and values["view"] not in {"studio", "front", "back"}:

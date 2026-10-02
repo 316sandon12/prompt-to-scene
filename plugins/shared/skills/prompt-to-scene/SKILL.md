@@ -1,6 +1,6 @@
 ---
 name: prompt-to-scene
-description: Create styled Blender props or prepare external models for Unity and Unreal with Prompt-to-Scene. Use the workbench, optional generation providers, native quality/performance checks, external part edits, and furnished scene layouts.
+description: Build and revise Blender props, interactive templates and modular blockouts in Unity or Unreal through Prompt-to-Scene. Also use for native Play checks, project asset reuse and scene look presets.
 ---
 
 Use the supplied Prompt-to-Scene tools. Codex and DeepSeek Harness share project records, recipes, source history and art direction; another client's chat history is not needed.
@@ -57,6 +57,20 @@ When a concrete appearance issue can be fixed within the user's request, `repair
 
 `inspect_performance` returns real editor triangles, vertices, material slots, texture counts and LOD data. Resume queued checks with their request ID. `apply_usage_preset` prepares for mobile_prop, scene_prop or hero_prop. Texture sizes are RGBA8+mip estimates; draw calls, FPS and compressed VRAM require the engine profiler. Excess material slots are recommendations, not an automatic atlas fix.
 
+## Interactive assets, levels and real play checks
+
+`create_interactive_prop` builds a door, chest or pickup with baked PBR, separate moving geometry and native interaction. Poll its workflow ID until completed. Unity gets an editable prefab and `Interaction.TryInteract(worldPosition)` in meters; UE gets a reusable child Blueprint with `TryInteract(WorldPosition)` in centimeters and `OnInteracted`. Optional demo input is aim and E. These are three templates, not general game-logic or arbitrary Blueprint generation. Use `configure_interaction` for a specific range/angle or existing separate base/moving meshes. Pivots and offsets use the target engine's local axes in meters; do not infer them from Blender coordinates without checking the import.
+
+Recreating the same interactive ID keeps range/input/open-angle settings. `protect_asset` inspects or sets canonical material assignments and named root attachment points. Geometry inside generated Visual/mesh content remains managed. `review_asset_update` checks a retained candidate's material slots and Unity renderer names before publication; a missing protected binding blocks import. Resolve by explicit remapping/clearing, not by silently dropping the user's material. Native asset identity, instance transforms and supported root settings remain stable after a successful update.
+
+`set_scene_look` applies warm_cartoon, cool_scifi, moonlit or neutral lighting, sky and color grading. First placement establishes a fixed presentation camera. Capture before and after preset changes with `mode="capture"`; `mode="restore"` restores the saved previous lighting. This changes the loaded scene and cannot guarantee a match across render pipelines. Inspect actual screenshots.
+
+`build_level(mode="plan")` returns a read-only grid plan of room/corridor/stair modules. Build validates matching ports, graph connectivity, door dimensions and sampled native capsule clearance; a blocker causes the staged creation to be discarded. `mode="check"` rechecks the current generated level against surrounding geometry. This is a modular blockout, not NavMesh generation, arbitrary floor-plan inference or a controller traversal guarantee.
+
+`run_playcheck` intentionally enters real Unity Play or UE PIE and returns to Edit mode. Poll that request; do not tell the user to leave Play during a running check. Read `development.passed` and individual assertions, not only `status="completed"`. It exercises range rejection, interaction count, opening/closing or pickup, level clearance, runtime errors, captures and real frame intervals. `get_preview(request_id)` returns the after screenshot; `view="before"` returns the initial image. Editor frame samples are machine-specific measurements, not target-platform FPS promises. Arbitrary project scripts execute when entering Play; run it only when the user's requested test covers this.
+
+Before generating a duplicate, `search_project_assets` can index local models/prefabs/compatible Blueprints. Wait for its request then call it again with the same `request_id` and query to rank results. Search uses names, tags, bilingual keyword aliases and optional size, not visual embeddings. `reuse_project_asset(mode="preview")` captures a native thumbnail; `mode="place"` places the original asset reference. `tag_project_asset` stores notes, tags, declared source and license. Preserve verified provenance and leave unknown licenses unknown.
+
 ## Optional provider generation
 
 Use `list_generation_providers` before `generate_model`. Meshy or the configured self-hosted adapter can supply textured GLB candidates from text or 1–4 PNG/JPEG references; Blender then prepares them through the same pipeline. Defaults create isolated previews. Compare them and use `publish_prepared` to publish the chosen candidate. Keep the workflow ID distinct from each candidate's build ID.
@@ -67,7 +81,7 @@ Resume an interrupted multi-step task with `resume_workflow`. Saved provider IDs
 
 ## Finish and recover
 
-Builds return immediately. Wait through building/queued using the exact `request_id` and `wait_seconds` up to 30. Report import success only for that request. Two Blender slots per project limit batch resource usage. A client wait timeout does not stop the worker. An offline editor needs to open/leave Play mode; preserve its queued task.
+Builds return immediately. Wait through building/queued using the exact `request_id` and `wait_seconds` up to 30. Report import success only for that request. Two Blender slots per project limit batch resource usage. A client wait timeout does not stop the worker. An offline editor needs to open/leave Play mode for imports; preserve its queued task. A running play check owns the temporary Play session and exits it itself.
 
 Repair actionable script/material errors at most twice within the user's scope. After two unsuccessful repairs report the diagnostic. Do not regenerate for an offline editor, install unrelated dependencies, alter host approval settings, or rely on an old receipt. Native import already executing may finish despite cancellation; check the final receipt.
 

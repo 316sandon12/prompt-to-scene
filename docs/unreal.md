@@ -2,7 +2,7 @@
 
 For v0.4, the [setup app](QUICKSTART.zh-CN.md) installs and enables this bridge automatically. The steps below remain available for manual installation. The current release also supports art direction, baked PBR, semantic parts, contextual arrangement, draft selection, preview and source restore; see the [tool contract](architecture.md).
 
-The v0.2 adapter targets Unreal Editor 5.7. It is a content-only Python plugin with no compiled module or third-party Python dependencies. The native assets remain usable when the plugin is disabled; automation itself is editor-only.
+The adapter targets Unreal Editor 5.7. It is a content-only Python plugin with no compiled module or third-party Python dependencies. Ordinary static assets remain usable without automation. v0.7 interactive child Blueprints depend on the shipped `/PromptToScene/Templates/BP_PTSInteraction` parent, so retain the plugin content when using them. Python automation is editor-only; template runtime behavior uses ordinary engine Blueprint nodes.
 
 ## Install and use
 
@@ -33,9 +33,13 @@ The adapter explicitly selects Unreal's FBX factory, keeping the import options 
 
 Base color stays scene-linear. Metallic and roughness are scalar Default Lit inputs. Base-color textures use sRGB. Normal maps disable sRGB, use normal-map compression and flip the green channel for Blender's OpenGL-to-Unreal's DirectX convention. A generated normal graph applies the supplied strength. These graphs belong to the bridge.
 
-All meshes in `Export` are combined into one Static Mesh. The adapter optionally replaces its simple collision with one box. No skeletal meshes, automatic Blueprints, Nanite authoring or LOD generation are included.
+All meshes in `Export` are combined into one Static Mesh. Preparation supports native LODs and box/convex/no collision. Interactive templates use separate base and moving meshes, with complex-as-simple collision and one reusable child Blueprint. This does not generate arbitrary Blueprint graphs, skeletal meshes or Nanite settings.
 
 ## Updates and identity
+
+v0.7 creates editable door/chest/pickup child Blueprints. Call `TryInteract(WorldPosition)` in native centimeters, or use the optional aim-and-E demo input; hook project behavior through `OnInteracted`. The inherited component templates keep moving meshes available when placing a new Blueprint instance from Content Browser. Reconfiguration preserves explicitly protected materials and regeneration keeps interaction parameters. See [the development guide](DEVELOPMENT.zh-CN.md).
+
+The shipped `.uasset` was saved with UE 5.7.2. Older engine asset compatibility and shipping builds are unverified. The maintainer-only generator in `tools/blueprint_templates` is excluded from the installed plugin and is unnecessary for end users.
 
 The same asset ID keeps the same asset paths. Existing StaticMeshActors in the current level are located by the `PTS.Asset:<id>` tag and reused. Their GUID, transform, label and non-bridge tags are retained; manually duplicated instances are retained too. A `PTS.Revision:<request_id>` tag records the applied revision. Keep these identity tags for updates.
 

@@ -42,6 +42,7 @@ namespace PromptToScene.Editor
         public TransferFile[] files;
         public LodData[] lods;
         public string collision_mode, geometry_hash;
+        public string[] object_names;
     }
     [Serializable] public class ImportReceipt
     {
@@ -67,7 +68,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
-        public string bridge_version = "0.5.0";
+        public string bridge_version = "0.7.0";
         public string engine = "unity";
         public string pipeline;
         public string scene;
@@ -218,6 +219,9 @@ namespace PromptToScene.Editor
             var overrides = SceneActions.RememberTints(request.asset_id);
             string prefabPath = target + "/" + request.asset_id + ".prefab";
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            var protectedState = SceneProtection.Capture(request.asset_id, prefab);
+            var conflicts = SceneProtection.Conflicts(protectedState, request.materials.Select(m=>m.name).ToArray(), request.object_names);
+            if(conflicts.Length>0) throw new Exception(string.Join("; ", conflicts) + ". Review the update or explicitly remap/clear these overrides first.");
             bool existing = prefab != null;
             bool reuseGeometry = existing && !string.IsNullOrEmpty(request.geometry_hash)
                 && prefab.GetComponent<AssetIdentity>()?.geometryHash == request.geometry_hash
@@ -362,6 +366,10 @@ namespace PromptToScene.Editor
                         }
                     }
                 }
+                SceneProtection.RegisterSlots(visual);
+                if(root.GetComponent<Interaction>() || Resources.FindObjectsOfTypeAll<AssetIdentity>().Any(a=>a.nestedPart && a.assetId==request.asset_id)) DevelopmentActions.AddMeshColliders(visual);
+                collisionCount = root.GetComponentsInChildren<Collider>().Length;
+                if(existing) SceneProtection.Restore(root,protectedState[0].bindings);
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             }
             finally
@@ -371,6 +379,7 @@ namespace PromptToScene.Editor
             }
             AssetDatabase.SaveAssets();
             SceneActions.RestoreTints(overrides);
+            foreach(var snapshot in protectedState.Where(s=>s.root!=prefab && s.root)) SceneProtection.Restore(snapshot.root,snapshot.bindings);
             var instances = Resources.FindObjectsOfTypeAll<AssetIdentity>().Where(a =>
                 !EditorUtility.IsPersistent(a) && a.gameObject.scene.IsValid() &&
                 a.gameObject.scene == scene && a.assetId == request.asset_id).ToArray();

@@ -63,13 +63,13 @@
   function textNode(tag, text) { const node = document.createElement(tag); node.textContent = text; return node; }
   function humanStatus(status) { return {building:"处理中", queued:"等待编辑器", completed:"已完成", imported:"已导入", error:"需要处理", cancelled:"已取消", superseded:"已被新版替代"}[status] || status; }
   async function waitAction(task) {
-    for (let i = 0; i < 45; i++) {
+    for (let i = 0; i < 125; i++) {
       if (["completed", "imported"].includes(task.status)) return task;
       if (["error", "cancelled", "unknown", "superseded"].includes(task.status)) throw Error(task.error || humanStatus(task.status));
       await new Promise(resolve => setTimeout(resolve, 800));
       task = await call("task", {request_id:task.request_id});
     }
-    notice("编辑器仍在等待。打开项目、退出播放模式后可重新读取结果。");
+    notice("任务仍在运行。请保持编辑器打开，可在任务卡查看进度；试玩检查会自动返回编辑模式。");
     return task;
   }
   async function showImage(values, caption, append = false) {
@@ -106,7 +106,8 @@
   function render(state) {
     snapshot = state;
     $("version").textContent = "v" + state.version;
-    $("connection").textContent = state.target ? `${state.target.engine || ""} · ${state.active}` : (state.connection_message || "尚未连接项目，请先打开连接与设置。");
+    $("connection").textContent = state.target ? `${state.target.engine || ""} · ${(state.active || "").split(/[/\\]/).filter(Boolean).pop()}` : (state.connection_message || "尚未连接项目，请先打开连接与设置。");
+    $("connection").title=state.active || "";
     const selected = $("asset").value, assets = state.assets || [];
     $("asset").replaceChildren(option("", "选择已导入的资产"), ...assets.map(asset => option(asset.asset_id, asset.asset_id)));
     if (assets.some(a => a.asset_id === selected)) $("asset").value = selected;
@@ -120,11 +121,14 @@
     $("tasks").dataset.signature = signature; $("tasks").replaceChildren();
     for (const task of state.tasks || []) {
       const card = document.createElement("article"); card.className = "card";
-      card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.asset_id || task.kind || "任务"), textNode("p", task.error || task.stage || ""));
+      const commandNames={interaction:"交互配置",protection:"保留设置",update_review:"更新预检",look:"场景风格",level:"模块关卡",playcheck:"试玩检查",library:"项目素材"};
+      const summary=task.status==="imported"?"原生资产已导入。":task.development?.command==="playcheck"&&task.status==="completed"?(task.development.passed?"试玩检查通过，已回到编辑模式。":"检查完成，有项目未通过。请查看详情。"):task.error || task.stage || task.development?.message || "";
+      card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.asset_id || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
       card.append(button("查看详情", () => { output(task); return task; }));
       if (task.kind && ["error","cancelled"].includes(task.status)) card.append(button("恢复", () => call("resume", {request_id:task.request_id})));
       if (["building","queued"].includes(task.status)) card.append(button("取消", () => call("cancel", {request_id:task.request_id})));
       if (task.kind === "quality" && task.status === "completed") card.append(button("查看前后对照", () => showReview(task)));
+      if (task.development?.command === "playcheck" && task.status === "completed" && task.development.screenshots?.length) card.append(button("查看试玩前后", async () => {await showImage({kind:"play_before",request_id:task.request_id},"交互前");await showImage({kind:"engine",request_id:task.request_id},"交互后",true);return task;}));
       if (task.undo_id) card.append(button("撤销布置", () => call("undo", {undo_id:task.undo_id})));
       const candidates = task.candidates || (task.preview_only && task.status === "completed" ? [{asset_task:task,result:task}] : []);
       candidates.forEach((candidate, index) => {
@@ -190,6 +194,71 @@
     $("metrics").replaceChildren(table, textNode("p",`${result.recommendations.length} 项建议；不据此推算 FPS 或 Draw Call。`)); return result;
   });
   bind("optimize", () => submitted("optimize", {asset_id:requiredAsset(),preset:$("usage").value}));
+  function vectorInput(name, fallback = [0,0,0]) {
+    const text = $(name).value.trim(); if (!text) return fallback;
+    const values = text.split(/[,，\s]+/).map(Number);
+    if (values.length !== 3 || values.some(v => !Number.isFinite(v))) throw Error("位置需要三个有限数字。");
+    return values;
+  }
+  async function native(actionName, values, panel) {
+    const result = await waitAction(await call(actionName, values));
+    if (result.status !== "completed") return result;
+    const data = result.development || {};
+    if (panel) {
+      const content = [];
+      if (data.command === "playcheck") {
+        content.push(textNode("h3", data.passed ? "试玩检查通过" : "有检查未通过"));
+        for (const check of data.checks || []) content.push(textNode("p", `${check.passed ? "✓" : "✕"} ${check.asset_id} · ${check.check}${check.detail ? " · " + check.detail : ""}`));
+        content.push(textNode("p", `${data.frames || 0} 帧 · 平均 ${(data.mean_frame_ms || 0).toFixed(1)} ms · P95 ${(data.p95_frame_ms || 0).toFixed(1)} ms。仅代表当前编辑器和电脑。`));
+        if (data.screenshots?.length) {
+          await showImage({kind:"play_before",request_id:result.request_id}, "试玩前 · 同一机位");
+          await showImage({kind:"engine",request_id:result.request_id}, "执行交互后", true);
+        }
+      } else if (data.command === "protection") {
+        for (const b of data.bindings || []) content.push(textNode("p", `${b.slot} → ${b.material_path}`));
+        for (const s of data.sockets || []) content.push(textNode("p", `挂点 ${s.name} · ${(s.position || []).join(", ")}`));
+        if (!content.length) content.push(textNode("p", "当前没有自定义材质覆盖或挂点。"));
+      } else if (data.command === "level") {
+        content.push(textNode("p", data.passed ? `净空通过 · ${data.module_count || 0} 个模块 · ${data.samples || 0} 个检查位置` : (data.conflicts || []).join("、") || "操作已完成"));
+      }
+      $(panel).replaceChildren(...content);
+    }
+    notice(data.command === "playcheck" ? (data.passed ? "试玩检查完成，已返回编辑模式。" : "试玩发现需要处理的项目，请查看检查结果。") : "操作已完成。", data.command === "playcheck" && !data.passed);
+    return result;
+  }
+  bind("createInteractive", () => submitted("interactive", {kind:$("interactionKind").value,asset_id:id($("interactionName").value,$("interactionKind").value),position:vectorInput("interactionPosition")}));
+  bind("inspectProtection", () => native("protection", {asset_id:requiredAsset()}, "protectionSummary"));
+  bind("saveMaterialOverride", () => native("protection", {asset_id:requiredAsset(),mode:"set",bindings:[{slot:$("protectedSlot").value.trim(),material_path:$("protectedMaterial").value.trim()}]}, "protectionSummary"));
+  bind("saveSocket", () => native("protection", {asset_id:requiredAsset(),mode:"set",sockets:[{name:$("socketName").value.trim(),position:vectorInput("socketPosition")}]}, "protectionSummary"));
+  bind("playcheck", () => native("playcheck", {asset_ids:[requiredAsset()]}, "playcheckSummary"));
+  bind("applyLook", () => native("look", {preset:$("sceneLook").value}));
+  bind("captureLook", async () => {const result=await native("look",{mode:"capture"});if(result.status==="completed")await showImage({kind:"engine",request_id:result.request_id},"当前场景 · 展示机位");return result;});
+  bind("restoreLook", () => native("look", {mode:"restore"}));
+  function levelValues(mode) {
+    const room=cell=>({cell,kind:"room"}), corridor=(cell,direction=2)=>({cell,kind:"corridor",direction});
+    const modules=$("levelPreset").value==="stairs" ? [room([0,0,0]),{cell:[0,1,0],kind:"stair",direction:2},room([0,2,1])] : $("levelPreset").value==="corner" ? [room([0,0,0]),corridor([0,1,0]),room([0,2,0]),corridor([1,2,0],1),room([2,2,0])] : [room([0,0,0]),corridor([0,1,0]),room([0,2,0])];
+    return {level_id:$("levelName").value.trim(),mode,...(["build","plan"].includes(mode)?{modules,position:vectorInput("levelPosition",[20,0,0]),door_width:Number($("levelDoorWidth").value),player_height:Number($("levelPlayerHeight").value)}:{})};
+  }
+  bind("planLevel", async () => {const plan=await call("level",levelValues("plan"));$("levelSummary").replaceChildren(textNode("p",`计划：${plan.module_count} 个模块、${plan.connections.length} 个连接口、${plan.boxes.length} 块几何。可在搭建后检查实际净空。`));return plan;});
+  bind("buildLevel", () => native("level", levelValues("build"), "levelSummary"));
+  bind("checkLevel", () => native("level", levelValues("check"), "levelSummary"));
+  bind("removeLevel", () => native("level", levelValues("remove"), "levelSummary"));
+  bind("playLevel", () => native("playcheck", {level_id:$("levelName").value.trim()}, "levelSummary"));
+  bind("searchLibrary", async () => {
+    const indexed=await waitAction(await call("library",{query:$("libraryQuery").value}));if(indexed.status!=="completed")return indexed;
+    const result=await call("library",{request_id:indexed.request_id,query:$("libraryQuery").value,limit:12});$("libraryResults").replaceChildren();
+    for(const entry of result.development?.entries || []) {
+      const card=document.createElement("article");card.className="card";
+      card.append(textNode("h3",entry.name),textNode("small",entry.path),textNode("p",`${(entry.size || []).map(v=>v.toFixed(2)).join(" × ")} m · ${entry.triangles || 0} 三角面`),textNode("p",entry.license || "许可证待确认"));
+      card.append(button("预览",async()=>{const task=await waitAction(await call("reuse",{path:entry.path,mode:"preview"}));if(task.status==="completed"){const data=await call("image",{kind:"engine",request_id:task.request_id});let img=card.querySelector("img");if(!img){img=document.createElement("img");card.prepend(img);}img.alt=entry.name;img.src=data.url;}return task;}));
+      card.append(button("放入场景",()=>native("reuse",{path:entry.path,position:vectorInput("libraryPosition")})));
+      card.append(button("编辑说明",()=>{$("libraryPath").value=entry.path;$("libraryTags").value=(entry.tags || []).join(", ");$("libraryNotes").value=entry.notes || "";$("libraryLicense").value=entry.license?.startsWith("Unknown")?"":entry.license || "";$("librarySource").value=entry.source || "";$("libraryPath").closest("details").open=true;}));
+      $("libraryResults").append(card);
+    }
+    if(!result.development?.entries?.length)$("libraryResults").append(textNode("p","没有匹配项。可换一个关键词，或为现有资源补充标签。"));
+    notice(result.development?.truncated?"当前索引到 2,000 个资源；大型项目可先按文件夹整理再查找。":"项目素材已读取。");return result;
+  });
+  bind("tagLibrary", () => call("tag",{path:$("libraryPath").value,tags:$("libraryTags").value.split(/[,，]/).map(t=>t.trim()).filter(Boolean),notes:$("libraryNotes").value,license:$("libraryLicense").value,source:$("librarySource").value}));
   if (!embedded) {
     $("setupLink").href = "/#" + token;
     for (const [control,target,kind] of [["pickSource","sourcePath","asset"],["pickReference","referencePath","reference"],["pickGenerationImage","generationImages","reference"],["pickReplacement","replacementPath","asset"]]) bind(control, async () => { const chosen=await local("pick",{kind}); if(chosen.path) $(target).value=chosen.path; });

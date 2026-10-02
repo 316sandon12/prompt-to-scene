@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 — 2026-10-03
+
+- Door/chest/pickup templates with retained Blender source, beveled geometry, baked wood PBR, separate moving meshes, native Unity interaction components and reusable UE child Blueprints. No user C++ compilation.
+- Preserve interaction settings, custom material assignments and root attachment points across regeneration. Canonical slot preflight rejects incompatible imports; moving parts update without loose duplicate instances.
+- Four scene looks with native lighting, sky, color grading, a fixed comparison camera and restoration of saved lighting state.
+- Room/corridor/stair blockouts with connected ports, dimension checks, staged replacement and native sampled player capsule clearance.
+- Real Play/PIE checks for interaction range, events, geometry movement, closing, pickup, clearance, screenshots, runtime errors and measured frame intervals. Automatic return to Edit mode and cooperative cancellation.
+- Local project asset indexing, keyword/size ranking, native thumbnails, original-reference placement and source/license annotations.
+- Workbench gameplay/level/library tabs, native action task cards and 57 MCP tools shared by Codex and DeepSeek Harness.
+
+Update the app, host plugin and engine bridge together. UE's content template was saved with 5.7.2; older UE asset compatibility is unverified. Templates do not implement arbitrary game logic, networking or inventory. Blockouts do not generate NavMesh. Play frame samples are editor measurements, not shipping-platform benchmarks.
+
+## 0.6.0 — 2026-10-01
+
+- Unified local/MCP App workbench, furnished scene kits and saved layouts, art-reference review with bounded repairs, external part editing and bake reuse, usage presets and optional Meshy/self-hosted generation. See the v0.6 verification record for host/editor/package evidence.
+
 ## 0.5.0 — 2026-09-30
 
 - Local GLB/glTF, FBX and Blender intake; Poly Haven CC0 search, credited downloads, bounded dependency packages and retained provenance.
