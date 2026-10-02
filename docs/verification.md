@@ -16,6 +16,8 @@ Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built
 | Hosts | Actual isolated Codex app-server discovers 57 tools and invokes the plugin. Actual Harness bundle/ToolRuntime invocation passes without an LLM request. |
 | Local workbench | New gameplay/level/library panels render; read-only level planning and recorded Play image pairs work in the browser. No observed console warnings/errors. This is not certification of embedded Codex/Harness MCP App UI support. |
 | Portable macOS | Frozen 57-tool MCP server, embedded UI/bridges and actual detached Blender recipe/external-intake jobs pass after the MCP parent exits. |
+| Windows/macOS portable CI | Both builds, 151 tests per OS and frozen MCP/setup/bridge checks passed in [release workflow 37040814681](https://github.com/316sandon12/prompt-to-scene/actions/runs/37040814681). |
+| Public release downloads | Both ZIP SHA-256 values matched. The downloaded macOS app passed signature verification, 57-tool discovery, Unity/UE bridge installation, setup UI and actual detached Blender recipe/external-intake jobs. Windows executable checks passed in CI. |
 
 Unity test frame sampling runs in a batch editor without a continuously rendered Game view; UE uses offscreen PIE. The recorded intervals describe those execution modes and must **not** be converted into expected game FPS or GPU performance. Native Windows editors, shipping builds, older UE `.uasset` compatibility, networked gameplay and NavMesh/controller traversal are not covered.
 
