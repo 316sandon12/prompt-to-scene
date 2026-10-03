@@ -1,6 +1,6 @@
 ---
 name: prompt-to-scene
-description: Build and revise Blender props, interactive templates and modular blockouts in Unity or Unreal through Prompt-to-Scene. Also use for native Play checks, project asset reuse and scene look presets.
+description: Build and revise Blender props, interactive templates and modular blockouts in Unity or Unreal through Prompt-to-Scene. Also use for native Play checks, project asset reuse, automatic asset naming/classification and scene look presets.
 ---
 
 Use the supplied Prompt-to-Scene tools. Codex and DeepSeek Harness share project records, recipes, source history and art direction; another client's chat history is not needed.
@@ -8,6 +8,14 @@ Use the supplied Prompt-to-Scene tools. Codex and DeepSeek Harness share project
 ## Workbench and connection
 
 `open_workbench` exposes an optional MCP App with task cards, selection and real previews. Hosts without MCP Apps still use every normal tool or the local app. Do not promise that Codex/Harness necessarily renders an embedded UI just because its tools work. The local app contains no separate chat model. Use the current client's understanding and vision.
+
+## Organize existing project assets
+
+For naming/classifying Assets or /Game, use `organize_project_assets`: `scan` (optionally a folder), poll its request, then `plan(scan_id=request_id)`. The plan lists exact old/new paths, categories, skipped reasons and collision numbering. Default rules group by type and add consistent prefixes; `group_by="source"` keeps relative source groups. `rename=false` only groups. Use `settings.overrides={old_path:meaningful_name}` for semantic names inferred from user context; the tool itself uses native types, filenames and texture roles, not image recognition.
+
+Apply the saved `plan_id` and poll that request. An explicit request to organize authorizes doing so; do not add another approval step unless the user requested a preview or an unresolved choice would alter scope. Honor exclusions and naming conventions. Do not bypass skipped folders/types: runtime loading paths, generated revisions and script/config resources may depend on them. Arbitrary code/config string paths are not rewritten.
+
+Inspect the saved plan after completion. `history` retrieves recent plans, `inspect` paginates rows, and `undo` restores native paths without deleting asset content. A stale preview or occupied destination stops before replacement. Failed/cancelled applies attempt to restore completed moves; inspect `organization_status` and errors. After an interrupted editor, use the saved plan's undo to recover; do not resubmit unrelated plans or claim an unfinished batch completed. UE keeps required redirectors. Asset files are saved; this is not whole-project or scene-content rollback.
 
 ## Connect and inherit the project's design
 

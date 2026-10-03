@@ -11,6 +11,7 @@ from . import (
     development,
     generation,
     levels,
+    organization,
     parts,
     performance,
     project_library,
@@ -99,6 +100,7 @@ def dispatch(action, values=None):
         "library": lambda **v: project_library.search(None, **v),
         "reuse": lambda **v: project_library.reuse(None, **v),
         "tag": lambda **v: project_library.annotate(None, **v),
+        "organize": lambda **v: organization.organize(None, **v),
         "publish": lambda **v: sources.publish(None, **v),
         "preview": lambda asset_id: workflow.action(
             None, "preview", asset_id=asset_id, scope="asset"

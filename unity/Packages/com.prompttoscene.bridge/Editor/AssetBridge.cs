@@ -68,7 +68,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
-        public string bridge_version = "0.7.0";
+        public string bridge_version = "0.8.0";
         public string engine = "unity";
         public string pipeline;
         public string scene;
@@ -107,7 +107,7 @@ namespace PromptToScene.Editor
         [MenuItem("Tools/Prompt-to-Scene/Import Pending Assets")]
         public static void ImportPending()
         {
-            if (busy || EditorApplication.isPlayingOrWillChangePlaymode) return;
+            if (busy || AssetOrganization.Busy || EditorApplication.isPlayingOrWillChangePlaymode) return;
             string inbox = Path.Combine(StateRoot, "inbox");
             if (!Directory.Exists(inbox)) return;
             busy = true;

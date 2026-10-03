@@ -233,6 +233,13 @@ def job_status(project, revision, wait_seconds=0):
                 pending = core.read_optional_json(root / "actions" / (revision + ".json"))
                 state = {"request_id": revision, "status": "queued" if pending else "unknown"}
         if state["status"] in TERMINAL or not wait_seconds:
+            if (state.get("development") or {}).get("command") == "organize":
+                from . import organization
+
+                try:
+                    organization.sync_annotations(root)
+                except (ValueError, OSError) as error:
+                    state["organization_metadata_error"] = str(error)
             return state
         if time.monotonic() >= deadline:
             return {

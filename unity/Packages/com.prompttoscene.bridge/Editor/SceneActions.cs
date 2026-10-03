@@ -117,6 +117,7 @@ namespace PromptToScene.Editor
             if (!Directory.Exists(folder)) return;
             foreach (string path in Directory.GetFiles(folder, "*.json").OrderBy(p => p))
             {
+                if (AssetOrganization.Busy) break;
                 string id = Path.GetFileNameWithoutExtension(path);
                 var result = new SceneResult { request_id = id, scene = SceneKey };
                 try

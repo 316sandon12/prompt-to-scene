@@ -2,7 +2,7 @@
 
 import re
 
-from . import core, development, registry, workflow
+from . import core, development, organization, registry, workflow
 
 ALIASES = {
     "木": "wood",
@@ -39,10 +39,9 @@ def annotate(project, path, tags=None, notes="", license="", source=""):
     if any(not isinstance(v, str) or len(v) > 2000 for v in (notes, license, source)):
         raise ValueError("Metadata fields must be text up to 2000 characters")
     root = core.state_root(registry.resolve(project).root)
-    data = core.read_optional_json(root / "project-library.json") or {}
-    data[path] = dict(tags=tags or [], notes=notes, license=license, source=source)
-    core.atomic_json(root / "project-library.json", data)
-    return {"path": path, **data[path]}
+    data = dict(tags=tags or [], notes=notes, license=license, source=source)
+    organization.save_annotation(root, path, data)
+    return {"path": path, **data}
 
 
 def rank(entries, query, annotations=None, size=None, limit=20):
@@ -91,6 +90,7 @@ def search(project, query="", request_id=None, size=None, limit=20):
     if data.get("command") != "library":
         raise ValueError("Use the request ID returned by search_project_assets")
     root = core.state_root(registry.resolve(project).root)
+    organization.sync_annotations(root)
     annotations = core.read_optional_json(root / "project-library.json") or {}
     for entry in data.get("entries", []):
         name = entry.get("asset_id")

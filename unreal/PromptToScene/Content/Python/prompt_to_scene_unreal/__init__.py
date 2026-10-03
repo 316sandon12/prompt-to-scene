@@ -28,7 +28,9 @@ def utc_now():
 def import_pending():
     """Import pending assets on the editor thread; also usable by commandlet tests."""
     global _busy
-    if _busy or is_playing():
+    from . import organization
+
+    if _busy or organization._pending or is_playing():
         return
     root = state_root(project_root())
     _busy = True
@@ -78,7 +80,7 @@ def tick(_delta):
             root / "editor.json",
             {
                 "engine": "unreal",
-                "bridge_version": "0.7.0",
+                "bridge_version": "0.8.0",
                 "capabilities": ["actions", "preview", "instance_undo", "auto_place"],
                 "unreal_version": unreal.SystemLibrary.get_engine_version(),
                 "scene": level.get_outer().get_path_name() if level else None,

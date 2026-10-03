@@ -17,6 +17,7 @@ from . import (
     kits,
     layout,
     levels,
+    organization,
     parts,
     performance,
     project_library,
@@ -89,6 +90,11 @@ not a whole-game generator. run_playcheck enters and exits the real editor Play/
 tests interactions/clearance and measures frame deltas. Check development.passed and all checks.
 search_project_assets indexes local models/prefabs; reuse_project_asset previews/places originals.
 tag_project_asset saves notes/tags and declared source/license; keep unknowns explicit.
+organize_project_assets scans the project's native asset inventory, plans consistent names/folders,
+then applies that exact plan with reference-preserving native renames and a persistent undo journal.
+Use scan -> poll -> plan(scan_id=request_id) -> apply(plan_id) -> poll. An organization request
+authorizes applying the plan; show a preview first if requested. Skip protected paths and
+code/config assets; custom string loading paths need exclusions. Use overrides for semantic names.
 """,
 )
 
@@ -937,6 +943,31 @@ def tag_project_asset(
 ) -> dict:
     """Save searchable local annotations and user-declared source/license for an asset path."""
     return project_library.annotate(None, path, tags, notes, license, source)
+
+
+@mcp.tool()
+def organize_project_assets(
+    mode: str = "scan",
+    scan_id: str | None = None,
+    plan_id: str | None = None,
+    scope: str | None = None,
+    settings: dict | None = None,
+    offset: int = 0,
+    limit: int = 200,
+) -> dict:
+    """Automatically name/classify project assets through native Unity/UE moves; supports undo.
+
+    scan: inventory Assets or /Game, optionally one subfolder; poll get_task_status. plan: use
+    scan_id equal to the completed scan request_id. settings: destination, rename (bool), group_by
+    ('type' or 'source'), exclude (project paths), overrides ({old_path:semantic_name}), rules
+    ({kind:{folder,prefix}}). inspect: paginated exact plan; history: recent plans. apply/undo:
+    use the saved plan_id then poll. Applies collision-resolved names, verifies stale candidates,
+    preserves GUID/native references and records inverse moves. Native files are saved; unrelated
+    scene edits are not rolled back. Protected folders, scripts, scenes/data/unknown types stay
+    in place with reasons. Unreal keeps required redirectors. Code/config string paths are not
+    rewritten; exclude those resources. No model provider, visual AI guessing or paid calls.
+    """
+    return organization.organize(None, mode, scan_id, plan_id, scope, settings, offset, limit)
 
 
 def main():

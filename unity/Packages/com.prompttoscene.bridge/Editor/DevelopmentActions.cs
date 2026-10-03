@@ -16,6 +16,7 @@ namespace PromptToScene.Editor
     [Serializable] public class DevelopmentCommand
     {
         public string command, mode, template, moving_asset_id, preset, level_id, path, candidate_request_id;
+        public string scope_path, plan_id, plan_sha256;
         public float angle, distance, duration, player_radius, player_height, max_step;
         public float[] pivot, offset, position;
         public bool demo_input, capture, preserve_configuration;
@@ -38,6 +39,7 @@ namespace PromptToScene.Editor
     [Serializable] public class DevelopmentResult
     {
         public string command, message, preset, template, prefab, level_id, candidate_request_id;
+        public string mode, plan_id, scan_id, organization_status;
         public bool passed, truncated;
         public int changed, module_count, samples, frames;
         public float mean_frame_ms, p95_frame_ms;
@@ -70,6 +72,7 @@ namespace PromptToScene.Editor
                 case "level": result.development=Level(c); break;
                 case "library": return Library(a,c);
                 case "playcheck": return PlayChecks.Start(a,c);
+                case "organize": return AssetOrganization.Execute(a,c);
                 default: throw new Exception("Unknown development command");
             }
             return result;

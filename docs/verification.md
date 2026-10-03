@@ -1,5 +1,38 @@
 # Verification
 
+## v0.8 — recorded on 2026-10-04
+
+Environment: macOS 15.8 / Apple M3 Pro, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, Unreal 5.7.2. Organization uses real native assets, actual MCP calls and disposable projects. See [sanitized measurements](verification-v0.8.json) and the [actual workbench](images/organization-workbench.jpg).
+
+| Check | Result |
+| --- | --- |
+| Python / MCP contracts | 173 tests passed; lint, formatting, JS syntax and shared skill validation passed. Includes deterministic names, collisions, texture channels, both engine paths, source grouping, custom rules, Unicode, exclusions, symlinks, scan limits, pagination, provenance migration and repeat-apply behavior. |
+| Unity Built-in / URP | Native scan → preview → apply → editor shutdown/restart → undo passed. GUIDs, prefab links, scene mesh/material/texture references and protected Resources assets survived. Duplicate names received distinct numbered destinations. |
+| Unreal | Native static mesh, Blueprint, material and texture references passed after editor restart, then undo restored original paths. A material outside the move batch retained its texture reference. One native rename batch preserves cross-references; package indexing selects the main asset rather than leftover Blueprint generated-class redirectors. |
+| Conflict handling | Editing an asset after preview rejected the stale plan without moving it. Repeated apply returned zero changes; rescanning organized output produced zero moves. An unrelated asset occupying an original path blocked undo; removing the fixture conflict allowed undo. |
+| Cancellation recovery | Built-in Unity cancellation after actual partial moves and UE cancellation immediately after a real native batch restored original resource paths and live references. Test drivers inject only the cancellation signal; normal move and reverse-move implementations run in the editors. This does not certify recovery from arbitrary process termination during disk writes. |
+| Host plugins | Actual isolated Codex app-server discovered 58 tools and invoked the plugin. Actual Harness 0.2.0-rc.1 bundle registration and ToolRuntime invocation passed without a paid LLM call. |
+| Local workbench | Browser scan/preview → apply 15 resources → reload/history → undo passed against a real Unity project. Native assertions verified restored references. No observed browser console warnings/errors. Embedded host UI support is not certified by this test. |
+
+Package and public-download checks are recorded separately in the JSON record as they complete. Native Windows editors, older UE versions, shipping builds, arbitrary custom asset classes and application-specific string loading paths are not covered. Source scripts, scenes, managed assets and special loading folders stay in place; scanning/classifying a resource does not imply it will be renamed.
+
+### Reproduce v0.8
+
+```bash
+uv sync --locked
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+uv run python tools/organization_smoke.py --project /repo/.local/unity-smoke-EXAMPLE --editor /path/to/Unity
+uv run python tools/organization_smoke.py --project /repo/.local/unreal-smoke-EXAMPLE --editor /path/to/UnrealEditor
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /path/to/blender
+```
+
+The native scenario creates fixture assets, intentionally tests conflicts/cancellation and restarts the editor. Use disposable `.local/*smoke-*` projects only. Repeat Unity with Built-in and URP. Packaged Blender checks additionally exercise detached recipe and external-intake workers from the previous workflow.
+
 ## v0.7 — recorded on 2026-10-03
 
 Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, Unreal 5.7.2. Native tests use disposable scenes and real MCP calls. See [sanitized measurements](verification-v0.7.json).

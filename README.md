@@ -2,11 +2,11 @@
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
-[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [v0.7 guide](docs/DEVELOPMENT.zh-CN.md) · [Verified results](docs/verification.md)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [Asset organization](docs/ORGANIZATION.zh-CN.md) · [Verified results](docs/verification.md)
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.7 is experimental and targets opaque props, three interaction templates and modular blockouts. Install Blender, an engine editor and a working AI client first. The local workshop also works without an LLM.
+> v0.8 is experimental and includes opaque props, three interaction templates, modular blockouts and project asset organization. Modeling needs Blender; organization needs only the engine editor. Use your AI client or the local workshop.
 
 ![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 
@@ -27,6 +27,19 @@ Keep the editor open outside Play mode. Restart UE once after installing the bri
 Or choose a prop in **创作工作台 / Workshop**, compare candidates and publish your favorite. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
 
 Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
+
+## v0.8: automatic project asset naming and organization
+
+Open **Workshop → 整理 / Organize → Scan and preview → Apply**. Scan the whole Unity `Assets` or UE `/Game`, or a single imported pack.
+
+- Native asset types determine folders and prefixes: models, materials, textures, prefabs/Blueprints, animations, audio and more. For example, `oak albedo.png → Textures/T_Oak_BaseColor.png`.
+- Review every old/new path and skip reason. Preserve source groups, exclude folders, supply semantic names or move without renaming.
+- Resolve collisions with numbered suffixes. Unity retains GUIDs; UE uses one native rename batch to maintain references. Library annotations follow moves and undo.
+- Persistent history supports undo after editor restarts. Changed assets and occupied destinations stop the operation. Scripts, scenes, special loading folders and managed plugin assets stay in place.
+
+Tell Codex or DeepSeek Harness: **“Organize this project's assets by type and normalize their names. Keep ThirdParty in place.”** No extra AI service is needed. Default names use filenames and native type information; you or the current AI host can supply semantic overrides. Custom code/config path strings are not rewritten. [Complete guide and limits](docs/ORGANIZATION.zh-CN.md).
+
+![Actual asset organization workbench](docs/images/organization-workbench.jpg)
 
 ## v0.7: build, reuse and test a playable scene
 
@@ -77,7 +90,7 @@ Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 m
 | Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
 | Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-These features are available through both AI hosts and the local workshop. The MCP server exposes 57 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
+These features are available through both AI hosts and the local workshop. The MCP server exposes 58 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
 
 ## Refine by conversation
 

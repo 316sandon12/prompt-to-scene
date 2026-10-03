@@ -53,8 +53,9 @@ Explicit `PTS_PROJECT` / legacy `PTS_UNITY_PROJECT` settings override the active
 | `protect_asset`, `review_asset_update` | Canonical material overrides, root sockets and pre-publication conflict checks. |
 | `set_scene_look`, `build_level`, `run_playcheck` | Owned presentation rigs, connected blockouts and bounded real Play/PIE checks. |
 | `search_project_assets`, `reuse_project_asset`, `tag_project_asset` | Local native indexing, keyword ranking, preview, reuse and provenance annotations. |
+| `organize_project_assets` | Native type inventory, deterministic naming/classification plans, inspected paths, native apply and persistent undo/history. |
 
-There are 57 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
+There are 58 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
 
 The separate schema 1 action queue supports selection, transforms, tint, focus, contextual arrangement, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
 
@@ -114,6 +115,18 @@ Unity renders the current managed objects through a temporary camera/light into 
 
 Supported materials and geometry are described in the [asset contract](asset-contract.md). Python is trusted local code, not a sandbox. Import errors can leave partially updated engine assets; backups, source history and edit snapshots do not provide whole-project rollback. Native operations stay on the editor thread.
 
+
+## v0.8 project asset organization
+
+`organize_project_assets` has six modes. `scan` queues a scoped native inventory and writes `.prompt-to-scene/organization/scans/<request_id>.json`. `plan` consumes that scan and saves an immutable plan with a separate `plan_id`; `inspect` paginates it (maximum 500 rows per response). `apply` and `undo` send the saved plan ID and its SHA-256 to the action queue. `history` returns the latest 20 plans. Native scans stop at 20,000 scoped assets, report truncation and cannot create a partial plan.
+
+`organization.py` owns naming, texture-role suffixes, collision resolution, exclusions, material-reuse protection and annotation migration. Native types determine categories; explicit overrides supply semantic names. Both adapters validate plan hashes, asset fingerprints/identity, destination occupancy, unsupported/protected types and project boundaries before any move. Native folders and all occupied resource paths participate in collision planning.
+
+Unity `AssetOrganization.cs` retains GUIDs through `AssetDatabase.MoveAsset`, processing four assets per editor update. UE `organization.py` saves a per-object identity tag, submits one `AssetTools.rename_assets` batch for mutually dependent resources, then saves their final references. Both guard against reentrant native callbacks and serialize other bridge imports/actions while organizing. Unreal redirectors are retained and only a redirector resolving to the exact same owned object may occupy an undo destination.
+
+Journals record status, original/destination/current paths and native move events. Cancellation or apply failures attempt to restore completed moves; a conflict reports `recovery_required`. `undo` can recover from interrupted journals after an editor restart, validating current native identities. Annotation replay uses a cross-process lock and per-journal progress markers; repeated inspection cannot move a new unrelated annotation from an old path. Metadata synchronization errors are exposed alongside the native result. Empty directories are retained.
+
+The workbench's `organize` route uses the same contracts and saved history. Custom code/config strings, shipping-build redirector behavior, arbitrary asset types and visual semantic recognition are outside this contract. See the [usage and exclusion rules](ORGANIZATION.zh-CN.md) and [verification record](verification.md).
 
 ## v0.7 native development workflows
 

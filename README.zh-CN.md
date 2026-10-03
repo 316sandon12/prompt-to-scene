@@ -2,11 +2,11 @@
 
 **用指令在 Blender 制作风格统一的道具，比较造型，修改部件，然后直接放进 Unity 或 UE。**
 
-[English](README.md) · [下载](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [新手安装](docs/QUICKSTART.zh-CN.md) · [v0.7 六项功能](docs/DEVELOPMENT.zh-CN.md) · [实际测试](docs/verification.md)
+[English](README.md) · [下载](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [新手安装](docs/QUICKSTART.zh-CN.md) · [资源自动整理](docs/ORGANIZATION.zh-CN.md) · [实际测试](docs/verification.md)
 
 连接 **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**。自然语言由你现有的 AI 客户端理解，Blender 在本地运行；插件完成材质准备、原生导入、场景摆放和结果检查。下载程序自带 Python，不需要另买建模 API。
 
-> v0.7 为实验版，支持不透明道具、三种交互模板和模块关卡。需已安装 Blender、引擎编辑器和可正常对话的 AI 客户端；工作台也能直接操作，无需调用模型。
+> v0.8 为实验版，支持不透明道具、三种交互模板、模块关卡和项目资源整理。建模需已安装 Blender；资源整理只需引擎编辑器。可使用 AI 客户端，也能直接在工作台操作。
 
 ![实际 Blender 模型与烘焙材质](docs/images/authoring-chair.png)
 
@@ -27,6 +27,19 @@
 也可以打开 **创作工作台**，选择道具，点 **先比较三种造型**，选中后点 **选择并制作成品**。普通请求可直接制作，无需每次挑方案。首次只想验证连接，点 **生成示例木箱** 即可。
 
 Mac 社区构建采用临时签名、未公证；Windows 构建未签名。系统首次打开提示与客户端安装问题见 [新手教程](docs/QUICKSTART.zh-CN.md)。
+
+## v0.8：项目资源自动命名与归类
+
+打开 **创作工作台 → 整理 → 扫描并预览整理方案 → 应用此方案**。范围留空扫描整个 Unity `Assets` 或 UE `/Game`，也可以只整理一个素材包。
+
+- 自动按模型、材质、贴图、预制体／蓝图、动画、音频等类型分目录，统一前缀和名称，例如 `oak albedo.png → Textures/T_Oak_BaseColor.png`。
+- 预览每个资源的原路径、新路径和跳过原因；支持保留来源分组、排除目录、自定义名称，以及只分类不改名。
+- 重名自动编号；Unity 保留 GUID，UE 使用原生批量重命名维护引用；标签、笔记和来源说明同步迁移。
+- 保存整理记录，重启后仍能撤销；应用前检查资源是否变化、路径是否被占用。脚本、场景、特殊加载目录和插件管理的内容保持原位。
+
+也可直接说：**“把当前项目的 Assets 按资源类型命名归类，保留 ThirdParty 目录。”** Codex 和 DeepSeek Harness 共用此功能，无需额外 AI 服务。名称依据已有文件名和原生类型；语义名称可由你或当前 AI 客户端指定。自定义代码中的路径字符串不会自动重写。[完整用法与边界](docs/ORGANIZATION.zh-CN.md)。
+
+![实际资源整理界面](docs/images/organization-workbench.jpg)
 
 ## v0.7：从模型到可测试的场景
 

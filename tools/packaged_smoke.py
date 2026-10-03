@@ -42,7 +42,7 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 57
+                    assert len((await client.list_tools()).tools) == 58
                     resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
                     assert "ui/initialize" in resource.contents[0].text
                     assert "repairButton" in resource.contents[0].text
@@ -56,6 +56,13 @@ def main():
                     assert (
                         project / "Packages/com.prompttoscene.bridge/Runtime/Interaction.cs"
                     ).is_file()
+                    assert (
+                        project / "Packages/com.prompttoscene.bridge/Editor/AssetOrganization.cs"
+                    ).is_file()
+                    organized = await client.call_tool(
+                        "organize_project_assets", {"mode": "history"}
+                    )
+                    assert not organized.isError, organized
                     unreal_project = home / "Unreal Project"
                     unreal_project.mkdir()
                     (unreal_project / "Test.uproject").write_text('{"FileVersion":3}')
@@ -68,6 +75,11 @@ def main():
                         / "Plugins/PromptToScene/Content/Templates/BP_PTSInteraction.uasset"
                     ).stat().st_size > 1000
                     assert not (unreal_project / "Plugins/PromptToScene/Source").exists()
+                    assert (
+                        unreal_project
+                        / "Plugins/PromptToScene/Content/Python"
+                        / "prompt_to_scene_unreal/organization.py"
+                    ).is_file()
                     response = await client.call_tool(
                         "connect_project", {"project_path": str(project)}
                     )

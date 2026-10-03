@@ -1,0 +1,117 @@
+{
+  "version": "0.8.0",
+  "recorded_date": "2026-10-04",
+  "timezone": "Asia/Shanghai",
+  "source_ref": "v0.8.0",
+  "environment": {
+    "os": "macOS 15.8",
+    "hardware": "Apple M3 Pro",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2",
+    "blender": "4.2.0"
+  },
+  "python": {
+    "tests_passed": 173,
+    "lint": "passed",
+    "format": "passed",
+    "shared_skill": "passed",
+    "javascript_syntax": "passed"
+  },
+  "native": {
+    "unity_builtin": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "organize_project_assets": 15,
+        "get_task_status": 10,
+        "tag_project_asset": 1
+      },
+      "assets_moved": 15,
+      "repeat_apply_changes": 0,
+      "native_references_before_and_after_editor_restart": "passed",
+      "original_paths_and_references_after_undo": "passed",
+      "collision_numbering": "passed",
+      "stale_preview_rejected": "passed",
+      "occupied_undo_rejected": "passed",
+      "replan_organized_output_moves": 0,
+      "provenance_migration": "passed",
+      "cancellation_recovery": {
+        "result": "passed",
+        "move_and_reverse_events": 8,
+        "all_original_paths_restored": true,
+        "method": "Cancel signal injected after actual native moves; real forward and reverse operations run"
+      }
+    },
+    "unity_urp": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "organize_project_assets": 12,
+        "get_task_status": 8,
+        "tag_project_asset": 1
+      },
+      "assets_moved": 15,
+      "repeat_apply_changes": 0,
+      "native_references_before_and_after_editor_restart": "passed",
+      "original_paths_and_references_after_undo": "passed",
+      "collision_numbering": "passed",
+      "stale_preview_rejected": "passed",
+      "occupied_undo_rejected": "passed",
+      "replan_organized_output_moves": 0,
+      "provenance_migration": "passed"
+    },
+    "unreal": {
+      "result": "passed",
+      "editor_exit_code": 0,
+      "tool_calls": {
+        "organize_project_assets": 15,
+        "get_task_status": 10,
+        "tag_project_asset": 1
+      },
+      "assets_moved": 14,
+      "repeat_apply_changes": 0,
+      "native_references_before_and_after_editor_restart": "passed",
+      "original_paths_and_references_after_undo": "passed",
+      "collision_numbering": "passed",
+      "stale_preview_rejected": "passed",
+      "occupied_undo_rejected": "passed",
+      "replan_organized_output_moves": 0,
+      "provenance_migration": "passed",
+      "cancellation_recovery": {
+        "result": "passed",
+        "move_and_reverse_events": 28,
+        "all_original_paths_restored": true,
+        "method": "Cancel signal injected after actual native moves; real forward and reverse operations run"
+      }
+    }
+  },
+  "hosts": {
+    "codex": "Actual isolated app-server: 58 tools and invocation passed",
+    "harness": "Actual 0.2.0-rc.1 bundle registration and ToolRuntime invocation passed"
+  },
+  "workbench": {
+    "native_unity_scan_preview_apply_history_undo": "passed",
+    "assets_scanned": 17,
+    "assets_moved": 15,
+    "protected_or_unsupported": 2,
+    "collisions_resolved": 2,
+    "console_warnings_or_errors": 0,
+    "screenshot": "images/organization-workbench.jpg",
+    "embedded_host_ui_certified": false
+  },
+  "limitations": [
+    "Native Windows editors, older UE versions and shipping builds are unverified.",
+    "Names use native types, filenames, texture roles and explicit overrides, not visual semantic recognition.",
+    "Custom code/config path strings are not rewritten. Unsupported or protected assets are classified but kept in place.",
+    "Cancellation recovery was tested after native moves; arbitrary process termination during disk writes is not certified.",
+    "Undo restores names and locations; it does not restore resource content or the whole project."
+  ],
+  "local_portable_macos": {
+    "result": "passed",
+    "tools": 58,
+    "native_bridge_installation": "Unity and content-only UE including organization modules",
+    "setup_ui": "passed",
+    "detached_blender_recipe_and_external_intake": "passed"
+  }
+}

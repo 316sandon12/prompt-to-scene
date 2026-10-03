@@ -33,6 +33,10 @@ def execute(request, root):
         from . import playchecks
 
         return playchecks.start(request, c, root)
+    elif command == "organize":
+        from . import organization
+
+        return organization.execute(request, c, root)
     else:
         raise ValueError("Unknown development command")
     return {"development": data, "scene": actions.scene()}

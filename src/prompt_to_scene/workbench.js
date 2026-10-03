@@ -4,6 +4,7 @@
   const embedded = window.parent !== window;
   const token = location.hash.slice(1);
   let seq = 0, snapshot = {}, currentAsset = null, activeReview = null, refreshing = false;
+  let organizationPlan = null;
   const pending = new Map();
   function notice(message, error = false) { $("notice").textContent = message; $("notice").classList.toggle("error", error); }
   function rpc(method, params = {}) {
@@ -46,7 +47,7 @@
     button.disabled = true;
     try { const result = await fn(); if (result) output(result); await refresh(); }
     catch (error) { notice(error.message, true); }
-    finally { button.disabled = false; }
+    finally { button.disabled = false; if(organizationPlan)organizationButtons(); }
   }
   function bind(id, fn) { $(id).onclick = event => action(event.currentTarget, fn); }
   function requiredAsset() { if (!$("asset").value) throw Error("先选择一个已经导入的资产。"); return $("asset").value; }
@@ -104,6 +105,7 @@
     $("partInfo").textContent = (part.objects?.length ? `${part.objects.length} 个网格 · ` : "") + ($("geometryLock").checked ? "形状已锁定" : "可修改形状") + " · " + ($("materialLock").checked ? "材质已锁定" : "可修改材质");
   }
   function render(state) {
+    if (snapshot.active && snapshot.active !== state.active) { organizationPlan=null; $("organizationRows").replaceChildren(); $("organizationSummary").textContent="项目已切换，请重新扫描。"; $("organizationPage").textContent="尚未扫描"; for(const id of ["applyOrganization","undoOrganization","organizationPrevious","organizationNext"])$(id).disabled=true; $("organizationHistoryList").replaceChildren(); }
     snapshot = state;
     $("version").textContent = "v" + state.version;
     $("connection").textContent = state.target ? `${state.target.engine || ""} · ${(state.active || "").split(/[/\\]/).filter(Boolean).pop()}` : (state.connection_message || "尚未连接项目，请先打开连接与设置。");
@@ -121,10 +123,11 @@
     $("tasks").dataset.signature = signature; $("tasks").replaceChildren();
     for (const task of state.tasks || []) {
       const card = document.createElement("article"); card.className = "card";
-      const commandNames={interaction:"交互配置",protection:"保留设置",update_review:"更新预检",look:"场景风格",level:"模块关卡",playcheck:"试玩检查",library:"项目素材"};
+      const commandNames={interaction:"交互配置",protection:"保留设置",update_review:"更新预检",look:"场景风格",level:"模块关卡",playcheck:"试玩检查",library:"项目素材",organize:"资源命名与分类"};
       const summary=task.status==="imported"?"原生资产已导入。":task.development?.command==="playcheck"&&task.status==="completed"?(task.development.passed?"试玩检查通过，已回到编辑模式。":"检查完成，有项目未通过。请查看详情。"):task.error || task.stage || task.development?.message || "";
       card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.asset_id || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
       card.append(button("查看详情", () => { output(task); return task; }));
+      if (task.development?.plan_id) card.append(button("查看整理记录", () => loadOrganization(task.development.plan_id)));
       if (task.kind && ["error","cancelled"].includes(task.status)) card.append(button("恢复", () => call("resume", {request_id:task.request_id})));
       if (["building","queued"].includes(task.status)) card.append(button("取消", () => call("cancel", {request_id:task.request_id})));
       if (task.kind === "quality" && task.status === "completed") card.append(button("查看前后对照", () => showReview(task)));
@@ -143,7 +146,12 @@
   }
   async function refresh() { if (refreshing) return; refreshing = true; try { render(await call("state")); } finally { refreshing = false; } }
   async function submitted(actionName, values) { const task = await call(actionName, values); notice("任务已开始，可在下方查看进度。"); return task; }
-  for (const tab of document.querySelectorAll("[data-tab]")) tab.onclick = () => { document.querySelectorAll("[data-tab]").forEach(t => t.setAttribute("aria-selected", String(t === tab))); document.querySelectorAll(".pane").forEach(p => {p.hidden = p.id !== tab.dataset.tab;}); };
+  function selectTab(name) {
+    document.querySelectorAll("[data-tab]").forEach(t => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
+    document.querySelectorAll(".pane").forEach(p => {p.hidden = p.id !== name;});
+    $("scenePreview").hidden=name==="organizer";$("organizationPreview").hidden=name!=="organizer";
+  }
+  for (const tab of document.querySelectorAll("[data-tab]")) tab.onclick = () => selectTab(tab.dataset.tab);
   $("asset").onchange = () => loadAsset().catch(error => notice(error.message,true)); $("part").onchange = partInfo;
   $("briefNotes").oninput = () => { $("briefNotes").dataset.dirty = "1"; };
   bind("refresh", async () => { await refresh(); await loadAsset(); notice("已刷新项目状态。"); });
@@ -259,6 +267,68 @@
     notice(result.development?.truncated?"当前索引到 2,000 个资源；大型项目可先按文件夹整理再查找。":"项目素材已读取。");return result;
   });
   bind("tagLibrary", () => call("tag",{path:$("libraryPath").value,tags:$("libraryTags").value.split(/[,，]/).map(t=>t.trim()).filter(Boolean),notes:$("libraryNotes").value,license:$("libraryLicense").value,source:$("librarySource").value}));
+  const organizationKinds={model:"模型",skeletal_mesh:"骨骼模型",prefab:"预制体",blueprint:"蓝图",material:"材质",material_instance:"材质实例",texture:"贴图",sprite:"精灵",audio:"音频",animation:"动画",controller:"动画控制器",vfx:"特效",font:"字体",scene:"场景",script:"代码",shader:"着色器",data:"数据",redirector:"重定向",other:"其他"};
+  const organizationStatuses={planned:"等待应用",applying:"正在整理",applied:"已整理",undoing:"正在撤销",undone:"已恢复原位置",rolled_back:"失败后已恢复原位置",cancelled:"已取消并恢复",recovery_required:"需要恢复原位置"};
+  function organizationButtons() {$("applyOrganization").disabled=organizationPlan.status!=="planned" || !organizationPlan.summary.move;$("undoOrganization").disabled=!["applied","applying","undoing","recovery_required"].includes(organizationPlan.status);}
+  function organizationReason(reason) {
+    return {"Protected engine/plugin folder":"特殊目录或插件管理的资源，保持原位","Material path retained by a generated source revision":"源模型修订需要此材质路径，保持原位","Excluded by project rule":"已加入排除列表","Classified for review; this type stays in its original location":"已分类，此类型保持原位","Read-only asset":"资源为只读","AssetBundle address stays stable":"保持 AssetBundle 加载地址","Addressable address stays stable":"保持 Addressables 加载地址","External source dependencies require their original relative paths":"外部源文件依赖相对路径，保持原位","Save this asset before organizing":"先保存此资源","Destination path too long; shorten the folder or name":"目标路径过长，请缩短名称"}[reason] || reason;
+  }
+  function showOrganization(plan) {
+    organizationPlan=plan; selectTab("organizer");
+    $("organizeScope").value=plan.scope;$("organizeDestination").value=plan.destination;
+    $("organizeGrouping").value=plan.settings.group_by||"type";$("organizeRename").checked=plan.settings.rename!==false;
+    $("organizeExclude").value=(plan.settings.exclude||[]).join("\n");$("organizeNames").value=Object.entries(plan.settings.overrides||{}).map(([path,name])=>path+" => "+name).join("\n");
+    const s=plan.summary;
+    $("organizationSummary").className="";
+    $("organizationSummary").replaceChildren(textNode("h3",organizationStatuses[plan.status] || plan.status),textNode("p",`扫描 ${s.scanned} 项 · 计划整理 ${s.move} 项 · 保持原位 ${s.skip} 项 · 已符合规则 ${s.keep} 项`),textNode("p",`已处理 ${plan.moved || 0} / ${s.move} 项 · ${s.collisions_resolved} 处重名已自动编号`));
+    if(plan.journal?.error) $("organizationSummary").append(textNode("p",plan.journal.error));
+    if(plan.metadata_error) $("organizationSummary").append(textNode("p","素材说明同步需要处理："+plan.metadata_error));
+    organizationButtons();
+    $("organizationRows").replaceChildren();
+    for(const row of plan.entries) {
+      const tr=document.createElement("tr");
+      const action=row.action==="move"?(plan.status==="applied"?"已整理":plan.status==="undone"?"已撤销":"将命名并归类") : row.action==="keep"?"已符合规则":organizationReason(row.reason);
+      const paths=document.createElement("td");paths.className="organization-paths";paths.style.overflowWrap="anywhere";
+      paths.append(textNode("small",row.source),textNode("strong","→ "+row.destination));
+      tr.append(textNode("td",organizationKinds[row.kind] || row.kind),paths,textNode("td",action+(row.collision_resolved?" · 自动编号":"")));
+      $("organizationRows").append(tr);
+    }
+    $("organizationPage").textContent=plan.total?`${plan.offset+1}–${plan.offset+plan.entries.length} / ${plan.total} 项`:"没有资源";
+    $("organizationPrevious").disabled=plan.offset===0;$("organizationNext").disabled=!plan.has_more;
+  }
+  async function loadOrganization(planId,offset=0) {
+    const plan=await call("organize",{mode:"inspect",plan_id:planId,offset,limit:100});showOrganization(plan);return plan;
+  }
+  bind("planOrganization",async()=>{
+    const overrides={};
+    for(const line of $("organizeNames").value.split(/\r?\n/).filter(l=>l.trim())) {
+      const parts=line.split("=>");if(parts.length!==2||!parts[0].trim()||!parts[1].trim())throw Error("自定义名称格式：原路径 => 新名称，每行一项。");
+      overrides[parts[0].trim()]=parts[1].trim();
+    }
+    const settings={rename:$("organizeRename").checked,group_by:$("organizeGrouping").value,exclude:$("organizeExclude").value.split(/\r?\n/).map(p=>p.trim()).filter(Boolean),overrides};
+    if($("organizeDestination").value.trim())settings.destination=$("organizeDestination").value.trim();
+    const scan=await waitAction(await call("organize",{mode:"scan",scope:$("organizeScope").value.trim()||null}));if(scan.status!=="completed")return scan;
+    const plan=await call("organize",{mode:"plan",scan_id:scan.request_id,settings,limit:100});showOrganization(plan);
+    notice("整理方案已生成，项目资源尚未移动。查看下方原路径与目标路径，点击「应用此方案」完成整理。");return plan;
+  });
+  async function applyOrganization(mode) {
+    if(!organizationPlan)throw Error("先扫描并生成整理方案。");
+    const planId=organizationPlan.plan_id;
+    notice(mode==="apply"?"正在整理资源，请保持编辑器打开。":"正在恢复原来的名称和目录，请保持编辑器打开。");
+    try {
+      const task=await waitAction(await call("organize",{mode,plan_id:planId}));
+      if(task.status==="completed")notice(mode==="apply"?"资源命名与分类已完成，可以从整理记录撤销。":"已恢复资源原来的名称和位置。");
+      return task;
+    } finally {await loadOrganization(planId);}
+  }
+  bind("applyOrganization",()=>applyOrganization("apply"));bind("undoOrganization",()=>applyOrganization("undo"));
+  bind("organizationPrevious",()=>loadOrganization(organizationPlan.plan_id,Math.max(0,organizationPlan.offset-100)));
+  bind("organizationNext",()=>loadOrganization(organizationPlan.plan_id,organizationPlan.offset+100));
+  bind("organizationHistory",async()=>{
+    const history=await call("organize",{mode:"history"});$("organizationHistoryList").replaceChildren();
+    for(const plan of history.plans){const card=document.createElement("article");card.className="card";card.append(textNode("h3",organizationStatuses[plan.status]||plan.status),textNode("p",plan.scope),textNode("small",`${plan.summary.move} 项 · ${new Date(plan.created_utc).toLocaleString()}`),button("查看记录",()=>loadOrganization(plan.plan_id)));$("organizationHistoryList").append(card);}
+    if(!history.plans.length)$("organizationHistoryList").append(textNode("p","还没有整理记录。"));return history;
+  });
   if (!embedded) {
     $("setupLink").href = "/#" + token;
     for (const [control,target,kind] of [["pickSource","sourcePath","asset"],["pickReference","referencePath","reference"],["pickGenerationImage","generationImages","reference"],["pickReplacement","replacementPath","asset"]]) bind(control, async () => { const chosen=await local("pick",{kind}); if(chosen.path) $(target).value=chosen.path; });
@@ -268,7 +338,7 @@
     document.querySelectorAll(".localOnly").forEach(node => {node.hidden=embedded;});
     document.querySelectorAll(".inlineOnly").forEach(node => {node.hidden=!embedded;});
     if (embedded) {
-      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.6.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.8.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
       notify("ui/notifications/initialized", {});
       new ResizeObserver(() => notify("ui/notifications/size-changed",{height:Math.min(900,document.documentElement.scrollHeight)})).observe(document.body);
     }

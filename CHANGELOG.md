@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.0 — 2026-10-04
+
+- Project asset naming and classification for Unity and UE: native type inventory, type/source folders, stable prefixes, texture-channel suffixes, collision numbering, exclusions and semantic name overrides.
+- Preview every original/destination path before applying. Use native Unity GUID-preserving moves and a single UE rename batch for related assets, with stale-plan, dirty-asset, identity and destination preflight checks.
+- Persistent journals, cooperative cancellation with recovery, restart-safe undo and migration of library tags, notes and provenance. Occupied original paths stop undo without overwriting newer content.
+- Preserve scripts, scenes, special loading folders, Addressables/AssetBundle addresses, managed content and retained material-reuse paths. Incomplete 20,000-entry scans require a narrower scope.
+- Workbench Organize tab with side-by-side path comparisons, pagination and history. One `organize_project_assets` tool exposes scan/plan/inspect/apply/undo/history to both hosts; 58 tools total.
+- Real Unity Built-in/URP and UE tests cover collisions, stale plans, reference preservation across editor restart, repeated application, no-op reorganization and occupied-path undo rejection.
+
+Update the app, host plugin and engine bridge together. Naming uses filenames, native types and explicit overrides; it does not perform visual semantic recognition. Custom code/config path strings are not rewritten. Undo restores resource names/locations, not resource contents or the entire project.
+
 ## 0.7.0 — 2026-10-03
 
 - Door/chest/pickup templates with retained Blender source, beveled geometry, baked wood PBR, separate moving meshes, native Unity interaction components and reusable UE child Blueprints. No user C++ compilation.

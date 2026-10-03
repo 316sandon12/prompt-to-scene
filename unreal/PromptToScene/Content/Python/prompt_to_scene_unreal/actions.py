@@ -385,9 +385,9 @@ def process(root):
             ).set_level_viewport_camera_info(*old_camera)
             del _captures[revision]
     for path in sorted((root / "actions").glob("*.json")):
-        from . import playchecks
+        from . import organization, playchecks
 
-        if playchecks._state:
+        if playchecks._state or organization._pending:
             break
         receipt = {"status": "error", "request_id": path.stem, "engine": "unreal"}
         try:
