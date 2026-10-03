@@ -13,8 +13,10 @@ Environment: macOS 15.8 / Apple M3 Pro, Unity 2022.3.62f3c1 Built-in + URP 14.0.
 | Cancellation recovery | Built-in Unity cancellation after actual partial moves and UE cancellation immediately after a real native batch restored original resource paths and live references. Test drivers inject only the cancellation signal; normal move and reverse-move implementations run in the editors. This does not certify recovery from arbitrary process termination during disk writes. |
 | Host plugins | Actual isolated Codex app-server discovered 58 tools and invoked the plugin. Actual Harness 0.2.0-rc.1 bundle registration and ToolRuntime invocation passed without a paid LLM call. |
 | Local workbench | Browser scan/preview → apply 15 resources → reload/history → undo passed against a real Unity project. Native assertions verified restored references. No observed browser console warnings/errors. Embedded host UI support is not certified by this test. |
+| Portable macOS / Windows | Both builds passed 173 tests and frozen 58-tool MCP/setup/bridge checks in [release workflow 37138006263](https://github.com/316sandon12/prompt-to-scene/actions/runs/37138006263). Local macOS packaging also passed actual detached Blender recipe and external-intake jobs. |
+| Public downloads | Both ZIP SHA-256 values matched. The downloaded macOS app passed ad-hoc signature verification, 58-tool discovery, organization module/bridge installation, setup UI and actual detached Blender recipe/external-intake jobs. Windows executable checks passed in CI. |
 
-Package and public-download checks are recorded separately in the JSON record as they complete. Native Windows editors, older UE versions, shipping builds, arbitrary custom asset classes and application-specific string loading paths are not covered. Source scripts, scenes, managed assets and special loading folders stay in place; scanning/classifying a resource does not imply it will be renamed.
+Native Windows editors, older UE versions, shipping builds, arbitrary custom asset classes and application-specific string loading paths are not covered. Source scripts, scenes, managed assets and special loading folders stay in place; scanning/classifying a resource does not imply it will be renamed. Release checksums and measurements are in the JSON record.
 
 ### Reproduce v0.8
 

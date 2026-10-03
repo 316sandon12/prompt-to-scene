@@ -113,5 +113,35 @@
     "native_bridge_installation": "Unity and content-only UE including organization modules",
     "setup_ui": "passed",
     "detached_blender_recipe_and_external_intake": "passed"
+  },
+  "source_commit": "4f00573c3fa8dcf4bccaef62fa9d01625e3eccba",
+  "portable_ci": {
+    "workflow_run": "https://github.com/316sandon12/prompt-to-scene/actions/runs/37138006263",
+    "result": "passed",
+    "macos": "173 tests, build and frozen 58-tool MCP/setup/bridge checks passed",
+    "windows": "173 tests, build and frozen 58-tool MCP/setup/bridge checks passed"
+  },
+  "public_release": {
+    "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.8.0",
+    "downloads": {
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "sha256": "5447b534b1b63425db9f5de349a092c574fe4ff10b15e25171a1c80db02eb29d",
+        "bytes": 18132780,
+        "checksum_matched": true
+      },
+      "Prompt-to-Scene-windows-x64.zip": {
+        "sha256": "fd501388b64ac6d0e127d233393a585ff7c2ac2ffadf87fd50083ebb7d54f9fe",
+        "bytes": 26900848,
+        "checksum_matched": true
+      }
+    },
+    "windows_executable": "Verified in Windows CI; native editors unverified",
+    "macos_downloaded_app": {
+      "signature_verification": "passed (ad-hoc signed)",
+      "tools": 58,
+      "native_bridge_installation": "passed for Unity and content-only UE, including organization modules",
+      "detached_blender_recipe_and_external_intake": "passed",
+      "setup_ui": "passed"
+    }
   }
 }
