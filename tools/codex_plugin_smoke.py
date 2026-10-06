@@ -54,7 +54,7 @@ def main():
                     1,
                     "initialize",
                     {
-                        "clientInfo": {"name": "pts-verification", "version": "0.9.0"},
+                        "clientInfo": {"name": "pts-verification", "version": "0.9.1"},
                         "capabilities": {"experimentalApi": True},
                     },
                 )

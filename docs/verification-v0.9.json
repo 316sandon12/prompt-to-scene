@@ -1,8 +1,8 @@
 {
-  "version": "0.9.0",
+  "version": "0.9.1",
   "recorded_date": "2026-10-07",
   "timezone": "Asia/Shanghai",
-  "source_ref": "v0.9.0",
+  "source_ref": "v0.9.1",
   "environment": {
     "os": "macOS 15.8",
     "hardware": "Apple M3 Pro",

@@ -134,8 +134,24 @@ def main():
             assert output.exists(), "Frozen native panel service did not answer"
             assert json.loads(output.read_text())["schema_version"] == 1
         finally:
-            service.terminate()
-            service.communicate(timeout=10)
+            # Exercise normal editor shutdown. On Windows, terminating the one-file
+            # bootloader alone leaves its worker alive and holding the project lock.
+            (native_root / "editor.json").unlink(missing_ok=True)
+            try:
+                service.communicate(timeout=15)
+            except subprocess.TimeoutExpired:
+                if os.name == "nt":
+                    subprocess.run(
+                        ["taskkill", "/PID", str(service.pid), "/T", "/F"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+                else:
+                    service.kill()
+                service.communicate(timeout=10)
+                raise
+        assert service.returncode == 0, "Frozen editor service did not exit cleanly"
         if submitted:
             # The MCP parent has exited. Its detached child must survive its extraction cleanup.
             revision = submitted[0]["request_id"]

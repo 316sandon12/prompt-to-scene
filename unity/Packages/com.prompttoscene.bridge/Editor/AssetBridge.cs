@@ -69,7 +69,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
-        public string bridge_version = "0.9.0";
+        public string bridge_version = "0.9.1";
         public string engine = "unity";
         public string pipeline;
         public string scene;

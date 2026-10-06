@@ -80,7 +80,7 @@ def tick(_delta):
             root / "editor.json",
             {
                 "engine": "unreal",
-                "bridge_version": "0.9.0",
+                "bridge_version": "0.9.1",
                 "capabilities": ["actions", "preview", "instance_undo", "auto_place"],
                 "unreal_version": unreal.SystemLibrary.get_engine_version(),
                 "scene": level.get_outer().get_path_name() if level else None,

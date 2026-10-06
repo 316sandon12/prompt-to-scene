@@ -1,6 +1,6 @@
 {
   "name": "com.prompttoscene.bridge",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "displayName": "Prompt-to-Scene",
   "description": "Receive AI-authored Blender assets, build materials and prefabs, and report verified scene imports.",
   "unity": "2022.3",
