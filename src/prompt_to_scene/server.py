@@ -95,6 +95,15 @@ then applies that exact plan with reference-preserving native renames and a pers
 Use scan -> poll -> plan(scan_id=request_id) -> apply(plan_id) -> poll. An organization request
 authorizes applying the plan; show a preview first if requested. Skip protected paths and
 code/config assets; custom string loading paths need exclusions. Use overrides for semantic names.
+Read project_conventions for saved naming, preparation and inbox defaults. New managed assets
+follow those rules; existing managed locations stay stable. manage_asset_inbox scans settled
+sources once per revision; enabled watching runs while the app, MCP host or native editor is open.
+describe_project_assets captures real thumbnails and metrics. Use get_asset_evidence before
+save_asset_description; record uncertainty and retain user corrections. Remote vision is optional.
+adapt_asset_materials previews a reference look on separate native variants, then applies chosen
+material rows or undoes assignments. Inspect actual before/after images and unsupported-field
+warnings. Unity targets prefabs; UE targets static meshes. Never claim a different shader matches
+perfectly or that native Windows editor tests ran when only portable CI was available.
 """,
 )
 
@@ -970,10 +979,106 @@ def organize_project_assets(
     return organization.organize(None, mode, scan_id, plan_id, scope, settings, offset, limit)
 
 
+@mcp.tool()
+def project_conventions(
+    mode: str = "read", settings: dict | None = None, scan_id: str | None = None
+) -> dict:
+    """Read/save shared naming, folder, preparation and intake defaults, or suggest prefixes
+    from a native scan."""
+    from . import project_profiles
+
+    return project_profiles.configure(str(project()["project"]), mode, settings, scan_id)
+
+
+@mcp.tool()
+def manage_asset_inbox(mode: str = "status", paths: list[str] | None = None) -> dict:
+    """Scan the designated source inbox, inspect jobs, or explicitly retry failed revisions.
+    Originals are retained."""
+    from . import intake
+
+    return intake.manage(str(project()["project"]), mode, paths)
+
+
+@mcp.tool()
+def describe_project_assets(
+    paths: list[str], use_provider: bool = False, allow_remote: bool = False
+) -> dict:
+    """Capture actual model thumbnails and metadata. Optional vision labels require a configured
+        endpoint.
+
+    Without a provider, poll this job, call get_asset_evidence on each evidence request_id, inspect
+    the image, then save_asset_description. Never claim content recognition from filenames alone.
+    """
+    from . import semantics
+
+    return semantics.start(str(project()["project"]), paths, use_provider, allow_remote)
+
+
+@mcp.tool()
+def get_asset_evidence(evidence_id: str):
+    """Return the native thumbnail that supports an asset description."""
+    from . import semantics
+
+    _, path = semantics.evidence(str(project()["project"]), evidence_id)
+    return Image(data=path.read_bytes(), format="png")
+
+
+@mcp.tool()
+def save_asset_description(evidence_id: str, description: dict, corrected: bool = False) -> dict:
+    """Index a visual description: name, object_type, description, materials[], style, uses[],
+        confidence.
+
+    Keep uncertainty visible. Only set corrected for an explicit user correction. Corrections
+    are protected from later automatic runs. This updates search metadata, not native filenames.
+    To rename, use the saved name as an organize_project_assets override for the selected path.
+    """
+    from . import semantics
+
+    return semantics.save(str(project()["project"]), evidence_id, description, corrected)
+
+
+@mcp.tool()
+def configure_asset_vision(
+    endpoint: str | None = None, model: str | None = None, api_key: str | None = None
+) -> dict:
+    """Configure an optional OpenAI-compatible vision endpoint. Credentials stay in the OS store."""
+    from . import semantics
+
+    return semantics.configure(endpoint, model, api_key)
+
+
+@mcp.tool()
+def adapt_asset_materials(
+    paths: list[str] | None = None,
+    reference: str | None = None,
+    fields: list[str] | None = None,
+    mode: str = "preview",
+    plan_id: str | None = None,
+    selected: list[str] | None = None,
+) -> dict:
+    """Preview a reference look on Unity prefabs or UE static meshes; selectively apply/undo
+        material slots.
+
+    Reference can be a native material or model. Fields: color, roughness, texture_scale.
+    Preview creates separate material/asset variants and real before/after renders. Inspect
+    unsupported-field warnings; do not claim visual equality across different shaders.
+    Apply uses selected row IDs, preserves geometry/textures, and refuses changed assignments.
+    """
+    from . import art_adaptation
+
+    return art_adaptation.start(
+        str(project()["project"]), paths, reference, fields, mode, plan_id, selected
+    )
+
+
 def main():
+    from .intake import start_watcher
+
+    watcher = start_watcher()
     try:
         mcp.run(transport="stdio")
     finally:
+        watcher.set()
         # SDK wrappers can close stdout during garbage collection after disconnect.
         # PyInstaller flushes it again during shutdown, so give that flush a live sink.
         if getattr(sys, "frozen", False):

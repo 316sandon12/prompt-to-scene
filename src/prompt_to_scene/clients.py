@@ -1,5 +1,6 @@
 """Install native host plugins around the same local executable; never change host permissions."""
 
+import hashlib
 import json
 import os
 import shutil
@@ -52,7 +53,13 @@ def runtime():
     source = Path(sys.executable)
     target = registry.home() / "runtime" / __version__ / source.name
     target.parent.mkdir(parents=True, exist_ok=True)
-    if source.resolve() != target.resolve():
+    same_content = (
+        target.is_file()
+        and source.stat().st_size == target.stat().st_size
+        and hashlib.sha256(source.read_bytes()).digest()
+        == hashlib.sha256(target.read_bytes()).digest()
+    )
+    if source.resolve() != target.resolve() and not same_content:
         staging = target.with_suffix(target.suffix + ".new")
         shutil.copy2(source, staging)
         staging.replace(target)

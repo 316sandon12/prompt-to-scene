@@ -56,8 +56,28 @@ def rank(entries, query, annotations=None, size=None, limit=20):
         entry["tags"] = list(
             dict.fromkeys([*original.get("tags", []), *annotation.get("tags", [])])
         )
+        semantic = annotation.get("semantic", {})
+        entry["tags"] = list(
+            dict.fromkeys(
+                [
+                    *entry["tags"],
+                    *semantic.get("materials", []),
+                    *semantic.get("uses", []),
+                    semantic.get("object_type", ""),
+                    semantic.get("style", ""),
+                ]
+            )
+        )
+        entry["tags"] = [tag for tag in entry["tags"] if tag]
         text = " ".join(
-            [entry.get("name", ""), entry["path"], entry.get("notes", ""), *entry.get("tags", [])]
+            [
+                entry.get("name", ""),
+                entry["path"],
+                entry.get("notes", ""),
+                semantic.get("name", ""),
+                semantic.get("description", ""),
+                *entry.get("tags", []),
+            ]
         ).lower()
         score = sum(3 if t == entry.get("name", "").lower() else 1 for t in set(terms) if t in text)
         if terms and score == 0:

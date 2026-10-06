@@ -66,7 +66,7 @@ namespace PromptToScene.Editor
         }
         public static DevelopmentResult Review(string id, DevelopmentCommand c)
         {
-            var prefab=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/PromptToScene/"+id+"/"+id+".prefab");
+            var prefab=AssetDatabase.LoadAssetAtPath<GameObject>(NativeLocations.Get(id).Prefab);
             var snapshots=Capture(id,prefab); var conflicts=Conflicts(snapshots,c.slots??new string[0],c.object_names);
             return new DevelopmentResult{command="update_review",candidate_request_id=c.candidate_request_id,passed=conflicts.Length==0,conflicts=conflicts,
                 bindings=snapshots.SelectMany(s=>s.bindings).Select(b=>new MaterialBinding{slot=b.slot,material_path=AssetDatabase.GetAssetPath(b.material)}).ToArray(),
@@ -74,7 +74,7 @@ namespace PromptToScene.Editor
         }
         public static DevelopmentResult Edit(string id, DevelopmentCommand c)
         {
-            string path="Assets/PromptToScene/"+id+"/"+id+".prefab";
+            string path=NativeLocations.Get(id).Prefab;
             var prefab=AssetDatabase.LoadAssetAtPath<GameObject>(path); if(!prefab) throw new Exception("Import this asset first");
             if(c.mode=="set" || c.mode=="clear")
             {

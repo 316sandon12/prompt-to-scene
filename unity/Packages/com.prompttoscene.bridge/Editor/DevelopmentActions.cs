@@ -21,7 +21,7 @@ namespace PromptToScene.Editor
         public float[] pivot, offset, position;
         public bool demo_input, capture, preserve_configuration;
         public int module_count;
-        public string[] slots, asset_ids, object_names;
+        public string[] slots, asset_ids, object_names, paths;
         public MaterialBinding[] bindings;
         public SocketSetting[] sockets;
         public BlockSetting[] boxes;
@@ -73,6 +73,7 @@ namespace PromptToScene.Editor
                 case "library": return Library(a,c);
                 case "playcheck": return PlayChecks.Start(a,c);
                 case "organize": return AssetOrganization.Execute(a,c);
+                case "adapt": return MaterialAdaptation.Execute(a,c);
                 default: throw new Exception("Unknown development command");
             }
             return result;
@@ -82,13 +83,13 @@ namespace PromptToScene.Editor
         {
             if(!new[]{"door","chest","pickup"}.Contains(c.template) || c.distance<.1f || c.distance>20 || Mathf.Abs(c.angle)>170)
                 throw new Exception("Invalid interaction settings");
-            string path="Assets/PromptToScene/"+id+"/"+id+".prefab";
+            string path=NativeLocations.Get(id).Prefab;
             var source=AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if(!source) throw new Exception("Import the base asset first");
             GameObject moving=null;
             if(c.template!="pickup")
             {
-                moving=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/PromptToScene/"+c.moving_asset_id+"/"+c.moving_asset_id+".prefab");
+                moving=AssetDatabase.LoadAssetAtPath<GameObject>(NativeLocations.Get(c.moving_asset_id).Prefab);
                 if(!moving || c.moving_asset_id==id) throw new Exception("Import a separate moving asset first");
             }
             var root=PrefabUtility.LoadPrefabContents(path);

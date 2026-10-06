@@ -38,7 +38,11 @@ def _windows():
 
 
 def get(provider):
-    value = os.environ.get("MESHY_API_KEY" if provider == "meshy" else "PTS_LOCAL_API_KEY")
+    value = os.environ.get(
+        {"meshy": "MESHY_API_KEY", "local": "PTS_LOCAL_API_KEY", "vision": "PTS_VISION_API_KEY"}[
+            provider
+        ]
+    )
     if value:
         return value
     name = "PromptToScene." + provider
@@ -65,7 +69,7 @@ def get(provider):
 
 def put(provider, value):
     if (
-        provider not in {"meshy", "local"}
+        provider not in {"meshy", "local", "vision"}
         or not isinstance(value, str)
         or not 1 <= len(value) <= 4096
     ):

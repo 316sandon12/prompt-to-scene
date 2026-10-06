@@ -209,7 +209,11 @@ def submit(
         ):
             raise ValueError("Reference images must be PNG/JPEG files up to 8 MiB")
         images.append({"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
-    config = preparation.options(settings, styles.read(project)["quality"])
+    from . import project_profiles
+
+    config = preparation.options(
+        project_profiles.preparation_defaults(project, settings), styles.read(project)["quality"]
+    )
     if position is not None:
         core.position_values(position)
     return background.submit(

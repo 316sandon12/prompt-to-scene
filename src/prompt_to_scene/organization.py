@@ -162,11 +162,15 @@ def rules_for(settings):
         if not isinstance(row, dict) or row.keys() - {"folder", "prefix"}:
             raise ValueError("A naming rule supports folder and prefix")
         folder, prefix = row.get("folder", rules[kind][0]), row.get("prefix", rules[kind][1])
-        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_/]{0,79}", folder) or protected(folder):
+        if (
+            not isinstance(folder, str)
+            or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_/]{0,79}", folder)
+            or protected(folder)
+        ):
             raise ValueError("Use a simple relative category folder")
         if "//" in folder or folder.endswith("/"):
             raise ValueError("Invalid category folder")
-        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,15}", prefix):
+        if not isinstance(prefix, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,15}", prefix):
             raise ValueError("Use a short letter/digit/underscore prefix")
         rules[kind] = (folder, prefix)
     return rules
@@ -176,7 +180,15 @@ def make_plan(scan, settings, pinned=(), annotation_paths=()):
     engine = scan["engine"]
     if scan.get("truncated"):
         raise ValueError("Scan limit reached; scan a smaller folder before organizing")
-    if settings.keys() - {"destination", "rename", "group_by", "exclude", "overrides", "rules"}:
+    if settings.keys() - {
+        "destination",
+        "rename",
+        "group_by",
+        "exclude",
+        "include",
+        "overrides",
+        "rules",
+    }:
         raise ValueError("Unknown organization setting")
     destination = path_check(
         settings.get("destination")
@@ -195,6 +207,12 @@ def make_plan(scan, settings, pinned=(), annotation_paths=()):
         raise ValueError("Use at most 200 excluded asset/folder paths")
     for path in excluded:
         path_check(path, engine, True)
+    included = settings.get("include")
+    if included is not None:
+        if not isinstance(included, list) or not 1 <= len(included) <= 200:
+            raise ValueError("Select 1–200 asset or folder paths")
+        for path in included:
+            path_check(path, engine, True)
     overrides = settings.get("overrides", {})
     if not isinstance(overrides, dict) or len(overrides) > 2000:
         raise ValueError("Use at most 2,000 explicit name overrides")
@@ -216,6 +234,10 @@ def make_plan(scan, settings, pinned=(), annotation_paths=()):
             reason = "Material path retained by a generated source revision"
         elif any(old == p or old.startswith(p + "/") for p in excluded):
             reason = "Excluded by project rule"
+        elif included is not None and not any(
+            old == p or old.startswith(p + "/") for p in included
+        ):
+            reason = "Outside selection"
         elif entry["kind"] not in rules:
             reason = reason or "Classified for review; this type stays in its original location"
         new, collision = old, False
@@ -280,11 +302,11 @@ def make_plan(scan, settings, pinned=(), annotation_paths=()):
 
 
 @contextmanager
-def annotation_lock(root):
+def annotation_lock(root, nonblocking=False):
     folder = root / "organization"
     if folder.resolve() != folder:
         raise ValueError("Organization state cannot traverse a symlink")
-    folder.mkdir(exist_ok=True)
+    folder.mkdir(parents=True, exist_ok=True)
     path = folder / "annotations.lock"
     if path.is_symlink():
         raise ValueError("Annotation lock cannot be a symlink")
@@ -296,11 +318,11 @@ def annotation_lock(root):
                 lock.write(b"0")
                 lock.flush()
             lock.seek(0)
-            msvcrt.locking(lock.fileno(), msvcrt.LK_LOCK, 1)
+            msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK if nonblocking else msvcrt.LK_LOCK, 1)
         else:
             import fcntl
 
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | (fcntl.LOCK_NB if nonblocking else 0))
         try:
             yield
         finally:
@@ -320,7 +342,7 @@ def save_annotation(root, path, data):
     with annotation_lock(root):
         _sync_annotations(root)
         annotations = core.read_optional_json(root / "project-library.json") or {}
-        annotations[path] = data
+        annotations[path] = {**annotations.get(path, {}), **data}
         core.atomic_json(root / "project-library.json", annotations)
 
 
@@ -380,7 +402,10 @@ def organize(
             raise ValueError("Scan belongs to another engine")
         sync_annotations(root)
         annotation_paths = (core.read_optional_json(root / "project-library.json") or {}).keys()
-        plan = make_plan(scan, settings or {}, pinned_paths(root), annotation_paths)
+        from . import project_profiles
+
+        options = {**project_profiles.read(project)["organization"], **(settings or {})}
+        plan = make_plan(scan, options, pinned_paths(root), annotation_paths)
         plan_id = uuid.uuid4().hex
         plan.update(plan_id=plan_id, created_utc=workflow.now())
         core.atomic_json(root / "organization/plans" / (plan_id + ".json"), plan)

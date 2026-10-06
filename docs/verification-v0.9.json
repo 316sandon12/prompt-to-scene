@@ -1,0 +1,130 @@
+{
+  "version": "0.9.0",
+  "recorded_date": "2026-10-07",
+  "timezone": "Asia/Shanghai",
+  "source_ref": "v0.9.0",
+  "environment": {
+    "os": "macOS 15.8",
+    "hardware": "Apple M3 Pro",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2"
+  },
+  "python": {
+    "tests_passed": 182,
+    "lint": "passed",
+    "format": "passed",
+    "javascript_syntax": "passed",
+    "shared_skill": "passed"
+  },
+  "native": {
+    "unity_builtin": {
+      "result": "passed",
+      "tool_calls": {
+        "project_conventions": 4,
+        "organize_project_assets": 3,
+        "get_task_status": 10,
+        "describe_project_assets": 1,
+        "save_asset_description": 1,
+        "search_project_assets": 2,
+        "adapt_asset_materials": 4,
+        "manage_asset_inbox": 4
+      },
+      "saved_profile_and_native_layout": "passed",
+      "automatic_settled_intake": "passed",
+      "unchanged_source_deduplication": "passed",
+      "rendered_evidence_and_corrected_description_search": "passed",
+      "native_panel_ipc_selection_organization_apply_undo": "passed",
+      "material_preview_assets": 2,
+      "selectively_applied_targets": 1,
+      "unchanged_other_target": "passed",
+      "native_parameter_readback_and_undo": "passed",
+      "service_start": "Automatic full-editor service",
+      "editor_exit_code": 0
+    },
+    "unity_urp": {
+      "result": "passed",
+      "tool_calls": {
+        "project_conventions": 4,
+        "organize_project_assets": 3,
+        "get_task_status": 10,
+        "describe_project_assets": 1,
+        "save_asset_description": 1,
+        "search_project_assets": 2,
+        "adapt_asset_materials": 4,
+        "manage_asset_inbox": 10
+      },
+      "saved_profile_and_native_layout": "passed",
+      "automatic_settled_intake": "passed",
+      "unchanged_source_deduplication": "passed",
+      "rendered_evidence_and_corrected_description_search": "passed",
+      "native_panel_ipc_selection_organization_apply_undo": "passed",
+      "material_preview_assets": 2,
+      "selectively_applied_targets": 1,
+      "unchanged_other_target": "passed",
+      "native_parameter_readback_and_undo": "passed",
+      "service_start": "Explicit batch-test service",
+      "editor_exit_code": 0
+    },
+    "unreal": {
+      "result": "passed",
+      "tool_calls": {
+        "project_conventions": 4,
+        "organize_project_assets": 3,
+        "get_task_status": 10,
+        "describe_project_assets": 1,
+        "save_asset_description": 1,
+        "search_project_assets": 2,
+        "adapt_asset_materials": 4,
+        "manage_asset_inbox": 3
+      },
+      "saved_profile_and_native_layout": "passed",
+      "automatic_settled_intake": "passed",
+      "unchanged_source_deduplication": "passed",
+      "rendered_evidence_and_corrected_description_search": "passed",
+      "native_panel_ipc_selection_organization_apply_undo": "passed",
+      "material_preview_assets": 2,
+      "selectively_applied_targets": 1,
+      "unchanged_other_target": "passed",
+      "native_parameter_readback_and_undo": "passed",
+      "service_start": "Automatic full-editor service",
+      "widget_builder_dependency_required": false,
+      "editor_exit_code": 0,
+      "test_driver_shutdown_note": "Early full-editor test exits retained an engine async script notification and crashed in Slate/ICU. The fixture now lets the notification retire before quitting; the final complete native flow and editor exit passed."
+    }
+  },
+  "hosts": {
+    "codex": "Actual isolated app-server: 65 tools and invocation passed",
+    "harness": "Actual 0.2.0-rc.1 bundle registration and ToolRuntime invocation passed"
+  },
+  "vision": {
+    "protocol": "Actual loopback HTTP image request and structured-response fixture passed",
+    "native_description": "Explicit fixture correction; visual model accuracy is not measured",
+    "paid_remote_model_tested": false
+  },
+  "workbench": {
+    "profile_autoload": "passed",
+    "real_preview_gallery": "passed",
+    "console_warnings_or_errors": 0,
+    "screenshots": [
+      "images/project-workshop-web.png",
+      "images/project-workshop-unity.png",
+      "images/project-workshop-unreal.png"
+    ]
+  },
+  "local_portable_macos": {
+    "result": "passed",
+    "tools": 65,
+    "frozen_editor_service": "passed",
+    "detached_blender_recipe": "passed",
+    "detached_blender_external_intake": "passed"
+  },
+  "limitations": [
+    "Native Windows editors and older UE widget compatibility are not certified",
+    "Material adaptation requires supported shader parameters; Unity targets prefabs and UE targets static meshes",
+    "Semantic search uses descriptions and keywords, not vector embeddings",
+    "No live paid vision model accuracy or arbitrary rig/animation support is claimed",
+    "Native panel service actions and rendering were checked; every OS mouse gesture was not automated"
+  ]
+}

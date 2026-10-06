@@ -6,7 +6,7 @@
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.8 is experimental and includes opaque props, three interaction templates, modular blockouts and project asset organization. Modeling needs Blender; organization needs only the engine editor. Use your AI client or the local workshop.
+> v0.9 is experimental and adds shared project conventions, automatic source intake, native editor workshops, evidence-backed asset descriptions and reference material previews. Modeling needs Blender; organization needs only the engine editor. Use Codex, DeepSeek Harness or the local workshop.
 
 ![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 
@@ -27,6 +27,16 @@ Keep the editor open outside Play mode. Restart UE once after installing the bri
 Or choose a prop in **创作工作台 / Workshop**, compare candidates and publish your favorite. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
 
 Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
+
+## v0.9: a project workshop inside the engine
+
+- Save naming, folders, geometry/texture budgets, LODs and collision once per project.
+- Drop source models into the designated inbox; settled revisions are prepared and imported automatically while the editor/app is running. Unchanged files are skipped and failed items can be retried.
+- Open the Unity EditorWindow or UE Editor Utility Widget from the engine menu or asset context menu. Work on the current selection, review naming plans and undo changes.
+- Capture native thumbnails and measurements, let the connected AI describe them, correct labels and search by intended use. An optional vision endpoint supports batch descriptions; no filename-only visual recognition claims.
+- Preview reference colors, roughness and texture scale on separate variants, compare actual renders, then selectively apply material slots or restore original assignments.
+
+[项目管家教程与边界](docs/PROJECT-WORKSHOP.zh-CN.md). Unity material adaptation targets prefabs; UE targets static meshes with supported material parameters. The UE widget is bundled as an engine-only asset built with UE 5.7.2; users do not need the maintainer C++ builder.
 
 ## v0.8: automatic project asset naming and organization
 
@@ -90,7 +100,7 @@ Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 m
 | Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
 | Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-These features are available through both AI hosts and the local workshop. The MCP server exposes 58 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
+These features are available through both AI hosts and the local workshop. The MCP server exposes 65 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
 
 ## Refine by conversation
 

@@ -128,6 +128,9 @@ def install(target) -> dict:
         backup_file.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(target.project_file, backup_file)
         atomic_json(target.project_file, descriptor)
+    from . import editor_tools
+
+    editor_tools.install(target)
     return {
         "installed": True,
         "bridge_version": __version__,

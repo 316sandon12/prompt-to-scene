@@ -85,6 +85,13 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                     "reuse_project_asset",
                     "tag_project_asset",
                     "organize_project_assets",
+                    "project_conventions",
+                    "manage_asset_inbox",
+                    "describe_project_assets",
+                    "get_asset_evidence",
+                    "save_asset_description",
+                    "configure_asset_vision",
+                    "adapt_asset_materials",
                 }
                 app_tool = next(t for t in catalog.tools if t.name == "open_workbench")
                 assert app_tool.meta["ui"]["resourceUri"] == "ui://prompt-to-scene/workbench.html"

@@ -338,6 +338,11 @@ def build(
             if exported.get("geometry_hash")
             else "",
         }
+        from . import native_locations
+
+        request["native_layout"] = native_locations.layout(
+            str(target.project_file or target.root), name
+        )
         atomic_json(work / "request.json", request)
         atomic_json(
             work / "asset.json",

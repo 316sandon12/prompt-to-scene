@@ -1,5 +1,41 @@
 # Verification
 
+## v0.9 — recorded on 2026-10-07
+
+Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, Unreal 5.7.2. Tests use real native assets, Blender preparation, MCP calls and disposable projects. See [the project-workshop guide](PROJECT-WORKSHOP.zh-CN.md) and [sanitized measurements](verification-v0.9.json).
+
+| Check | Result |
+| --- | --- |
+| Source / MCP | 182 tests passed; lint, formatting, JS syntax and shared skill validation passed. Covers profile merge/bounds, stable native paths, inbox dependency hashes/deduplication, evidence validation, preserved human corrections, annotation migration, vision opt-in and selective adaptation contracts. |
+| Project conventions | Saved destination/prefix/preparation rules drive native imports in all three engine paths. Existing assets retain their recorded location. Suggestions count prefixes in actual native scans. |
+| Automatic intake | A settled GLB is detected by the watcher, prepared by actual Blender and imported under the saved project layout. Repeated scanning skips its unchanged version. The editor service is started automatically in full editors; URP batch testing starts it explicitly because batch mode intentionally suppresses auto-launch. |
+| Unity Built-in / URP | Actual rendered evidence, description correction/search, two material variants, selective assignment of only one target, native color/UV parameter checks and undo passed. Selection-limited organization through the native panel service also passed. |
+| Unreal | The same flow passed on real static meshes and material instances. A native Editor Utility Widget loads in the normal plugin without the C++ builder; actual preview images render even in an empty level. |
+| Vision | An actual loopback HTTP fixture verifies image-bearing requests and structured responses. Native tests use explicit fixture descriptions to verify evidence/search/corrections. No paid remote vision service or model-recognition accuracy is claimed. |
+| Hosts | Actual isolated Codex app-server discovered 65 tools and invoked the plugin; actual Harness 0.2.0-rc.1 bundle registration and ToolRuntime invocation passed without an LLM request. |
+| Local workbench | Saved profile auto-load, material-row selection and real before/after image galleries were checked in the browser; no observed console warnings/errors. This does not certify embedded MCP App UI support in every host. |
+| Local portable macOS | Frozen 65-tool MCP/setup/bridge checks passed, including the real frozen editor service and detached Blender recipe/external-intake workers. Public release checks are recorded below after publication. |
+
+The final native runs exited with code zero. Earlier full-editor UE fixture exits retained its async script notification and crashed during Slate/ICU teardown; the test driver now allows that notification to retire before quitting. The final complete flow was rerun successfully.
+
+Material adaptation preserves target geometry and textures; supported shader parameters control the result. Unity currently targets prefabs; UE targets static meshes and exposed material parameters. Semantic search is description/tag keyword matching, not embeddings. Windows native editors, older UE template compatibility, arbitrary shaders, rigging and animation are not covered. Native image pairs use simple fixtures to verify changes, not to demonstrate finished game art.
+
+### Reproduce v0.9
+
+```bash
+uv sync --locked
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+/path/to/blender --background --factory-startup --python tools/external_fixture.py -- .local/v05-fixtures
+uv run python tools/codex_plugin_smoke.py
+uv run python tools/harness_plugin_smoke.py --dsh /path/to/dsh
+uv run --group build python tools/package_app.py
+uv run python tools/packaged_smoke.py dist/bin/prompt-to-scene-core --blender /path/to/blender
+```
+
+For native checks, use disposable repository-local `.local/*smoke-*` projects with the current bridge installed. Copy `tools/UnityPipelineSmoke.cs` to the Unity project's `Assets/Editor` and launch Unity with `-executeMethod UnityPipelineSmoke.Run`. For UE, launch the full editor with `-ExecutePythonScript=/absolute/path/to/tools/unreal_pipeline_driver.py`. Once its `pipeline-ready` marker exists, run `uv run python tools/pipeline_smoke.py --project /repo/.local/ENGINE-smoke-EXAMPLE`. Repeat Unity with Built-in and URP. The driver creates fixtures and the smoke script writes `pipeline-evidence.json`; use neither against a working game project. Writing `{"operation":"stop"}` to `.prompt-to-scene/pipeline-command.json` exits the fixture editor. For headless Unity testing, also start `uv run python -m prompt_to_scene.app --editor-service /repo/.local/unity-smoke-EXAMPLE` and set `PTS_BLENDER` if Blender is not discoverable.
+
 ## v0.8 — recorded on 2026-10-04
 
 Environment: macOS 15.8 / Apple M3 Pro, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, Unreal 5.7.2. Organization uses real native assets, actual MCP calls and disposable projects. See [sanitized measurements](verification-v0.8.json) and the [actual workbench](images/organization-workbench.jpg).

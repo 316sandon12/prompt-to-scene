@@ -54,7 +54,7 @@ def main():
                     1,
                     "initialize",
                     {
-                        "clientInfo": {"name": "pts-verification", "version": "0.8.0"},
+                        "clientInfo": {"name": "pts-verification", "version": "0.9.0"},
                         "capabilities": {"experimentalApi": True},
                     },
                 )
@@ -65,7 +65,7 @@ def main():
                 ]
                 catalog = rpc(3, "mcpServerStatus/list", {"threadId": thread})["data"]
                 server = next(s for s in catalog if s["name"] == "prompt_to_scene")
-                assert len(server["tools"]) == 58
+                assert len(server["tools"]) == 65
                 result = rpc(
                     4,
                     "mcpServer/tool/call",

@@ -320,6 +320,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    from .intake import start_watcher
+
+    start_watcher()
     with Server() as server:
         url = server.origin + "/#" + server.token
         if os.environ.get("PTS_SETUP_URL_FILE"):

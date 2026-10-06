@@ -6,7 +6,7 @@ import re
 
 import unreal
 
-from . import actions, protection
+from . import actions, locations, protection
 from .protocol import write_json
 
 
@@ -37,6 +37,10 @@ def execute(request, root):
         from . import organization
 
         return organization.execute(request, c, root)
+    elif command == "adapt":
+        from . import adaptation
+
+        return adaptation.execute(request, c, root)
     else:
         raise ValueError("Unknown development command")
     return {"development": data, "scene": actions.scene()}
@@ -57,7 +61,7 @@ def interaction(asset_id, c):
     )
     if not template:
         raise RuntimeError("Interaction Blueprint template missing. Install the current UE bridge.")
-    path = f"/Game/PromptToScene/{asset_id}/BP_{asset_id}"
+    path = locations.asset(asset_id, "blueprint")
     bp = unreal.load_asset(path) if unreal.EditorAssetLibrary.does_asset_exist(path) else None
     keep = bool(bp and c.get("preserve_configuration"))
     if not bp:
@@ -65,7 +69,7 @@ def interaction(asset_id, c):
     if not bp:
         raise RuntimeError("Could not create the asset Blueprint")
     unreal.BlueprintEditorLibrary.compile_blueprint(bp)
-    cls = unreal.load_class(None, path + ".BP_" + asset_id + "_C")
+    cls = unreal.load_class(None, path + "." + path.rsplit("/", 1)[-1] + "_C")
     defaults = unreal.get_default_object(cls)
     default_tags = [
         str(t)
@@ -108,7 +112,7 @@ def interaction(asset_id, c):
             component.set_collision_profile_name("BlockAll")
     unreal.BlueprintEditorLibrary.compile_blueprint(bp)
     unreal.EditorAssetLibrary.save_loaded_asset(bp, only_if_is_dirty=False)
-    cls = unreal.load_class(None, path + ".BP_" + asset_id + "_C")
+    cls = unreal.load_class(None, path + "." + path.rsplit("/", 1)[-1] + "_C")
     targets = actions.targets({"scope": "asset", "asset_id": asset_id})
     converted = []
     with unreal.ScopedEditorTransaction("Prompt-to-Scene: interaction"):

@@ -42,6 +42,7 @@ namespace PromptToScene.Editor
         public TransferFile[] files;
         public LodData[] lods;
         public string collision_mode, geometry_hash;
+        public NativeLayout native_layout;
         public string[] object_names;
     }
     [Serializable] public class ImportReceipt
@@ -68,7 +69,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
-        public string bridge_version = "0.8.0";
+        public string bridge_version = "0.9.0";
         public string engine = "unity";
         public string pipeline;
         public string scene;
@@ -101,7 +102,10 @@ namespace PromptToScene.Editor
                 updated_utc = DateTime.UtcNow.ToString("o")
             });
             if (!Application.isBatchMode && !EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                WorkshopWindow.EnsureService();
                 ImportPending();
+            }
         }
 
         [MenuItem("Tools/Prompt-to-Scene/Import Pending Assets")]
@@ -215,9 +219,11 @@ namespace PromptToScene.Editor
             if (!urp && Pipeline != "Built-in") throw new Exception("v0.1 supports Built-in and URP only");
             var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
             if (!scene.IsValid() || !scene.isLoaded) throw new Exception("Open a scene before importing");
-            string target = "Assets/PromptToScene/" + request.asset_id;
+            var layout = request.native_layout ?? NativeLocations.Get(request.asset_id);
+            NativeLocations.Validate(layout);
+            string target = layout.folder;
             var overrides = SceneActions.RememberTints(request.asset_id);
-            string prefabPath = target + "/" + request.asset_id + ".prefab";
+            string prefabPath = layout.Prefab;
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
             var protectedState = SceneProtection.Capture(request.asset_id, prefab);
             var conflicts = SceneProtection.Conflicts(protectedState, request.materials.Select(m=>m.name).ToArray(), request.object_names);
@@ -231,12 +237,16 @@ namespace PromptToScene.Editor
             foreach (TransferFile file in request.files)
             {
                 if (reuseGeometry && file.name.EndsWith(".fbx")) continue;
-                string destination = Path.Combine(absoluteTarget, file.name);
+                string destination = Path.Combine(ProjectRoot, layout.File(file.name));
+                Directory.CreateDirectory(Path.GetDirectoryName(destination));
                 if (!File.Exists(destination) || Sha256(File.ReadAllBytes(destination)) != file.sha256)
                     File.Copy(Path.Combine(StateRoot, request.work_dir, file.name), destination, true);
             }
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            string modelPath = target + "/model.fbx";
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(ProjectRoot, prefabPath)));
+            Directory.CreateDirectory(Path.Combine(ProjectRoot, target, layout.materials));
+            AssetDatabase.Refresh();
+            string modelPath = layout.File("model.fbx");
             var model = reuseGeometry ? AssetDatabase.LoadAssetAtPath<GameObject>(modelPath) : ImportModel(modelPath);
             if (model == null) throw new Exception("FBX import produced no model");
             var materials = new Dictionary<string, Material>();
@@ -250,7 +260,7 @@ namespace PromptToScene.Editor
                     materials.Add(data.name, reusedMaterial);
                     continue;
                 }
-                string materialPath = target + "/mat_" + Sha256(Encoding.UTF8.GetBytes(data.name)).Substring(0, 16) + ".mat";
+                string materialPath = target + "/" + layout.materials + layout.material_prefix + Sha256(Encoding.UTF8.GetBytes(data.name)).Substring(0, 16) + ".mat";
                 var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
                 Shader shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard");
                 if (shader == null) throw new Exception("Target shader not installed");
@@ -267,10 +277,10 @@ namespace PromptToScene.Editor
                 material.SetColor(urp ? "_BaseColor" : "_Color", color);
                 material.SetFloat("_Metallic", data.metallic);
                 material.SetFloat(urp ? "_Smoothness" : "_Glossiness", 1 - data.roughness);
-                material.SetTexture(urp ? "_BaseMap" : "_MainTex", Texture(target, data.base_color_texture, false));
-                material.SetTexture("_BumpMap", Texture(target, data.normal_texture, true));
+                material.SetTexture(urp ? "_BaseMap" : "_MainTex", Texture(layout, data.base_color_texture, false));
+                material.SetTexture("_BumpMap", Texture(layout, data.normal_texture, true));
                 material.SetFloat("_BumpScale", data.normal_strength);
-                var mask = Texture(target, data.mask_texture, false, true);
+                var mask = Texture(layout, data.mask_texture, false, true);
                 material.SetTexture("_MetallicGlossMap", mask);
                 if (mask != null)
                 {
@@ -335,7 +345,7 @@ namespace PromptToScene.Editor
                         lods.Add(new LOD(levels[0].screen_height, renderers));
                         for (int i = 0; i < levels.Length; i++)
                         {
-                            GameObject next = Object.Instantiate(ImportModel(target + "/" + levels[i].file), visual.transform, false);
+                            GameObject next = Object.Instantiate(ImportModel(layout.File(levels[i].file)), visual.transform, false);
                             next.name = "LOD" + (i + 1);
                             MapMaterials(next, slots);
                             if (next.GetComponentsInChildren<MeshFilter>().Sum(m => m.sharedMesh.triangles.Length / 3) != levels[i].triangles)
@@ -427,10 +437,10 @@ namespace PromptToScene.Editor
                 }).ToArray();
         }
 
-        private static Texture2D Texture(string target, string name, bool normal, bool linear = false)
+        private static Texture2D Texture(NativeLayout layout, string name, bool normal, bool linear = false)
         {
             if (string.IsNullOrEmpty(name)) return null;
-            string path = target + "/" + name;
+            string path = layout.File(name);
             var importer = AssetImporter.GetAtPath(path) as TextureImporter;
             if (importer == null) throw new Exception("Texture import failed: " + name);
             var type = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;

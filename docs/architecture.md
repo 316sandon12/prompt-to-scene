@@ -55,7 +55,7 @@ Explicit `PTS_PROJECT` / legacy `PTS_UNITY_PROJECT` settings override the active
 | `search_project_assets`, `reuse_project_asset`, `tag_project_asset` | Local native indexing, keyword ranking, preview, reuse and provenance annotations. |
 | `organize_project_assets` | Native type inventory, deterministic naming/classification plans, inspected paths, native apply and persistent undo/history. |
 
-There are 58 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
+There are 65 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
 
 The separate schema 1 action queue supports selection, transforms, tint, focus, contextual arrangement, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
 
@@ -115,6 +115,34 @@ Unity renders the current managed objects through a temporary camera/light into 
 
 Supported materials and geometry are described in the [asset contract](asset-contract.md). Python is trusted local code, not a sandbox. Import errors can leave partially updated engine assets; backups, source history and edit snapshots do not provide whole-project rollback. Native operations stay on the editor thread.
 
+
+## v0.9 project workflow
+
+`project_conventions` reads/saves the versioned root-level `prompt-to-scene.json` or suggests
+prefixes from native inventory. `native_locations` persists the first managed destination per
+asset, so later profile edits do not relocate existing assets. Source imports, generated models,
+recipe preparation and organization share defaults; explicit job settings take precedence.
+
+`manage_asset_inbox` fingerprints models and local dependencies after a settling window.
+Cross-process locking makes concurrent app/MCP/editor scans idempotent. Each source path retains
+its asset identity and revision receipt. Failed revisions require an explicit retry. Watchers
+run only while a connected process remains alive; the native service exits after its editor
+heartbeat stops. Native panels use bounded, project-local file IPC and a copied portable core,
+never a shell command containing user-supplied prompts. The frozen-core smoke tests this path.
+
+`describe_project_assets` creates durable image evidence from actual native previews.
+`get_asset_evidence` returns pixels; `save_asset_description` stores structured labels/confidence
+with that evidence. Manual corrections survive automatic runs and organization path migrations.
+`configure_asset_vision` optionally configures an image-capable chat-completions endpoint; keys
+use OS credential storage. Remote calls require explicit allowance and have size/time limits.
+Search uses descriptions, tags and keywords rather than an embedding index.
+
+`adapt_asset_materials` builds a native plan and preview variants, captures before/after, then
+applies chosen material rows. Unity identifies original material subassets by GUID **and** local
+file ID; UE retains material object references and creates instances. Preflight verifies current
+assignments and material contents. The journal records each completed target for selective undo.
+Supported shader fields are explicit; missing or texture-controlled parameters are reported as
+skips. A preview changes no original target geometry/material assignment.
 
 ## v0.8 project asset organization
 

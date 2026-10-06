@@ -10,4 +10,6 @@ class PTSTEMPLATEBUILDER_API UPTSTemplateBuilder : public UBlueprintFunctionLibr
 public:
     UFUNCTION(BlueprintCallable, Category="PromptToScene")
     static UBlueprint* BuildInteractiveTemplate(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildWorkshopTemplate(const FString& PackagePath);
 };

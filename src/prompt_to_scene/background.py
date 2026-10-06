@@ -9,7 +9,16 @@ from . import core, registry, workflow
 
 
 def submit(project, kind, parameters, asset_id=None):
-    if kind not in {"composition", "generation", "quality", "interactive"}:
+    if kind not in {
+        "composition",
+        "generation",
+        "quality",
+        "interactive",
+        "intake",
+        "semantic",
+        "adaptation",
+        "editor",
+    }:
         raise ValueError("Unknown workflow")
     target = registry.resolve(project)
     root = core.state_root(target.root)
@@ -89,7 +98,16 @@ class Job:
 
 
 def run(path):
-    from . import compositions, development, generation, quality
+    from . import (
+        art_adaptation,
+        compositions,
+        development,
+        editor_tools,
+        generation,
+        intake,
+        quality,
+        semantics,
+    )
 
     job = Job(path)
     try:
@@ -99,6 +117,10 @@ def run(path):
             "generation": generation.run,
             "quality": quality.run,
             "interactive": development.run_interactive,
+            "intake": intake.run,
+            "semantic": semantics.run,
+            "adaptation": art_adaptation.run,
+            "editor": editor_tools.run_job,
         }[job.spec["kind"]](job, **job.spec["parameters"])
         job.update(**result, status="completed", error=None, completed_utc=workflow.now())
     except Exception as error:

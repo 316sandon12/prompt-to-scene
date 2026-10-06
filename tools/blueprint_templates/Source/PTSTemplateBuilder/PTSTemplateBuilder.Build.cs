@@ -5,6 +5,6 @@ public class PTSTemplateBuilder : ModuleRules
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         PublicDependencyModuleNames.AddRange(new[] {"Core", "CoreUObject", "Engine"});
-        PrivateDependencyModuleNames.AddRange(new[] {"UnrealEd", "BlueprintGraph", "KismetCompiler", "Kismet", "InputCore"});
+        PrivateDependencyModuleNames.AddRange(new[] {"UnrealEd", "BlueprintGraph", "KismetCompiler", "Kismet", "InputCore", "Blutility", "UMG", "UMGEditor", "Slate", "SlateCore"});
     }
 }

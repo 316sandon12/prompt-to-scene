@@ -80,7 +80,7 @@ def tick(_delta):
             root / "editor.json",
             {
                 "engine": "unreal",
-                "bridge_version": "0.8.0",
+                "bridge_version": "0.9.0",
                 "capabilities": ["actions", "preview", "instance_undo", "auto_place"],
                 "unreal_version": unreal.SystemLibrary.get_engine_version(),
                 "scene": level.get_outer().get_path_name() if level else None,
@@ -89,6 +89,9 @@ def tick(_delta):
             },
         )
         if level and not playing:
+            from . import panel
+
+            panel.ensure_service()
             import_pending()
         _last_error = None
     except Exception as error:
@@ -106,6 +109,9 @@ def start():
     ):
         return
     if _handle is None:
+        from . import panel
+
+        panel.register()
         _handle = unreal.register_slate_post_tick_callback(tick)
         unreal.log("[Prompt-to-Scene] Watching the local project inbox")
 

@@ -127,9 +127,11 @@
       const summary=task.status==="imported"?"原生资产已导入。":task.development?.command==="playcheck"&&task.status==="completed"?(task.development.passed?"试玩检查通过，已回到编辑模式。":"检查完成，有项目未通过。请查看详情。"):task.error || task.stage || task.development?.message || "";
       card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.asset_id || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
       card.append(button("查看详情", () => { output(task); return task; }));
-      if (task.development?.plan_id) card.append(button("查看整理记录", () => loadOrganization(task.development.plan_id)));
+      if (task.development?.command === "organize" && task.development?.plan_id) card.append(button("查看整理记录", () => loadOrganization(task.development.plan_id)));
       if (task.kind && ["error","cancelled"].includes(task.status)) card.append(button("恢复", () => call("resume", {request_id:task.request_id})));
       if (["building","queued"].includes(task.status)) card.append(button("取消", () => call("cancel", {request_id:task.request_id})));
+      if (task.kind === "semantic" && task.status === "completed") card.append(button("查看识别与纠正", () => semanticResults(task)));
+      if (task.kind === "adaptation" && task.status === "completed") card.append(button("查看材质前后对照", () => adaptationResults(task)));
       if (task.kind === "quality" && task.status === "completed") card.append(button("查看前后对照", () => showReview(task)));
       if (task.development?.command === "playcheck" && task.status === "completed" && task.development.screenshots?.length) card.append(button("查看试玩前后", async () => {await showImage({kind:"play_before",request_id:task.request_id},"交互前");await showImage({kind:"engine",request_id:task.request_id},"交互后",true);return task;}));
       if (task.undo_id) card.append(button("撤销布置", () => call("undo", {undo_id:task.undo_id})));
@@ -146,7 +148,63 @@
   }
   async function refresh() { if (refreshing) return; refreshing = true; try { render(await call("state")); } finally { refreshing = false; } }
   async function submitted(actionName, values) { const task = await call(actionName, values); notice("任务已开始，可在下方查看进度。"); return task; }
+  let adaptationPlan = null, semanticIndex = null;
+  const chosenPaths = () => $("semanticPaths").value.split(/\n/).map(x=>x.trim()).filter(Boolean);
+  function fillProfile(profile) {
+    $("profileDestination").value=profile.organization.destination;
+    $("profileModelPrefix").value=profile.organization.rules?.model?.prefix || "SM_";
+    $("profileTriangles").value=profile.preparation.triangle_budget;
+    $("profileTexture").value=profile.preparation.texture_size;
+    $("profileCollision").value=profile.preparation.collision;
+    $("profileLods").value=profile.preparation.lod_ratios.join(", ");
+    $("profileInbox").value=profile.intake.folder;$("profileAuto").checked=profile.intake.enabled;
+  }
+  bind("loadProfile",async()=>{const value=await call("profile");fillProfile(value);return value;});
+  bind("saveProfile",async()=>{const old=await call("profile");const value=await call("profile",{mode:"save",settings:{
+    organization:{...old.organization,destination:$("profileDestination").value.trim(),rules:{...old.organization.rules,model:{...old.organization.rules?.model,prefix:$("profileModelPrefix").value.trim()}}},
+    preparation:{...old.preparation,triangle_budget:Number($("profileTriangles").value),texture_size:Number($("profileTexture").value),collision:$("profileCollision").value,lod_ratios:$("profileLods").value.split(/[,，\s]+/).filter(Boolean).map(Number)},
+    intake:{...old.intake,folder:$("profileInbox").value.trim(),enabled:$("profileAuto").checked}}});fillProfile(value);notice("项目规范已保存。新任务会使用这些设置。");return value;});
+  bind("suggestProfile",async()=>{const scan=await waitAction(await call("organize",{mode:"scan"}));const value=await call("profile",{mode:"suggest",scan_id:scan.development.scan_id});$("profileSuggestions").replaceChildren();for(const [kind,row] of Object.entries(value.suggestions)){const card=textNode("p",`${kind}：${row.prefix} · ${row.count}/${row.total} 项，置信度 ${Math.round(row.confidence*100)}%`);$("profileSuggestions").append(card);}$("profileSuggestions").append(button("采用这些前缀",async()=>{const current=await call("profile");const rules={...current.organization.rules};for(const [kind,row] of Object.entries(value.suggestions))if(row.confidence>=.6)rules[kind]={...rules[kind],prefix:row.prefix};const saved=await call("profile",{mode:"save",settings:{organization:{...current.organization,rules}}});fillProfile(saved);return saved;}));return value;});
+  async function inboxStatus() {
+    const data=await call("intake");$("inboxEntries").replaceChildren(textNode("p",data.folder+(data.enabled?" · 自动入库已开启":" · 手动扫描")));
+    for(const row of Object.values(data.entries)){const card=document.createElement("article");card.className="card";card.append(textNode("h3",row.path),textNode("p",humanStatus(row.task?.status)+" · "+(row.task?.error||row.task?.stage||row.asset_id)));if(["error","cancelled"].includes(row.task?.status))card.append(button("重试此项",()=>call("intake",{mode:"retry",paths:[row.path]})));$("inboxEntries").append(card);}
+    return data;
+  }
+  bind("loadInbox",inboxStatus);
+  for(const [id,mode] of [["scanInbox","scan"],["retryInbox","retry"]])bind(id,async()=>{const result=await call("intake",{mode});await inboxStatus();notice(`${result.tasks.length} 个任务开始，${result.skipped.length} 项跳过，${result.errors.length} 项需处理。`);for(const e of [...result.errors,...result.skipped])$("inboxEntries").append(textNode("p",e.path+" · "+(e.error||e.reason)));return result;});
+  bind("semanticSearch",async()=>{
+    if(!semanticIndex){const index=await waitAction(await call("library"));semanticIndex=index.request_id;}
+    const result=await call("library",{request_id:semanticIndex,query:$("semanticQuery").value,limit:100});$("semanticPicker").replaceChildren();
+    for(const row of result.development.entries){const card=document.createElement("article");card.className="card";const label=document.createElement("label"),check=document.createElement("input");check.type="checkbox";check.checked=chosenPaths().includes(row.path);check.onchange=()=>{const set=new Set(chosenPaths());check.checked?set.add(row.path):set.delete(row.path);$("semanticPaths").value=[...set].join("\n");};label.append(check,document.createTextNode(" "+(row.semantic?.name||row.name)));card.append(label,textNode("small",row.path),textNode("p",row.tags.join(" · ")));card.append(button("设为外观参考",()=>{$("adaptReference").value=row.path;return row;}));$("semanticPicker").append(card);}
+    return result;
+  });
+  bind("captureSemantics",()=>submitted("semantic",{paths:chosenPaths()}));
+  bind("providerSemantics",()=>submitted("semantic",{paths:chosenPaths(),use_provider:true,allow_remote:$("visionRemote").checked}));
+  bind("saveVision",async()=>{const result=await call("vision",{endpoint:$("visionEndpoint").value,model:$("visionModel").value,api_key:$("visionKey").value||null});$("visionKey").value="";notice("视觉模型配置已保存。");return result;});
+  async function semanticResults(task) {
+    selectTab("pipeline");document.querySelectorAll("#pipeline details").forEach(d=>d.open=d.contains($("semanticEvidence")));$("semanticEvidence").replaceChildren();
+    for(const row of task.results||[]){const card=document.createElement("article");card.className="card";const picture=document.createElement("img");picture.alt="引擎捕获的素材图";picture.style.width="100%";picture.src=(await call("image",{kind:"engine",request_id:row.request_id})).url;card.append(textNode("h3",row.path),picture);
+      const description=row.description?.semantic || {name:"",object_type:"",description:"",materials:[],style:"",uses:[],confidence:0};const inputs={};
+      for(const [key,title] of [["name","建议名称"],["object_type","物体类型"],["description","描述"],["materials","材质（逗号分隔）"],["style","风格"],["uses","用途（逗号分隔）"],["confidence","置信度 0–1"]]){const label=textNode("label",title),input=document.createElement("input");input.value=Array.isArray(description[key])?description[key].join(", "):description[key];label.append(input);card.append(label);inputs[key]=input;}
+      card.append(button("保存我的识别与纠正",()=>call("semantic_save",{evidence_id:row.request_id,corrected:true,description:{...Object.fromEntries(Object.entries(inputs).map(([k,v])=>[k,v.value])),materials:inputs.materials.value.split(/[,，]/).map(x=>x.trim()).filter(Boolean),uses:inputs.uses.value.split(/[,，]/).map(x=>x.trim()).filter(Boolean),confidence:Number(inputs.confidence.value)}})));
+      card.append(button("按此名称预览整理",async()=>{const scan=await waitAction(await call("organize",{mode:"scan"}));const plan=await call("organize",{mode:"plan",scan_id:scan.development.scan_id,settings:{include:[row.path],overrides:{[row.path]:inputs.name.value}}});selectTab("organizer");await loadOrganization(plan.plan_id);return plan;}));
+      if(embedded)card.append(button("请当前 AI 识别这张图",()=>rpc("ui/message",{role:"user",content:[{type:"text",text:`请调用 get_asset_evidence 查看证据 ${row.request_id}，描述 ${row.path} 的实际内容，并用 save_asset_description 保存含置信度的建议。`}] })));
+      $("semanticEvidence").append(card);
+    }return task;
+  }
+  bind("previewAdaptation",()=>submitted("adaptation",{paths:chosenPaths().filter(p=>p!==$("adaptReference").value.trim()),reference:$("adaptReference").value.trim(),fields:[["adaptColor","color"],["adaptRoughness","roughness"],["adaptScale","texture_scale"]].filter(([id])=>$(id).checked).map(([,value])=>value)}));
+  async function adaptationResults(task) {
+    selectTab("pipeline");document.querySelectorAll("#pipeline details").forEach(d=>d.open=d.contains($("previewAdaptation")));adaptationPlan=task.plan_id;$("adaptationRows").replaceChildren();$("previews").replaceChildren();
+    const plan=await call("adaptation",{mode:"inspect",plan_id:adaptationPlan});for(const warning of plan.warnings||[])$("adaptationRows").append(textNode("p",warning));
+    for(const row of plan.entries){const label=textNode("label",`${row.path} · 槽 ${row.slot} · ${row.fields.join(", ")}`),check=document.createElement("input");check.type="checkbox";check.checked=true;check.dataset.adaptationRow=row.id;label.prepend(check);$("adaptationRows").append(label);}
+    for(const row of task.previews||[]){await showImage({kind:"engine",request_id:row.before},row.path+" · 原始",true);await showImage({kind:"engine",request_id:row.after},row.path+" · 参考适配",true);}
+    $("applyAdaptation").disabled=!plan.entries.length;$("undoAdaptation").disabled=false;$("adaptationRows").scrollIntoView({behavior:"smooth",block:"center"});return plan;
+  }
+  bind("applyAdaptation",async()=>{const selected=[...document.querySelectorAll("[data-adaptation-row]:checked")].map(x=>x.dataset.adaptationRow);if(!selected.length)throw Error("请先勾选要应用的材质槽。");return submitted("adaptation",{mode:"apply",plan_id:adaptationPlan,selected});});
+  bind("undoAdaptation",()=>submitted("adaptation",{mode:"undo",plan_id:adaptationPlan}));
+
   function selectTab(name) {
+    if(name==="pipeline"&&!$("profileDestination").value)call("profile").then(fillProfile).catch(e=>notice(e.message,true));
     document.querySelectorAll("[data-tab]").forEach(t => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
     document.querySelectorAll(".pane").forEach(p => {p.hidden = p.id !== name;});
     $("scenePreview").hidden=name==="organizer";$("organizationPreview").hidden=name!=="organizer";
@@ -338,7 +396,7 @@
     document.querySelectorAll(".localOnly").forEach(node => {node.hidden=embedded;});
     document.querySelectorAll(".inlineOnly").forEach(node => {node.hidden=!embedded;});
     if (embedded) {
-      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.8.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.9.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
       notify("ui/notifications/initialized", {});
       new ResizeObserver(() => notify("ui/notifications/size-changed",{height:Math.min(900,document.documentElement.scrollHeight)})).observe(document.body);
     }

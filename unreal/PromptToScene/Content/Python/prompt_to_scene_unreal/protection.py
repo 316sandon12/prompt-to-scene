@@ -4,11 +4,11 @@ import json
 
 import unreal
 
-from . import actions
+from . import actions, locations
 
 
 def mesh_for(name):
-    mesh = unreal.load_asset(f"/Game/PromptToScene/{name}/SM_{name}")
+    mesh = unreal.load_asset(locations.asset(name))
     if not isinstance(mesh, unreal.StaticMesh):
         raise ValueError("Import this managed mesh first: " + name)
     return mesh

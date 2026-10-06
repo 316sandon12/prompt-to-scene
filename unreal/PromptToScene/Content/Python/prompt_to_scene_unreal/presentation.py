@@ -240,15 +240,52 @@ def capture(request, root, camera=None, preview_actor=None, old_selection=None):
     old_selection = (
         old_selection if old_selection is not None else actions.actors().get_selected_level_actors()
     )
-    if camera:
-        editor.set_level_viewport_camera_info(
-            camera.get_actor_location(), camera.get_actor_rotation()
-        )
-    else:
-        actions.focus([preview_actor])
-    path = root / "previews" / (request["request_id"] + ".png")
-    path.parent.mkdir(exist_ok=True)
-    task = unreal.AutomationLibrary.take_high_res_screenshot(960, 640, str(path), delay=0.5)
+    studio = []
+    try:
+        if preview_actor:
+            # Content previews must work in an empty or unlit level too. These temporary
+            # editor actors are removed on success, cancellation and timeout.
+            location = preview_actor.get_actor_location()
+            for pitch, yaw, intensity in ((-40, 145, 3.0), (-25, -35, 1.0)):
+                light = actions.actors().spawn_actor_from_class(unreal.DirectionalLight, location)
+                studio.append(light)
+                light.set_actor_rotation(unreal.Rotator(pitch=pitch, yaw=yaw), False)
+                light.light_component.set_mobility(unreal.ComponentMobility.MOVABLE)
+                light.light_component.set_editor_property("intensity", intensity)
+                light.light_component.set_editor_property("cast_shadows", False)
+            post = actions.actors().spawn_actor_from_class(unreal.PostProcessVolume, location)
+            studio.append(post)
+            post.set_editor_property("unbound", True)
+            post.set_editor_property("priority", 1000000)
+            settings = post.get_editor_property("settings")
+            for key, value in dict(
+                auto_exposure_method=unreal.AutoExposureMethod.AEM_MANUAL,
+                auto_exposure_apply_physical_camera_exposure=False,
+                auto_exposure_bias=0.0,
+                bloom_intensity=0.0,
+                vignette_intensity=0.0,
+                scene_color_tint=unreal.LinearColor(1, 1, 1, 1),
+            ).items():
+                settings.set_editor_property("override_" + key, True)
+                settings.set_editor_property(key, value)
+            post.set_editor_property("settings", settings)
+        if camera:
+            editor.set_level_viewport_camera_info(
+                camera.get_actor_location(), camera.get_actor_rotation()
+            )
+        else:
+            actions.focus([preview_actor])
+        path = root / "previews" / (request["request_id"] + ".png")
+        path.parent.mkdir(exist_ok=True)
+        task = unreal.AutomationLibrary.take_high_res_screenshot(960, 640, str(path), delay=0.5)
+    except Exception:
+        if preview_actor:
+            actions.actors().destroy_actor(preview_actor)
+        for actor in studio:
+            actions.actors().destroy_actor(actor)
+        actions.actors().set_selected_level_actors(old_selection)
+        editor.set_level_viewport_camera_info(*old_camera)
+        raise
     _pending[request["request_id"]] = dict(
         root=root,
         path=path,
@@ -257,6 +294,7 @@ def capture(request, root, camera=None, preview_actor=None, old_selection=None):
         old_camera=old_camera,
         selection=old_selection,
         actor=preview_actor,
+        studio=studio,
     )
     if _handle is None:
         _handle = unreal.register_slate_post_tick_callback(tick)
@@ -286,6 +324,8 @@ def tick(_delta):
             receipt["error"] = "Native capture cancelled or timed out"
         if state["actor"]:
             actions.actors().destroy_actor(state["actor"])
+        for actor in state.get("studio", []):
+            actions.actors().destroy_actor(actor)
         actions.actors().set_selected_level_actors(state["selection"])
         unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).set_level_viewport_camera_info(
             *state["old_camera"]

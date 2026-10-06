@@ -4,6 +4,7 @@ import json
 
 import unreal
 
+from . import locations
 from .materials import build_material
 
 
@@ -32,9 +33,12 @@ def import_asset(request, source):
     if level is None or is_playing():
         raise RuntimeError("Open an editor level and leave Play In Editor before importing")
     asset_id = request["asset_id"]
-    target = "/Game/PromptToScene/" + asset_id
+    layout = locations.validate(request.get("native_layout") or locations.get(asset_id))
+    target = layout["folder"]
+    model = layout["model"]
+    model_folder, _, model_name = (target + "/" + model).rpartition("/")
     unreal.EditorAssetLibrary.make_directory(target)
-    expected_path = target + "/SM_" + asset_id + ".SM_" + asset_id
+    expected_path = target + "/" + model + "." + model_name
     mesh = (
         unreal.load_asset(expected_path)
         if unreal.EditorAssetLibrary.does_asset_exist(expected_path)
@@ -62,8 +66,8 @@ def import_asset(request, source):
     if not reuse_geometry:
         task = unreal.AssetImportTask()
         task.filename = str(source / "model.fbx")
-        task.destination_path = target
-        task.destination_name = "SM_" + asset_id
+        task.destination_path = model_folder
+        task.destination_name = model_name
         # Keep initial import and repeated in-session reimports on the same FBX pipeline.
         task.factory = unreal.FbxFactory()
         task.automated = True
@@ -104,7 +108,7 @@ def import_asset(request, source):
         if len(meshes) != 1:
             raise RuntimeError("FBX import did not produce one combined StaticMesh")
         mesh = meshes[0]
-        if mesh.get_path_name() != target + "/SM_" + asset_id + ".SM_" + asset_id:
+        if mesh.get_path_name() != target + "/" + model + "." + model_name:
             raise RuntimeError("Importer changed the managed mesh path")
         if static_meshes.get_lod_count(mesh) > 1 and not static_meshes.remove_lods(mesh):
             raise RuntimeError("Could not replace the previous LOD chain")
@@ -125,7 +129,9 @@ def import_asset(request, source):
             unreal.SystemLibrary.execute_console_command(
                 world, setting + (" 1" if enabled else " 0")
             )
-    materials = {m["fbx_name"]: build_material(m, source, target) for m in request["materials"]}
+    materials = {
+        m["fbx_name"]: build_material(m, source, target, layout) for m in request["materials"]
+    }
     slots = mesh.get_editor_property("static_materials")
     if not slots:
         raise RuntimeError("FBX has no material slots")

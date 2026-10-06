@@ -44,16 +44,27 @@ def create(project, kind, asset_id, parameters=None, position=None, collider=Tru
 
 
 def submit_recipe(project, asset_id, script, recipe, position=None, collider=True):
+    from . import project_profiles
+
     quality = recipe["style"]["quality"]
     config = (
         None
         if quality == "draft"
         else preparation.options(
-            {"ground": False, "collision": "convex" if collider else "none"}, quality
+            project_profiles.preparation_defaults(
+                project, {"ground": False, **({"collision": "none"} if not collider else {})}
+            ),
+            quality,
         )
     )
     return workflow.submit(
-        project, asset_id, script, position, collider, recipe=recipe, preparation=config
+        project,
+        asset_id,
+        script,
+        position,
+        config["collision"] != "none" if config else collider,
+        recipe=recipe,
+        preparation=config,
     )
 
 

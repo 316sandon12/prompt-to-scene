@@ -7,11 +7,11 @@ import unreal
 from .protocol import digest
 
 
-def import_texture(source, target, name, normal, linear=False):
+def import_texture(source, target, name, normal, linear=False, prefix="T_"):
     if not name:
         return None
     fingerprint = hashlib.sha256((source / name).read_bytes()).hexdigest() + str((normal, linear))
-    path = target + "/T_" + name.removeprefix("tex_").removesuffix(".png")
+    path = target + "/" + prefix + name.removeprefix("tex_").removesuffix(".png")
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         old = unreal.load_asset(path)
         if (
@@ -23,7 +23,7 @@ def import_texture(source, target, name, normal, linear=False):
     task = unreal.AssetImportTask()
     task.filename = str(source / name)
     task.destination_path = target
-    task.destination_name = "T_" + name.removeprefix("tex_").removesuffix(".png")
+    task.destination_name = prefix + name.removeprefix("tex_").removesuffix(".png")
     task.factory = unreal.TextureFactory()
     task.automated = True
     task.replace_existing = True
@@ -54,7 +54,17 @@ def import_texture(source, target, name, normal, linear=False):
     return texture
 
 
-def build_material(data, source, target):
+def build_material(data, source, target, layout=None):
+    layout = layout or {
+        "materials": "",
+        "textures": "",
+        "material_prefix": "M_",
+        "texture_prefix": "T_",
+    }
+    texture_target = (target + "/" + layout["textures"]).rstrip("/")
+    target = (target + "/" + layout["materials"]).rstrip("/")
+    unreal.EditorAssetLibrary.make_directory(target)
+    unreal.EditorAssetLibrary.make_directory(texture_target)
     if data.get("reuse_path"):
         path = data["reuse_path"]
         if not path.startswith("/Game/") or ".." in path:
@@ -63,7 +73,7 @@ def build_material(data, source, target):
         if not isinstance(existing, unreal.MaterialInterface):
             raise ValueError("Reusable material is missing: " + path)
         return existing
-    name = "M_" + digest(data["name"])
+    name = layout["material_prefix"] + digest(data["name"])
     path = target + "/" + name
     material = (
         unreal.EditorAssetLibrary.load_asset(path)
@@ -88,13 +98,24 @@ def build_material(data, source, target):
         if not library.connect_material_property(expression, "", property_):
             raise RuntimeError("Could not connect material property: " + str(property_))
 
-    base = import_texture(source, target, data["base_color_texture"], False)
+    uv = node(unreal.MaterialExpressionTextureCoordinate, -1250, -650)
+    scale = node(unreal.MaterialExpressionScalarParameter, -1250, -500)
+    scale.set_editor_property("parameter_name", "PTS_UVScale")
+    scale.set_editor_property("default_value", 1.0)
+    scaled_uv = node(unreal.MaterialExpressionMultiply, -1000, -600)
+    library.connect_material_expressions(uv, "", scaled_uv, "A")
+    library.connect_material_expressions(scale, "", scaled_uv, "B")
+
+    base = import_texture(
+        source, texture_target, data["base_color_texture"], False, prefix=layout["texture_prefix"]
+    )
     tint = node(unreal.MaterialExpressionVectorParameter, -750, -450)
     tint.set_editor_property("parameter_name", "PTS_Color")
     tint.set_editor_property("default_value", unreal.LinearColor(*data["color"]))
     if base:
         color = node(unreal.MaterialExpressionTextureSample, -500, -250)
         color.set_editor_property("texture", base)
+        library.connect_material_expressions(scaled_uv, "", color, "Coordinates")
         color.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
         multiply_color = node(unreal.MaterialExpressionMultiply, -250, -250)
         library.connect_material_expressions(color, "RGB", multiply_color, "A")
@@ -107,23 +128,37 @@ def build_material(data, source, target):
         ("metallic_texture", data["metallic"], unreal.MaterialProperty.MP_METALLIC, -50),
         ("roughness_texture", data["roughness"], unreal.MaterialProperty.MP_ROUGHNESS, 100),
     ):
-        texture = import_texture(source, target, data.get(key, ""), False, linear=True)
+        texture = import_texture(
+            source,
+            texture_target,
+            data.get(key, ""),
+            False,
+            linear=True,
+            prefix=layout["texture_prefix"],
+        )
         if texture:
             scalar = node(unreal.MaterialExpressionTextureSample, -500, y)
             scalar.set_editor_property("texture", texture)
+            library.connect_material_expressions(scaled_uv, "", scalar, "Coordinates")
             scalar.set_editor_property(
                 "sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
             )
             if not library.connect_material_property(scalar, "R", prop):
                 raise RuntimeError("Could not connect PBR map: " + key)
         else:
-            scalar = node(unreal.MaterialExpressionConstant, -250, y)
-            scalar.set_editor_property("r", value)
+            scalar = node(unreal.MaterialExpressionScalarParameter, -250, y)
+            scalar.set_editor_property(
+                "parameter_name", "PTS_Roughness" if key == "roughness_texture" else "PTS_Metallic"
+            )
+            scalar.set_editor_property("default_value", value)
             connect(scalar, prop)
-    normal = import_texture(source, target, data["normal_texture"], True)
+    normal = import_texture(
+        source, texture_target, data["normal_texture"], True, prefix=layout["texture_prefix"]
+    )
     if normal:
         sample = node(unreal.MaterialExpressionTextureSample, -750, 250)
         sample.set_editor_property("texture", normal)
+        library.connect_material_expressions(scaled_uv, "", sample, "Coordinates")
         sample.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_NORMAL)
         strength = node(unreal.MaterialExpressionConstant3Vector, -750, 500)
         strength.set_editor_property(

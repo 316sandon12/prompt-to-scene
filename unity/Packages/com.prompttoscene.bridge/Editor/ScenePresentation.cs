@@ -136,8 +136,10 @@ namespace PromptToScene.Editor
                 foreach(var script in clone.GetComponentsInChildren<MonoBehaviour>()) script.enabled=false;
                 preview.AddSingleGO(clone);var rs=clone.GetComponentsInChildren<Renderer>();if(rs.Length==0)throw new Exception("No renderable mesh");
                 Bounds b=rs[0].bounds;foreach(var r in rs.Skip(1))b.Encapsulate(r.bounds);
-                preview.camera.transform.position=b.center+new Vector3(1.7f,1.1f,2.0f)*Mathf.Max(b.extents.magnitude,.2f);preview.camera.transform.LookAt(b.center);
-                preview.camera.nearClipPlane=.01f;preview.camera.farClipPlane=1000;preview.lights[0].intensity=1.5f;preview.lights[0].transform.rotation=Quaternion.Euler(40,30,0);preview.lights[1].intensity=.5f;
+                float radius=Mathf.Max(b.extents.magnitude,.02f);preview.camera.fieldOfView=40;
+                float distance=radius/Mathf.Sin(preview.camera.fieldOfView*Mathf.Deg2Rad*.5f)*1.15f;
+                preview.camera.transform.position=b.center+new Vector3(1.7f,1.1f,2.0f).normalized*distance;preview.camera.transform.LookAt(b.center);
+                preview.camera.nearClipPlane=Mathf.Max(.001f,radius*.01f);preview.camera.farClipPlane=distance+radius*10;preview.lights[0].intensity=1.5f;preview.lights[0].transform.rotation=Quaternion.Euler(40,30,0);preview.lights[1].intensity=.5f;
                 Capture(preview.camera,path);
             }
             finally{preview.Cleanup();if(clone)Object.DestroyImmediate(clone);}

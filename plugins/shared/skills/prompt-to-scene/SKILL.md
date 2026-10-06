@@ -79,6 +79,42 @@ Recreating the same interactive ID keeps range/input/open-angle settings. `prote
 
 Before generating a duplicate, `search_project_assets` can index local models/prefabs/compatible Blueprints. Wait for its request then call it again with the same `request_id` and query to rank results. Search uses names, tags, bilingual keyword aliases and optional size, not visual embeddings. `reuse_project_asset(mode="preview")` captures a native thumbnail; `mode="place"` places the original asset reference. `tag_project_asset` stores notes, tags, declared source and license. Preserve verified provenance and leave unknown licenses unknown.
 
+## Shared conventions and automatic intake
+
+Read `project_conventions` when joining a project. Save the user's naming prefixes, folders,
+triangle/texture budgets, LOD and collision choices there so Codex, Harness, native panels and
+the local app agree. `suggest` uses an `organize_project_assets` scan to report existing prefix
+frequencies; adopt only the chosen suggestions. Existing managed assets keep their paths.
+
+`manage_asset_inbox` accepts `status`, `scan`, or `retry`. Only the configured source folder is
+watched. Enable `intake.enabled` for files to be imported while an editor/app/host is running.
+Files must settle first; unchanged revisions are skipped and updated sources keep their asset ID.
+Poll the returned parent workflow until completed and inspect `import_result`. Failed imports
+use inbox `retry`; originals remain in the inbox. Do not promise a background watcher after every
+editor and app has closed.
+
+## Visual descriptions and reference materials
+
+For content recognition, call `describe_project_assets` on actual indexed native paths. Poll,
+then call `get_asset_evidence` for each returned evidence ID and inspect the image. Save a concise
+`save_asset_description` with object type, materials, style, likely uses and honest confidence.
+Names alone are not visual proof. Use `corrected=true` only for a user correction; automated
+reruns must retain those corrections. Search ranks these descriptions and tags by keywords,
+not embeddings. Suggested names become explicit organization overrides with `settings.include`
+restricted to the chosen assets; managed assets remain protected from relocation.
+
+A separately configured vision endpoint is optional. `allow_remote=true` sends the selected
+thumbnails and native metadata to it; use existing user authorization, and never invent it.
+Keys belong in the OS credential store, never a project file.
+
+Use `adapt_asset_materials` for reference color, roughness and texture scale. Target Unity prefabs
+or UE static meshes; choose an existing material/model as reference. A preview creates independent
+variants and actual renders without replacing target geometry or textures. Inspect both pictures
+with `get_preview`, report skipped shader properties, then apply authorized selected row IDs.
+`undo` restores original assignments. Changed materials/assignments require a fresh preview.
+Reused texture maps can prevent scalar roughness adaptation; never claim unsupported properties
+were applied. Native panels and the workshop expose the same workflow.
+
 ## Optional provider generation
 
 Use `list_generation_providers` before `generate_model`. Meshy or the configured self-hosted adapter can supply textured GLB candidates from text or 1–4 PNG/JPEG references; Blender then prepares them through the same pipeline. Defaults create isolated previews. Compare them and use `publish_prepared` to publish the chosen candidate. Keep the workflow ID distinct from each candidate's build ID.

@@ -129,6 +129,9 @@ def validate_source(source):
 
 
 def submit(project, asset_id, source, settings=None, position=None, preview_only=False):
+    from . import project_profiles
+
+    settings = project_profiles.preparation_defaults(project, settings)
     source = validate_source(source)
     config = preparation.options(settings, styles.read(project)["quality"])
     return workflow.submit(

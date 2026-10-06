@@ -112,6 +112,19 @@ def dispatch(action, values=None):
         "review": lambda review_id: reviews.read(None, review_id),
         "image": image,
     }
+    from . import art_adaptation, editor_tools, intake, project_profiles, semantics
+
+    routes.update(
+        {
+            "profile": lambda **v: project_profiles.configure(None, **v),
+            "intake": lambda **v: intake.manage(None, **v),
+            "semantic": lambda **v: semantics.start(None, **v),
+            "semantic_save": lambda **v: semantics.save(None, **v),
+            "vision": semantics.configure,
+            "adaptation": lambda **v: art_adaptation.start(None, **v),
+            "inspect_selected": lambda **v: editor_tools.dispatch(None, "inspect_selected", v),
+        }
+    )
     if action not in routes:
         raise ValueError("Unknown workbench action")
     return routes[action](**values)

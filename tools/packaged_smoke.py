@@ -42,7 +42,7 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 58
+                    assert len((await client.list_tools()).tools) == 65
                     resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
                     assert "ui/initialize" in resource.contents[0].text
                     assert "repairButton" in resource.contents[0].text
@@ -63,6 +63,12 @@ def main():
                         "organize_project_assets", {"mode": "history"}
                     )
                     assert not organized.isError, organized
+                    profile = await client.call_tool("project_conventions", {})
+                    assert not profile.isError, profile
+                    assert (
+                        project / "Packages/com.prompttoscene.bridge/Editor/WorkshopWindow.cs"
+                    ).is_file()
+                    assert (project / ".prompt-to-scene/launcher.json").is_file()
                     unreal_project = home / "Unreal Project"
                     unreal_project.mkdir()
                     (unreal_project / "Test.uproject").write_text('{"FileVersion":3}')
@@ -75,6 +81,10 @@ def main():
                         / "Plugins/PromptToScene/Content/Templates/BP_PTSInteraction.uasset"
                     ).stat().st_size > 1000
                     assert not (unreal_project / "Plugins/PromptToScene/Source").exists()
+                    assert (
+                        unreal_project
+                        / "Plugins/PromptToScene/Content/Templates/EUW_PTSWorkshop.uasset"
+                    ).stat().st_size > 1000
                     assert (
                         unreal_project
                         / "Plugins/PromptToScene/Content/Python"
@@ -102,6 +112,30 @@ def main():
                         )
 
         anyio.run(protocol)
+        # Native panels launch the frozen core without Python or an MCP client.
+        native_root = project / ".prompt-to-scene"
+        (native_root / "editor.json").write_text("{}")
+        request_id = "1" * 32
+        (native_root / "panel-requests").mkdir(exist_ok=True)
+        (native_root / "panel-requests" / (request_id + ".json")).write_text(
+            json.dumps({"action": "profile", "values": {"mode": "read"}})
+        )
+        service = subprocess.Popen(
+            [binary, "--editor-service", str(project)],
+            env=environment,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        try:
+            output = native_root / "panel-results" / (request_id + ".json")
+            deadline = time.monotonic() + 45
+            while not output.exists() and time.monotonic() < deadline and service.poll() is None:
+                time.sleep(0.1)
+            assert output.exists(), "Frozen native panel service did not answer"
+            assert json.loads(output.read_text())["schema_version"] == 1
+        finally:
+            service.terminate()
+            service.communicate(timeout=10)
         if submitted:
             # The MCP parent has exited. Its detached child must survive its extraction cleanup.
             revision = submitted[0]["request_id"]
