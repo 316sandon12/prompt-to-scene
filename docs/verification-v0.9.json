@@ -126,5 +126,42 @@
     "Semantic search uses descriptions and keywords, not vector embeddings",
     "No live paid vision model accuracy or arbitrary rig/animation support is claimed",
     "Native panel service actions and rendering were checked; every OS mouse gesture was not automated"
-  ]
+  ],
+  "release": {
+    "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.9.1",
+    "source_commit": "d4396c73e2cc668a5935918107f5897440e63c84",
+    "workflow_url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/37501818287",
+    "workflow_result": "success",
+    "jobs": {
+      "build (windows-latest)": "success",
+      "build (macos-14)": "success",
+      "publish": "success"
+    },
+    "first_attempt": {
+      "tag": "v0.9.0",
+      "workflow_url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/37501195783",
+      "result": "Windows service requests passed; test cleanup terminated only the one-file launcher, leaving its child holding a project lock. v0.9.1 verifies graceful shutdown by ending the fixture editor heartbeat; both OS runs passed."
+    }
+  },
+  "public_downloads": {
+    "archives": {
+      "Prompt-to-Scene-windows-x64.zip": {
+        "sha256": "a92d7ea2fb599ff9b052f5e4cef32b44f4bbaf1520699a04791facfb3fd49d51",
+        "matches": true,
+        "size": 26978721
+      },
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "sha256": "9e719ed718095f3bb6fd4e163ca3b847ca721efec2d54839b1279a696e1806c2",
+        "matches": true,
+        "size": 18213666
+      }
+    },
+    "macos_ad_hoc_signature": "passed",
+    "macos_frozen_65_tool_mcp_and_setup": "passed",
+    "macos_embedded_bridges_and_native_panel_service": "passed",
+    "macos_graceful_service_exit": "passed",
+    "macos_detached_blender_recipe": "passed",
+    "macos_detached_blender_external_intake": "passed",
+    "windows_executable": "passed in CI; local verification covers archive checksum only"
+  }
 }
