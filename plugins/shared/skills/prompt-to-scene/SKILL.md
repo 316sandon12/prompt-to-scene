@@ -23,9 +23,70 @@ Inspect the target. If unconfigured, list projects and connect the user's chosen
 
 Read `inspect_library` and `get_project_style`. Prefer the project's existing style. `set_project_style` changes defaults for future props; changing existing props requires `revise_prop(apply_project_style=true)`. Styles are concrete palettes, shape parameters, surface wear and quality budgets. A reference recipe can supply art direction. If the client can see a reference image, interpret its palette/proportions into explicit supported parameters; do not claim automatic image reconstruction. Reuse an existing engine material only through an appropriate explicit material binding; the bridge does not edit that shared material.
 
+## Recognize and match the project's existing style
+
+When asked to match style, use the saved reference image or capture 1–3 representative project
+assets with `describe_project_assets`. Poll once per request as usual. Pass their evidence IDs
+to `match_game_style`, or set `use_reference=true`. This tool returns the actual images and a
+source token; inspect the images with your vision before writing any analysis. If the host
+cannot see images, say so and use available text direction instead of inventing observations.
+If the project has no established direction yet, use available project/reference images before
+the first themed build. If no images exist, proceed from the user's text with stated assumptions;
+do not block ordinary creation on an unnecessary reference-selection form.
+
+Identify common proportions and silhouette, edge softness, construction, material finish,
+palette and detail placement. Read colors as estimates and account for illumination; do not
+copy highlights/shadows into every base color. Omit unidentified material roles. A screenshot
+does not reveal hidden topology, exact physical roughness, or the game's full art bible.
+
+Call `match_game_style` again with that token and concrete `analysis` using its returned schema.
+It validates that the image evidence is unchanged, converts sRGB hex colors to linear material
+values and saves reusable style defaults plus shape/material/detail notes. Low confidence
+retains existing defaults; use clearer available references before continuing. The connected
+host does the recognition; no extra model API, charge or mandatory approval is introduced.
+Do not force the reference into Cozy/Heritage/Workshop names: inferred palette, numeric shape
+parameters and free-form design notes are the actual direction. Existing material bindings are
+still respected. New briefs snapshot this analysis; changing defaults does not restyle old assets.
+
+## Design for this game's world and gameplay
+
+Read `game_art_direction` before modeling. Save the user's gameplay, world, visual style and
+view with that tool once; infer sensible structured choices from what they already told you.
+Do not make them fill a form or repeatedly answer the same questions. `construction` chooses
+handcrafted, salvaged or machined treatments for simple recipes; `set_project_style` still
+controls the actual palette, surface wear and budget. Plain text is interpreted by **you**, the
+connected AI host, not a hidden second model or a keyword classifier in the plugin.
+
+For a detailed or themed asset, call `design_asset` with a stable ID, its description, role
+(environment/interactable/hero), focal point and concrete `decisions`: silhouette, structure,
+materials, story and avoid. Derive these decisions from the game: what players do with the
+object, how close they get, how it was manufactured, and why particular wear or repairs exist.
+Include functional thickness, supports, clearances and recognisable interaction points.
+Keep primary forms readable, secondary construction purposeful, and small decoration sparse.
+Do not add noise, trim everywhere or a higher triangle budget as a substitute for design.
+
+The default modeling route is **custom Blender code**, following the brief's specific forms.
+`build_asset` with the same ID snapshots the design and applies the shared preparation pipeline,
+including supported procedural PBR baking. Use recipes only when the requested form truly fits;
+pass `recipe_kind` explicitly when planning such an asset. Custom briefs reject accidental recipe
+substitution. Recipe treatments add real joinery, framed panels, shaped crests, hardware and
+grain aligned with each piece of timber. They are a limited vocabulary, not arbitrary concept art.
+
+New plans use the latest game context; running builds and existing recipes keep their saved
+brief. To redesign an existing recipe, save its new `design_asset` brief then use
+`revise_prop(apply_design=true)`; protected geometry and materials still retain their snapshots.
+For custom revisions, inspect the existing source and edit that design rather than replacing it
+with a template. Planning alone does not change an imported asset or implement gameplay.
+
+Inspect one relevant actual source render, judge silhouette/construction/materials against the
+brief and reference, and correct concrete faults within the existing two-repair limit. Use the
+native preview for the actual engine appearance when needed. Do not require approval rounds,
+multiple candidates or repeated captures for routine creation. Never call a completed plan or
+successful import a passed aesthetic review.
+
 ## Create, compare and publish
 
-Prefer the nine parameterized recipes listed by `inspect_library`. They retain semantic parts and automatically prepare UVs and bake the curated opaque PBR surfaces. Choose and remember an asset ID; the user need not invent one. `create_prop_set` submits matching designs, while repeated instances belong to `arrange_props`. Partial batch results list already-submitted work: resume missing designs rather than resubmitting the whole batch.
+Use the nine parameterized recipes listed by `inspect_library` for fitting simple props. They retain semantic parts and automatically prepare UVs and bake the curated opaque PBR surfaces. Choose and remember an asset ID; the user need not invent one. `create_prop_set` submits matching designs, while repeated instances belong to `arrange_props`. Partial batch results list already-submitted work: resume missing designs rather than resubmitting the whole batch.
 
 `compose_scene` builds a curated reading corner, village market or workshop and arranges the actual imported assets, with surface placement and undo. A selected upright context object can supply position and horizontal yaw; explicit positions use engine axes. `mode="save"` stores a selected group as a named layout; `mode="place"` duplicates a saved layout inside this same project. Poll its single workflow ID. Legacy `create_style_kit` only builds a spaced row and remains available when no layout is wanted.
 
@@ -118,6 +179,13 @@ were applied. Native panels and the workshop expose the same workflow.
 ## Optional provider generation
 
 Use `list_generation_providers` before `generate_model`. Meshy or the configured self-hosted adapter can supply textured GLB candidates from text or 1–4 PNG/JPEG references; Blender then prepares them through the same pipeline. Defaults create isolated previews. Compare them and use `publish_prepared` to publish the chosen candidate. Keep the workflow ID distinct from each candidate's build ID.
+
+Text generation incorporates the saved game/asset brief within the existing prompt budget.
+The complete user prompt is retained; `effective_prompt` and `shortened_context` disclose what
+was sent and which context fields were compacted or omitted. Shorten the request explicitly
+if essential context did not fit. A resumed job uses its original snapshot. Meshy's image-only
+route does not receive this text; `context_application=reference_images_only` makes that limit
+explicit. A saved local reference is not automatically uploaded to any generation provider.
 
 Meshy consumes provider credits. Set `allow_paid=true` only when the user's authorization covers this provider/count; do not invent authorization or fixed pricing. If that is absent, continue with local recipes/scripts/files where suitable. A configured key is not authorization to spend. Credentials are entered through the local app, never requested as chat/tool arguments. Self-hosted APIs require the documented adapter contract, not an arbitrary inference URL.
 

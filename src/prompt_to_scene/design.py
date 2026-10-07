@@ -5,6 +5,8 @@ import hashlib
 import json
 import math
 
+from . import detailing
+
 DEFAULTS = {
     "crate": {"width": 1.0, "depth": 0.8, "height": 0.8, "planks": 5},
     "table": {"width": 1.5, "depth": 0.85, "height": 0.76, "thickness": 0.075},
@@ -40,7 +42,7 @@ VARIANTS = {
 }
 
 
-def primitives(kind, p, style):
+def primitives(kind, p, style, treatment=None):
     result = []
     w, d, h = p["width"], p["depth"], p["height"]
     thick = min(w, d) * 0.075
@@ -357,19 +359,22 @@ def primitives(kind, p, style):
     if kind == "shelf" and variant == 2:
         box("back", (0, d / 2, h / 2), (w * 0.9, panel * 0.5, h * 0.94), "paint")
         box("shelves", (0, 0, h / 2), (panel, d * 0.94, h * 0.94))
-    return result
+    return detailing.apply(kind, result, p, treatment)
 
 
 def plan(recipe):
     p, style = recipe["parameters"], recipe["style"]
-    result = primitives(recipe["kind"], p, style)
+    treatment = recipe.get("art_design", {}).get("treatment")
+    result = primitives(recipe["kind"], p, style, treatment)
     # Frozen inputs regenerate exactly the same primitives for locked geometry, even if
     # the shared dimensions or style change. Other parts continue to use current inputs.
     for part, frozen in recipe.get("locks", {}).items():
         if frozen.get("geometry"):
             result = [v for v in result if v["part"] != part] + [
                 v
-                for v in primitives(recipe["kind"], frozen["parameters"], frozen["style"])
+                for v in primitives(
+                    recipe["kind"], frozen["parameters"], frozen["style"], frozen.get("treatment")
+                )
                 if v["part"] == part
             ]
     output = []
@@ -431,12 +436,23 @@ def plan(recipe):
                 "color": material_edit.get("color", material_style["palette"][role]),
                 "roughness": material_edit.get(
                     "roughness",
-                    0.32 if role == "metal" else material_parameters.get("roughness", 0.68),
+                    material_parameters.get(
+                        "roughness",
+                        material_style.get("roughness", {}).get(
+                            role, 0.32 if role == "metal" else 0.68
+                        ),
+                    ),
                 ),
                 "wear": material_edit.get("wear", material_style["wear"]),
                 "seed": int(material_parameters.get("seed", 0)),
                 "reuse_path": material_style.get("material_bindings", {}).get(role, ""),
             }
+            surface_treatment = (
+                frozen.get("material_treatment") if frozen.get("material") else treatment
+            )
+            if surface_treatment:
+                v["surface"]["grain"] = True
+                v["surface"]["quiet"] = surface_treatment["detail"] == "readable"
             if v["material_name"] == "Wood" and "color" in material_parameters:
                 v["surface"]["color"] = material_parameters["color"]
             if v["material_name"] == "Metal" and "metal_color" in material_parameters:

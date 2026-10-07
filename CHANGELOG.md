@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — Game art direction
+
+- Evidence-backed style matching: the connected host sees actual native thumbnails/reference images, infers shape/material/detail language, and saves numeric palette, roughness and shape defaults. Keep existing defaults when confidence is low; reject changed image evidence. No extra vision API is invoked.
+- Persistent gameplay/world/camera context and asset design snapshots shared by Codex and Harness. Detailed requests route to custom Blender modeling, with explicit recipe selection for simple forms and automatic preparation for designed custom builds.
+- Recipe joinery, framed doors, formed crests, handles/hinges, turned feet, repair plates and mechanical details. Directional wood grain follows each piece; baking caches track the grain attribute.
+- Explicit redesign retains independent geometry/material locks. Provider prompts use saved context within the existing limit and expose compacted fields. Image-only provider routes remain explicit.
+- Workbench context controls, 68 MCP tools and a reproducible same-camera Blender comparison. Native adapters are unchanged; this source update is not yet in the v0.9.1 portable apps.
+
 ## 0.8.0 — 2026-10-04
 
 - Project asset naming and classification for Unity and UE: native type inventory, type/source folders, stable prefixes, texture-channel suffixes, collision numbering, exclusions and semantic name overrides.

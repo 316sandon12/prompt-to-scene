@@ -59,7 +59,22 @@ before changing a recipe; do not guess which asset the user means. capture_revie
 reuses an engine camera frame so the user can compare actual engine results.
 New props inherit get_project_style. set_project_style remembers concrete art direction; reference
 images can inform palette/shape through the client's own vision, not hidden image-to-3D claims.
-Prefer create_prop/create_prop_set with saved style. edit_prop_part edits or locks named parts;
+Read game_art_direction before modeling. Save the user's gameplay, world and look once.
+Existing-project style matching starts with real images: capture representative native assets
+with describe_project_assets or use a saved reference, then call match_game_style to see them.
+When no art direction has been established, use available project/reference images before the
+first themed build. If none exist, proceed from the user's text and state the visual assumptions.
+Use the host's vision to supply observations and numeric style via its returned source_token.
+Match proportion, construction, finish and detail density as well as palette. Do not force a
+genre preset or invent visual evidence. Inferred colors/roughness are estimates under that light.
+Interpret that context into concrete design_asset silhouette/structure/materials/story
+decisions. Do not ask users to fill schemas. Detailed/themed requests default to custom build_asset
+following that brief, with coherent primary/secondary shapes and functional construction. Use
+create_prop/create_prop_set only when the described form really fits a listed recipe; those receive
+saved construction treatments automatically. Do not substitute a plain template for a specific
+art request. Inspect a real source render and address concrete flaws within the existing repair
+limit; reference notes, extra polygons and a successful import are not evidence of visual quality.
+edit_prop_part edits or locks named parts;
 revise_prop preserves frozen parts. Use create_variants only for requested design exploration,
 get_studio_preview for source views, choose_variant for final textured import. Drafts do not
 enter the engine scene. Native get_preview remains the authority for in-game appearance.
@@ -114,6 +129,74 @@ def project():
 
 
 @mcp.tool()
+def game_art_direction(settings: dict | None = None) -> dict:
+    """Read/save gameplay, world, style_notes, view and construction for this game.
+
+    Interpret the user's description with the current AI host; do not require a form.
+    view: isometric/top_down/third_person/first_person.
+    construction: handcrafted/salvaged/machined. Partial updates retain omitted fields.
+    detail: auto/readable/balanced/closeup; match_game_style learns from actual reference images.
+    Text guides custom modeling; structured choices also affect recipe geometry/surfaces.
+    This changes future briefs, not already imported assets. Use set_project_style for palette.
+    """
+    from . import game_art
+
+    return game_art.configure(None, settings)
+
+
+@mcp.tool()
+def match_game_style(
+    evidence_ids: list[str] | None = None,
+    use_reference: bool = False,
+    source_token: str | None = None,
+    analysis: dict | None = None,
+):
+    """Recognize this project's look using actual images and the current AI host's vision.
+
+    First pass evidence IDs from describe_project_assets, or use_reference for set_art_brief's
+    saved image. Returns the images and a source_token. Inspect them; then call again with that
+    token and analysis using the returned schema. Applies inferred palette, material roughness,
+    shape parameters, detail density and art notes to future designs. Confidence below 0.6 keeps
+    current defaults. No external vision service is invoked and existing assets are not changed.
+    The host interprets images; the tool validates/saves the interpretation, not a beauty score.
+    """
+    import json
+
+    from . import style_matching
+
+    if analysis is not None:
+        return style_matching.apply(None, source_token, analysis)
+    result = style_matching.inspect(None, evidence_ids, use_reference)
+    return [
+        json.dumps(result, ensure_ascii=False),
+        *[Image(path=row["path"]) for row in result.get("sources", [])],
+    ]
+
+
+@mcp.tool()
+def design_asset(
+    asset_id: str,
+    description: str | None = None,
+    role: str = "environment",
+    focal_point: str = "",
+    recipe_kind: str | None = None,
+    decisions: dict | None = None,
+) -> dict:
+    """Save/read an asset design tied to the game's context and reference notes.
+
+    Omit description to read. role: environment/interactable/hero. Supply concrete decisions
+    (silhouette, structure, materials, story, avoid) derived from gameplay and world context.
+    Default route is custom Blender modeling; specify recipe_kind only if a listed form fits.
+    Build the same asset_id to retain this immutable brief with its source revision. Existing
+    recipe revisions keep their original design; planning alone does not rebuild geometry.
+    Follow the returned design, then inspect a real render. No model API or beauty score is used.
+    """
+    from . import game_art
+
+    return game_art.plan(None, asset_id, description, role, focal_point, recipe_kind, decisions)
+
+
+@mcp.tool()
 def inspect_target() -> dict:
     """Inspect engine, coordinates, Blender, editor heartbeat and pending/completed assets."""
     return inspect_project(**project())
@@ -134,7 +217,9 @@ async def build_asset(
     to it. Static meshes, constant opaque PBR, direct base-color / tangent normal textures.
     Unsupported materials fail explicitly. No paid model API or additional Blender MCP required.
     """
-    return workflow.submit(str(project()["project"]), asset_id, blender_python, position, collider)
+    return authoring.build_custom(
+        str(project()["project"]), asset_id, blender_python, position, collider
+    )
 
 
 @mcp.tool()
@@ -241,13 +326,16 @@ def revise_prop(
     parameters: dict | None = None,
     apply_project_style: bool = False,
     quality: str | None = None,
+    apply_design: bool = False,
 ) -> dict:
     """Change shared recipe dimensions or apply the current project style; preserve locked parts.
 
     This changes every instance using this asset. For one instance use edit_scene instead.
+    apply_design uses this asset's saved design_asset brief, including construction details.
+    Omit it to retain the original design. Geometry/material locks remain independent.
     """
     return authoring.revise(
-        str(project()["project"]), asset_id, parameters, apply_project_style, quality
+        str(project()["project"]), asset_id, parameters, apply_project_style, quality, apply_design
     )
 
 

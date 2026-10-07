@@ -22,6 +22,7 @@ CACHEABLE_NODES = {
     "ShaderNodeRGB",
     "ShaderNodeValue",
     "ShaderNodeTexCoord",
+    "ShaderNodeAttribute",
     "ShaderNodeUVMap",
     "ShaderNodeTexImage",
     "ShaderNodeTexNoise",
@@ -91,6 +92,9 @@ def geometry(obj):
         "matrix": [list(row) for row in obj.matrix_world],
         "smooth": [p.use_smooth for p in mesh.polygons],
         "normals": [list(n.vector) for n in mesh.corner_normals],
+        "pts_grain": [list(v.vector) for v in mesh.attributes["pts_grain"].data]
+        if "pts_grain" in mesh.attributes
+        else None,
     }
 
 
@@ -111,6 +115,10 @@ def graph(tree, seen=None):
             node.outputs[name].is_linked for name in ("Camera", "Window", "Reflection")
         ):
             raise UncacheableGraph("View-dependent coordinates")
+        if node.type == "ATTRIBUTE" and (
+            node.attribute_name != "pts_grain" or node.attribute_type != "GEOMETRY"
+        ):
+            raise UncacheableGraph("Untracked material attribute")
         data = {"name": node.name, "type": node.bl_idname, **scalars(node)}
         for direction in ("inputs", "outputs"):
             data[direction] = {}

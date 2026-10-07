@@ -1,0 +1,37 @@
+{
+  "scope": "Unreleased game art direction and reference style matching",
+  "automated_tests": 205,
+  "final_targeted_tests": 55,
+  "mcp": "Actual stdio discovery of 68 tools for Unity and Unreal targets; reference image response and style-analysis application verified",
+  "workbench": "Local UI: saved game world and gameplay through the form and observed success/state",
+  "blender_comparison": {
+    "before": {
+      "triangles": 3392,
+      "material_count": 3,
+      "checks": {
+        "geometry": "passed",
+        "materials": "passed",
+        "uv": "passed",
+        "budget": "passed"
+      },
+      "image": "images/game-art-before.png"
+    },
+    "after": {
+      "triangles": 15956,
+      "material_count": 3,
+      "checks": {
+        "geometry": "passed",
+        "materials": "passed",
+        "uv": "passed",
+        "budget": "passed"
+      },
+      "image": "images/game-art-after.png"
+    }
+  },
+  "comparison_conditions": "Same palette, fixed camera frame and studio lighting; actual source geometry with baked PBR maps",
+  "limits": [
+    "No native Unity/UE editor rerun: adapters and import format unchanged",
+    "No Windows native render test or portable release build in this change",
+    "Host vision handoff verified; no recognition-accuracy or aesthetic-quality benchmark"
+  ]
+}

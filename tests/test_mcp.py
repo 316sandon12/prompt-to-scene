@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import anyio
 import pytest
@@ -28,6 +29,9 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                 catalog = await session.list_tools()
                 assert {tool.name for tool in catalog.tools} == {
                     "inspect_target",
+                    "game_art_direction",
+                    "design_asset",
+                    "match_game_style",
                     "build_asset",
                     "publish_blend",
                     "get_asset_status",
@@ -102,6 +106,52 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                 resource = await session.read_resource(app_tool.meta["ui"]["resourceUri"])
                 assert resource.contents[0].mimeType == "text/html;profile=mcp-app"
                 assert "ui/initialize" in resource.contents[0].text
+                context = await session.call_tool(
+                    "game_art_direction",
+                    {
+                        "settings": {
+                            "world": "Cozy woodland village",
+                            "gameplay": "Collect and sort herbs",
+                            "view": "isometric",
+                            "construction": "handcrafted",
+                        }
+                    },
+                )
+                assert not context.isError
+                brief = await session.call_tool(
+                    "design_asset",
+                    {
+                        "asset_id": "herb_cabinet",
+                        "description": "A shop storage cabinet",
+                        "role": "interactable",
+                        "recipe_kind": "cabinet",
+                        "decisions": {"structure": "Framed doors with visible handles"},
+                    },
+                )
+                assert not brief.isError
+                data = brief.structuredContent or json.loads(brief.content[0].text)
+                assert data["context"]["world"] == "Cozy woodland village"
+                assert data["treatment"]["emphasize_hardware"]
+                reference = Path(__file__).resolve().parents[1] / "docs/images/authoring-chair.png"
+                saved = await session.call_tool("set_art_brief", {"image_path": str(reference)})
+                assert not saved.isError
+                observed = await session.call_tool("match_game_style", {"use_reference": True})
+                assert not observed.isError
+                assert any(item.type == "image" for item in observed.content)
+                observation = json.loads(next(c.text for c in observed.content if c.type == "text"))
+                matched = await session.call_tool(
+                    "match_game_style",
+                    {
+                        "source_token": observation["source_token"],
+                        "analysis": {
+                            "observations": "Fixture interpretation",
+                            "confidence": 0.8,
+                            "shape_language": "Rounded timber construction",
+                            "palette": {"paint": "#668877"},
+                        },
+                    },
+                )
+                assert not matched.isError
                 result = await session.call_tool("get_asset_status", {"asset_id": "crate"})
                 assert not result.isError
                 payload = result.structuredContent or json.loads(result.content[0].text)

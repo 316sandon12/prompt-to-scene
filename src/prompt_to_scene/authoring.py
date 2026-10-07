@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from . import core, design, kits, preparation, recipes, styles, workflow
+from . import core, design, game_art, kits, preparation, recipes, styles, workflow
 
 
 def catalog(project=None):
@@ -13,6 +13,7 @@ def catalog(project=None):
             k: {"parameters": v, "parts": design.PARTS[k]} for k, v in recipes.DEFAULTS.items()
         },
         "project_style": styles.read(project),
+        "game_art": game_art.configure(project),
         "kits": kits.KITS,
         "variants": design.VARIANTS,
         "preparation_defaults": preparation.options(),
@@ -29,6 +30,8 @@ def set_style(project=None, preset=None, quality=None, overrides=None, reference
                 "This asset has no saved art direction; use an explicit palette or material binding"
             )
         chosen = {k: art[k] for k in ("palette", "roundness", "taper", "wear", "material_bindings")}
+        if art.get("roughness"):
+            chosen["roughness"] = art["roughness"]
         if "color" in recipe["parameters"]:
             chosen["palette"]["wood"] = recipe["parameters"]["color"]
         if "metal_color" in recipe["parameters"]:
@@ -39,8 +42,38 @@ def set_style(project=None, preset=None, quality=None, overrides=None, reference
 
 
 def create(project, kind, asset_id, parameters=None, position=None, collider=True, quality=None):
-    script, recipe = recipes.prepare(kind, parameters, style=styles.read(project), quality=quality)
+    brief = game_art.for_recipe(project, asset_id, kind)
+    script, recipe = recipes.prepare(
+        kind,
+        parameters,
+        style=brief["style"] if brief else styles.read(project),
+        quality=quality,
+        art_design=brief,
+    )
     return submit_recipe(project, asset_id, script, recipe, position, collider)
+
+
+def build_custom(project, asset_id, script, position=None, collider=True):
+    from . import project_profiles
+
+    # Designed custom assets get the same baking and budget preparation as recipe assets.
+    brief = game_art.saved_plan(project, asset_id)
+    config = None
+    if brief:
+        config = preparation.options(
+            project_profiles.preparation_defaults(
+                project, {"ground": False, **({"collision": "none"} if not collider else {})}
+            ),
+            brief["style"]["quality"],
+        )
+    return workflow.submit(
+        project,
+        asset_id,
+        script,
+        position,
+        config["collision"] != "none" if config else collider,
+        preparation=config,
+    )
 
 
 def submit_recipe(project, asset_id, script, recipe, position=None, collider=True):
@@ -106,13 +139,19 @@ def current_recipe(project, asset_id):
     return info, recipe
 
 
-def revise(project, asset_id, parameters=None, apply_project_style=False, quality=None):
+def revise(
+    project, asset_id, parameters=None, apply_project_style=False, quality=None, apply_design=False
+):
     info, recipe = current_recipe(project, asset_id)
+    brief = game_art.saved_plan(project, asset_id) if apply_design else None
+    if apply_design and (not brief or brief.get("recipe_kind") != recipe["kind"]):
+        raise ValueError("Save a design_asset brief with this recipe kind before applying it")
     script, updated = recipes.revise(
         recipe,
         parameters,
-        style=styles.read(project) if apply_project_style else None,
+        style=styles.read(project) if apply_project_style else brief["style"] if brief else None,
         quality=quality,
+        art_design=brief,
     )
     return submit_recipe(
         project, asset_id, script, updated, collider=info["metadata"].get("collider", True)
@@ -169,7 +208,13 @@ def create_set(project, items):
             raise ValueError("Each design needs a unique asset ID")
         names.add(name)
         core.position_values(item.get("position"))
-        script, recipe = recipes.prepare(item["kind"], item.get("parameters"), style=art)
+        brief = game_art.for_recipe(project, name, item["kind"])
+        script, recipe = recipes.prepare(
+            item["kind"],
+            item.get("parameters"),
+            style=brief["style"] if brief else art,
+            art_design=brief,
+        )
         prepared.append((item, script, recipe))
     tasks = []
     try:

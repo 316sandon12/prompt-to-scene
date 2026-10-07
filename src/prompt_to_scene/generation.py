@@ -195,7 +195,7 @@ def submit(
     Adapter(provider)
     if type(candidate_count) is not int or not 1 <= candidate_count <= 3:
         raise ValueError("Choose one to three candidates")
-    if not isinstance(prompt, str) or not 1 <= len(prompt.strip()) <= 800:
+    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 800:
         raise ValueError("Describe the model in 1 to 800 characters")
     images = []
     if len(image_paths or []) > 4:
@@ -209,7 +209,14 @@ def submit(
         ):
             raise ValueError("Reference images must be PNG/JPEG files up to 8 MiB")
         images.append({"path": str(path), "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
-    from . import project_profiles
+    from . import game_art, project_profiles
+
+    design = game_art.saved_plan(project, asset_id)
+    if not design and (game_art.root(project) / "game-art.json").is_file():
+        design = game_art.plan(project, asset_id, prompt)
+    if design:
+        design["method"] = "provider_generation"
+    effective_prompt, shortened = game_art.provider_prompt(prompt, design)
 
     config = preparation.options(
         project_profiles.preparation_defaults(project, settings), styles.read(project)["quality"]
@@ -228,13 +235,30 @@ def submit(
             preview_only=preview_only,
             settings=config,
             position=position,
+            art_design=design,
+            effective_prompt=effective_prompt,
+            shortened_context=shortened,
         ),
         asset_id,
     )
 
 
-def run(job, asset_id, prompt, provider, images, candidate_count, preview_only, settings, position):
+def run(
+    job,
+    asset_id,
+    prompt,
+    provider,
+    images,
+    candidate_count,
+    preview_only,
+    settings,
+    position,
+    art_design=None,
+    effective_prompt=None,
+    shortened_context=None,
+):
     adapter = Adapter(provider)
+    effective_prompt = effective_prompt or prompt
     encoded = []
     for image in images:
         path = Path(image["path"])
@@ -244,7 +268,15 @@ def run(job, asset_id, prompt, provider, images, candidate_count, preview_only, 
         mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
         encoded.append("data:" + mime + ";base64," + base64.b64encode(content).decode())
     rows = job.state.get("candidates") or [{} for _ in range(candidate_count)]
-    job.update(candidates=rows)
+    job.update(
+        candidates=rows,
+        art_design=art_design,
+        effective_prompt=effective_prompt,
+        shortened_context=shortened_context or [],
+        context_application="reference_images_only"
+        if provider == "meshy" and images
+        else "provider_prompt",
+    )
 
     def phase(row, key, endpoint, payload):
         if not row.get(key):
@@ -302,7 +334,7 @@ def run(job, asset_id, prompt, provider, images, candidate_count, preview_only, 
                         row,
                         "preview_task",
                         endpoint,
-                        {"mode": "preview", "prompt": prompt, "target_formats": ["glb"]},
+                        {"mode": "preview", "prompt": effective_prompt, "target_formats": ["glb"]},
                     )
                     result = phase(
                         row,
@@ -321,7 +353,12 @@ def run(job, asset_id, prompt, provider, images, candidate_count, preview_only, 
                     row,
                     "model_task",
                     "/jobs",
-                    {"prompt": prompt, "images": encoded, "format": "glb", "candidate": index},
+                    {
+                        "prompt": effective_prompt,
+                        "images": encoded,
+                        "format": "glb",
+                        "candidate": index,
+                    },
                 )
                 url = result.get("model_url")
             if not isinstance(url, str):
@@ -347,6 +384,8 @@ def run(job, asset_id, prompt, provider, images, candidate_count, preview_only, 
                     "provider": provider,
                     "provider_task_id": row["model_task"],
                     "prompt": prompt,
+                    "effective_prompt": effective_prompt,
+                    "art_design": art_design,
                     "license": "provider-and-user-terms",
                     "sha256": source["sha256"],
                 },

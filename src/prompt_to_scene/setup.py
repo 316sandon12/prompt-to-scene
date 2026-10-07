@@ -18,6 +18,7 @@ from . import (
     clients,
     compositions,
     core,
+    game_art,
     generation,
     kits,
     performance,
@@ -93,6 +94,8 @@ def state():
         result["target"] = core.inspect_project(target.project_file or target.root)
         result["library"] = authoring.catalog(str(target.project_file or target.root))
         result["art_brief"] = quality.brief(None)
+        result["game_art"] = game_art.configure(None)
+        result["style_match"] = core.read_optional_json(game_art.root(None) / "style-match.json")
         result["layouts"] = compositions.templates(None)
         root = core.state_root(target.root)
         jobs = sorted(

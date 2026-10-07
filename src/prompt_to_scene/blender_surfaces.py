@@ -27,7 +27,13 @@ def surface(name, data, textured):
     noise.inputs["Detail"].default_value = 3
     links.new(coord.outputs["Generated"], noise.inputs["Vector"])
     pattern = noise.outputs["Fac"]
-    if data["role"] == "wood":
+    if data["role"] == "wood" and data.get("grain"):
+        attribute = nodes.new("ShaderNodeAttribute")
+        attribute.attribute_name = "pts_grain"
+        noise.inputs["Scale"].default_value = 1
+        noise.inputs["Detail"].default_value = 2
+        links.new(attribute.outputs["Vector"], noise.inputs["Vector"])
+    elif data["role"] == "wood":
         wave = nodes.new("ShaderNodeTexWave")
         wave.bands_direction = "X"
         wave.inputs["Scale"].default_value = 5
@@ -37,7 +43,9 @@ def surface(name, data, textured):
         links.new(coord.outputs["Generated"], wave.inputs["Vector"])
         pattern = wave.outputs["Color"]
     ramp = nodes.new("ShaderNodeValToRGB")
-    amount = 0.09 + data["wear"] * 0.3
+    amount = (0.06 + data["wear"] * 0.14) if data.get("grain") else (0.09 + data["wear"] * 0.3)
+    if data.get("quiet"):
+        amount *= 0.5
     color = data["color"]
     ramp.color_ramp.elements[0].position = 0.12
     ramp.color_ramp.elements[0].color = (*(max(0, c * (1 - amount)) for c in color), 1)
@@ -55,6 +63,8 @@ def surface(name, data, textured):
     links.new(rough.outputs["Result"], shader.inputs["Roughness"])
     bump = nodes.new("ShaderNodeBump")
     bump.inputs["Strength"].default_value = 0.06 + data["wear"] * 0.16
+    if data.get("grain"):
+        bump.inputs["Strength"].default_value *= 0.35 if data.get("quiet") else 0.6
     bump.inputs["Distance"].default_value = 0.0018 if data["role"] == "wood" else 0.0015
     links.new(pattern, bump.inputs["Height"])
     links.new(bump.outputs["Normal"], shader.inputs["Normal"])

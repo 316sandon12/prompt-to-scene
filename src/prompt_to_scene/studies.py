@@ -4,7 +4,7 @@ import json
 import uuid
 from copy import deepcopy
 
-from . import core, design, recipes, registry, styles, workflow
+from . import core, design, game_art, recipes, registry, styles, workflow
 
 
 def create(project, kind, asset_id, parameters=None, count=3):
@@ -12,6 +12,9 @@ def create(project, kind, asset_id, parameters=None, count=3):
         raise ValueError("Choose two or three candidates")
     core.asset_id(asset_id)
     art = styles.read(project)
+    brief = game_art.for_recipe(project, asset_id, kind)
+    if brief:
+        art = brief["style"]
     prepared = []
     for i in range(count):
         values = {
@@ -19,7 +22,7 @@ def create(project, kind, asset_id, parameters=None, count=3):
             "variant": i,
             "seed": int((parameters or {}).get("seed", 0)) + i * 71,
         }
-        script, recipe = recipes.prepare(kind, values, style=art, quality="draft")
+        script, recipe = recipes.prepare(kind, values, style=art, quality="draft", art_design=brief)
         p = recipe["parameters"]
         frame = [
             [-p["width"] * 0.65, -p["depth"] * 0.65, 0],

@@ -37,7 +37,9 @@ def validate_part(changes):
             styles.unit(changes[key], key)
 
 
-def prepare(kind, parameters=None, *, style=None, quality=None, parts=None, locks=None):
+def prepare(
+    kind, parameters=None, *, style=None, quality=None, parts=None, locks=None, art_design=None
+):
     if kind not in DEFAULTS:
         raise ValueError("Recipe must be one of " + ", ".join(DEFAULTS))
     parameters = deepcopy(parameters or {})
@@ -89,6 +91,9 @@ def prepare(kind, parameters=None, *, style=None, quality=None, parts=None, lock
         "parts": parts,
         "locks": locks,
     }
+    if art_design:
+        recipe["art_design"] = deepcopy(art_design)
+        recipe["art_design"]["style"] = deepcopy(art)
     items = design.plan(recipe)
     if any(any(not finite(v) or v <= 0 for v in item["size"]) for item in items):
         raise ValueError("These dimensions produce an invalid part; increase the available space")
@@ -103,7 +108,7 @@ def prepare(kind, parameters=None, *, style=None, quality=None, parts=None, lock
     return script, recipe
 
 
-def revise(recipe, parameters=None, *, style=None, quality=None):
+def revise(recipe, parameters=None, *, style=None, quality=None, art_design=None):
     return prepare(
         recipe["kind"],
         {**recipe["parameters"], **(parameters or {})},
@@ -111,6 +116,7 @@ def revise(recipe, parameters=None, *, style=None, quality=None):
         quality=quality,
         parts=recipe.get("parts"),
         locks=recipe.get("locks"),
+        art_design=art_design or recipe.get("art_design"),
     )
 
 
@@ -141,16 +147,23 @@ def edit_part(recipe, part, changes=None, lock_geometry=None, lock_material=None
                 parameters=deepcopy(updated["parameters"]),
                 style=deepcopy(updated.get("style") or styles.preset()),
                 edit=deepcopy(parts[part]),
+                treatment=deepcopy(updated.get("art_design", {}).get("treatment")),
             )
         if material and not old.get("material"):
             snapshot.update(
                 material_parameters=deepcopy(updated["parameters"]),
                 material_style=deepcopy(updated.get("style") or styles.preset()),
                 material_edit=deepcopy(parts[part]),
+                material_treatment=deepcopy(updated.get("art_design", {}).get("treatment")),
             )
         locks[part] = snapshot
     else:
         locks.pop(part, None)
     return prepare(
-        updated["kind"], updated["parameters"], style=updated.get("style"), parts=parts, locks=locks
+        updated["kind"],
+        updated["parameters"],
+        style=updated.get("style"),
+        parts=parts,
+        locks=locks,
+        art_design=updated.get("art_design"),
     )

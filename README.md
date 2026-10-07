@@ -1,5 +1,11 @@
 # Prompt-to-Scene
 
+**New on `main`: game-aware art direction and reference style matching.** The connected AI host
+reads real project images, remembers shape/material/palette decisions and designs assets for the
+game's world, interaction and camera. Simple recipes now have construction detail and aligned
+wood grain; specific shapes use custom Blender scripts. [Usage and actual comparison](docs/GAME-ART.zh-CN.md).
+This source update is not yet included in the v0.9.1 portable downloads.
+
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
 [简体中文](README.zh-CN.md) · [Download](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [Beginner setup](docs/QUICKSTART.zh-CN.md) · [Asset organization](docs/ORGANIZATION.zh-CN.md) · [Verified results](docs/verification.md)
@@ -100,7 +106,7 @@ Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 m
 | Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
 | Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-These features are available through both AI hosts and the local workshop. The MCP server exposes 65 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
+These features are available through both AI hosts and the local workshop. The MCP server exposes 68 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
 
 ## Refine by conversation
 

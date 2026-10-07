@@ -77,6 +77,7 @@ def validate(data):
         "taper",
         "wear",
         "material_bindings",
+        "roughness",
     }:
         raise ValueError("Unknown style field")
     for key in ("roundness", "taper", "wear"):
@@ -90,6 +91,11 @@ def validate(data):
             raise ValueError("Palette colors are three linear RGB values")
         for v in color:
             unit(v, "color")
+    roughness = data.get("roughness", {})
+    if not isinstance(roughness, dict) or roughness.keys() - data["palette"].keys():
+        raise ValueError("Roughness maps material roles to values from 0 to 1")
+    for value in roughness.values():
+        unit(value, "roughness")
     for role, path in data.get("material_bindings", {}).items():
         if role not in data["palette"] or not isinstance(path, str):
             raise ValueError("Material bindings map material roles to engine asset paths")
@@ -120,10 +126,10 @@ def save(project=None, name=None, quality=None, overrides=None):
     if quality:
         data["quality"] = quality
     overrides = overrides or {}
-    if set(overrides) - {"palette", "roundness", "taper", "wear", "material_bindings"}:
+    if set(overrides) - {"palette", "roundness", "taper", "wear", "material_bindings", "roughness"}:
         raise ValueError("Unknown art-direction override")
     for key, value in overrides.items():
-        data[key] = {**data[key], **value} if key == "palette" else value
+        data[key] = {**data.get(key, {}), **value} if key in {"palette", "roughness"} else value
     validate(data)
     root = core.state_root(registry.resolve(project).root)
     core.atomic_json(root / "art-direction.json", data)

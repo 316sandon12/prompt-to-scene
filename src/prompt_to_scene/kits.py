@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from . import core, recipes, registry, styles, workflow
+from . import core, game_art, recipes, registry, styles, workflow
 
 KITS = {
     "reading_corner": {
@@ -49,8 +49,13 @@ def blueprint(project, kit, prefix, quality=None):
     prepared = []
     for index, item in enumerate(chosen["items"]):
         asset = core.asset_id(prefix + "_" + item["kind"])
+        brief = game_art.for_recipe(project, asset, item["kind"])
         script, recipe = recipes.prepare(
-            item["kind"], {**item.get("parameters", {}), "variant": item["variant"]}, style=art
+            item["kind"],
+            {**item.get("parameters", {}), "variant": item["variant"]},
+            style=brief["style"] if brief else art,
+            art_design=brief,
+            quality=quality,
         )
         recipe["kit"] = kit
         # Explicit, spaced initial positions make the set immediately reviewable.

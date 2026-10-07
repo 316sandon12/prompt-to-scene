@@ -1,5 +1,10 @@
 # Verification
 
+Unreleased game-art source changes: **205 tests**, 68-tool stdio image/style handoff, local UI
+save flow and an actual same-camera Blender comparison. See the [focused record](verification-game-art.json)
+and [comparison](GAME-ART.zh-CN.md). The native adapters are unchanged; this check did not rerun
+Unity/UE editors or build new portable apps. The release results below remain specific to v0.9.1.
+
 ## v0.9.1 — recorded on 2026-10-07
 
 Environment: macOS 15.8 / Apple M3 Pro, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in + URP 14.0.11, Unreal 5.7.2. Tests use real native assets, Blender preparation, MCP calls and disposable projects. See [the project-workshop guide](PROJECT-WORKSHOP.zh-CN.md) and [sanitized measurements](verification-v0.9.json).

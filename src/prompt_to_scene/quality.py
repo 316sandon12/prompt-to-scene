@@ -96,11 +96,18 @@ def run(job, asset_id, auto_fix, preset, revision):
         result = job.wait(pending)
         job.update(asset_revision=result["request_id"])
     revision = job.state.get("asset_revision", revision)
-    current = workflow.inspect_asset(job.project, asset_id)["current"]
+    info = workflow.inspect_asset(job.project, asset_id)
+    current = info["current"]
     if current.get("request_id") != revision:
         raise ValueError("Asset changed; start a fresh review")
+    metadata = info.get("metadata") or {}
+    design = (metadata.get("provenance") or {}).get("art_design") or (
+        metadata.get("recipe") or {}
+    ).get("art_design")
     job.update(
-        stage="Checking native asset and recording the current view", brief=brief(job.project)
+        stage="Checking native asset and recording the current view",
+        brief=brief(job.project),
+        art_design=design,
     )
     if not job.state.get("before_capture"):
         capture = reviews.capture(job.project, asset_id, stage="before")

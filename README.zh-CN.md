@@ -1,12 +1,16 @@
 # Prompt-to-Scene
 
+**源码新增：AI 风格识别与按玩法设计。** 让当前 AI 读取项目资产或参考图，记住配色、比例、材质与细节语言，
+再结合游戏背景制作模型；普通模板也增加真实结构细节和顺纹材质。复杂造型使用专门的 Blender 脚本。
+[使用说明与实际对照](docs/GAME-ART.zh-CN.md)。这些更新尚未包含在 v0.9.1 下载包中。
+
 **用指令在 Blender 制作风格统一的道具，比较造型，修改部件，然后直接放进 Unity 或 UE。**
 
 [English](README.md) · [下载](https://github.com/316sandon12/prompt-to-scene/releases/latest) · [新手安装](docs/QUICKSTART.zh-CN.md) · [资源自动整理](docs/ORGANIZATION.zh-CN.md) · [实际测试](docs/verification.md)
 
 连接 **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**。自然语言由你现有的 AI 客户端理解，Blender 在本地运行；插件完成材质准备、原生导入、场景摆放和结果检查。下载程序自带 Python，不需要另买建模 API。
 
-> v0.8 为实验版，支持不透明道具、三种交互模板、模块关卡和项目资源整理。建模需已安装 Blender；资源整理只需引擎编辑器。可使用 AI 客户端，也能直接在工作台操作。
+> v0.9.1 发布包支持不透明道具、三种交互模板、模块关卡和项目资源整理。建模需已安装 Blender；资源整理只需引擎编辑器。可使用 AI 客户端，也能直接在工作台操作。
 
 ![实际 Blender 模型与烘焙材质](docs/images/authoring-chair.png)
 

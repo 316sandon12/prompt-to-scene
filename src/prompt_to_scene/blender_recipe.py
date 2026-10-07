@@ -61,6 +61,19 @@ def build(payload):
             obj = bpy.context.object
             obj.dimensions = size
             bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        elif shape == "profile":
+            outline = item["profile"]
+            count = len(outline)
+            mesh = bpy.data.meshes.new(name)
+            vertices = [(x * w, y * d / 2, z * h) for y in (-1, 1) for x, z in outline]
+            faces = [tuple(range(count)), tuple(reversed(range(count, count * 2)))]
+            faces += [
+                (i, count + i, count + (i + 1) % count, (i + 1) % count) for i in range(count)
+            ]
+            mesh.from_pydata(vertices, [], faces)
+            mesh.update()
+            obj = bpy.data.objects.new(name, mesh)
+            collection.objects.link(obj)
         elif shape == "taper":
             taper = item["taper"]
             mesh = bpy.data.meshes.new(name)
@@ -102,6 +115,22 @@ def build(payload):
                     )
                     for i in range(9)
                 ]
+            elif shape == "spindle":
+                rings = [
+                    (w * r / 2, d * r / 2, h * (z - 0.5))
+                    for z, r in (
+                        (0, 0.7),
+                        (0.06, 0.84),
+                        (0.12, 0.84),
+                        (0.16, 0.64),
+                        (0.58, 0.76),
+                        (0.68, 0.96),
+                        (0.75, 0.96),
+                        (0.80, 0.78),
+                        (0.90, 1),
+                        (1, 1),
+                    )
+                ]
             elif shape == "ring":
                 thickness = min(item["thickness"], min(w, d) * 0.15)
                 rings = [
@@ -129,9 +158,19 @@ def build(payload):
         bevel.segments = segments
         bevel.limit_method = "ANGLE"
         bpy.ops.object.modifier_apply(modifier=bevel.name)
-        if shape in {"cylinder", "barrel", "ring"}:
+        if shape in {"cylinder", "barrel", "ring", "spindle"}:
             for polygon in obj.data.polygons:
                 polygon.use_smooth = abs(polygon.normal.z) < 0.8
+        # Grain follows each original piece, even after its mesh is rotated into the design.
+        # A named attribute lets all boards share one baked material/atlas.
+        if item["surface"].get("grain"):
+            grain = obj.data.attributes.new("pts_grain", "FLOAT_VECTOR", "POINT")
+            axis = max(range(3), key=lambda i: size[i])
+            axes = [axis] + [i for i in range(3) if i != axis]
+            for vertex in obj.data.vertices:
+                grain.data[vertex.index].vector = [
+                    vertex.co[a] * scale for a, scale in zip(axes, (3.5, 95, 95))
+                ]
         local = (
             Matrix.Translation(Vector(item["center"]))
             @ Euler(item.get("rotation", [0, 0, 0])).to_matrix().to_4x4()

@@ -55,11 +55,22 @@ Explicit `PTS_PROJECT` / legacy `PTS_UNITY_PROJECT` settings override the active
 | `search_project_assets`, `reuse_project_asset`, `tag_project_asset` | Local native indexing, keyword ranking, preview, reuse and provenance annotations. |
 | `organize_project_assets` | Native type inventory, deterministic naming/classification plans, inspected paths, native apply and persistent undo/history. |
 
-There are 65 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
+There are 68 tools. Asset builds return `building` immediately. A detached worker runs Blender, then publishes a schema 2 import envelope atomically. The editor owns import and native scene changes; it writes a receipt before removing the inbox request. Status progresses `building → queued → imported` or ends in `error`/`cancelled`. Always match `request_id`; an old success is not confirmation of a new build. `wait_seconds` is capped at 30 per MCP call and never cancels a task.
 
 The separate schema 1 action queue supports selection, transforms, tint, focus, contextual arrangement, preview and undo. Action completion uses `completed`, not `imported`. Long previews may remain queued and must be queried using their original ID. Do not enqueue the same relative transform again merely because a wait timed out.
 
 ## Art direction, materials and retained recipes
+
+`game-art.json` stores gameplay/world/camera and free-form art notes. `match_game_style` returns
+real images with hashed source records to the host's vision, then validates and saves its
+inference in `style-match.json`. Colors are converted from sRGB hex to linear shader values;
+unidentified roles and low-confidence analyses retain existing defaults. `design_asset` snapshots
+context, reference interpretation and design decisions per asset. Custom builds receive the same
+preparation path as recipes; provider jobs snapshot the actual bounded prompt before submission.
+Recipe `art_design` includes deterministic construction/detail treatment. Frozen parts retain that
+treatment independently. `detailing.py` supplies bounded geometry; arbitrary requested forms are
+authored by the host in Blender Python. `pts_grain` stores per-piece coordinates before transforms,
+and its vectors are included in bake-cache keys. These are inferred design inputs, not visual QA.
 
 `art-direction.json` stores concrete defaults per project. New recipe assets inherit a snapshot; existing assets change only through an explicit revision. `styles.py` owns three curated palettes and four quality budgets. `design.py` produces deterministic semantic primitive plans for nine prop kinds, separate from their Blender realization. Recipe version 2 retains dimensions, part edits and frozen lock inputs. Geometry/material locks are independent; large neighboring changes can leave gaps. Revising older recipes adopts current structural designs; saved `.blend` revisions remain available.
 

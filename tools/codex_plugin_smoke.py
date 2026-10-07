@@ -65,7 +65,7 @@ def main():
                 ]
                 catalog = rpc(3, "mcpServerStatus/list", {"threadId": thread})["data"]
                 server = next(s for s in catalog if s["name"] == "prompt_to_scene")
-                assert len(server["tools"]) == 65
+                assert len(server["tools"]) == 68
                 result = rpc(
                     4,
                     "mcpServer/tool/call",

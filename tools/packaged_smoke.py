@@ -42,7 +42,7 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 65
+                    assert len((await client.list_tools()).tools) == 68
                     resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
                     assert "ui/initialize" in resource.contents[0].text
                     assert "repairButton" in resource.contents[0].text

@@ -67,6 +67,17 @@ def submit(
     if not script.strip() and not blend_file and not source:
         raise ValueError("Provide a model script or a saved .blend file")
     root = core.state_root(target.root)
+    from . import game_art
+
+    # Snapshot the brief at submission, so another client's edits cannot change a running build.
+    if not (provenance or {}).get("art_design"):
+        brief = (recipe or {}).get("art_design") or (
+            game_art.saved_plan(project, name)
+            if script.strip() and not source and not blend_file
+            else None
+        )
+        if brief:
+            provenance = {**(provenance or {}), "art_design": brief}
     gate = root / "submission-locks" / name
     gate.parent.mkdir(parents=True, exist_ok=True)
     try:

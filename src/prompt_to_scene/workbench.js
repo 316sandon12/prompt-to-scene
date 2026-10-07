@@ -6,6 +6,14 @@
   let seq = 0, snapshot = {}, currentAsset = null, activeReview = null, refreshing = false;
   let organizationPlan = null;
   const pending = new Map();
+  const gameFields = {gameWorld:"world",gameLoop:"gameplay",gameStyle:"style_notes",gameView:"view",gameCraft:"construction"};
+  async function saveGameArt() {
+    const result = await call("game_art", {settings:Object.fromEntries(Object.entries(gameFields).map(([id,key])=>[key,$(id).value]))});
+    delete $("gameContext").dataset.dirty;
+    notice("已保存游戏设定，后续新资产会沿用。");
+    return result;
+  }
+  async function ensureGameArt() { if ($("gameContext").dataset.dirty) await saveGameArt(); }
   function notice(message, error = false) { $("notice").textContent = message; $("notice").classList.toggle("error", error); }
   function rpc(method, params = {}) {
     return new Promise((resolve, reject) => {
@@ -117,6 +125,11 @@
     $("layouts").replaceChildren(option("", "选择已保存布局"), ...(state.layouts || []).map(item => option(item.name, item.name)));
     if ((state.layouts || []).some(item => item.name === layout)) $("layouts").value = layout;
     if (!$("briefNotes").matches(":focus") && !$("briefNotes").dataset.dirty) $("briefNotes").value = state.art_brief?.notes || "";
+    if (!$("gameContext").dataset.dirty) {
+      for (const [id,key] of Object.entries(gameFields)) if (!$(id).matches(":focus")) $(id).value = state.game_art?.[key] || ({view:"third_person",construction:"handcrafted"}[key] || "");
+    }
+    $("gameArtSummary").textContent = state.game_art?.world || state.game_art?.gameplay ? "已记住游戏设定。制作时自动沿用，已有资产保留原设计。" : "尚未填写游戏设定。";
+    if (state.style_match) $("gameArtSummary").textContent += " 已保存 AI 对参考画面的风格分析。";
     for (const node of $("provider").options) { const provider = (state.providers || []).find(p => p.provider === node.value); node.textContent = (node.value === "meshy" ? "Meshy" : "自托管服务") + (provider?.configured ? " · 已配置" : " · 未配置"); }
     const signature = JSON.stringify((state.tasks || []).map(t => [t.request_id,t.status,t.stage,t.updated_utc]));
     if ($("tasks").dataset.signature === signature) return;
@@ -212,6 +225,8 @@
   for (const tab of document.querySelectorAll("[data-tab]")) tab.onclick = () => selectTab(tab.dataset.tab);
   $("asset").onchange = () => loadAsset().catch(error => notice(error.message,true)); $("part").onchange = partInfo;
   $("briefNotes").oninput = () => { $("briefNotes").dataset.dirty = "1"; };
+  for (const id of Object.keys(gameFields)) $(id).oninput = () => { $("gameContext").dataset.dirty = "1"; };
+  bind("saveGameArt", saveGameArt);
   bind("refresh", async () => { await refresh(); await loadAsset(); notice("已刷新项目状态。"); });
   bind("scene", async () => {
     const scene = await waitAction(await call("scene")); if (scene.status !== "completed") return scene;
@@ -228,10 +243,20 @@
     return scene;
   });
   bind("preview", async () => { const task = await waitAction(await call("preview", {asset_id:requiredAsset()})); if (task.status === "completed") await showImage({kind:"engine",request_id:task.request_id}, "当前引擎画面"); return task; });
-  bind("createLocal", () => submitted("create", {kind:$("recipeKind").value, asset_id:id($("generationName").value, $("recipeKind").value)}));
+  bind("createLocal", async () => {
+    await ensureGameArt();
+    const kind=$("recipeKind").value, asset_id=id($("generationName").value,kind);
+    await call("design",{asset_id,description:$("prompt").value.trim()||kind,role:$("assetRole").value,recipe_kind:kind});
+    return submitted("create",{kind,asset_id});
+  });
   bind("importLocal", () => submitted("import", {asset_id:id($("generationName").value,"model"), source:{provider:"local",path:$("sourcePath").value}}));
-  bind("generateButton", () => submitted("generate", {asset_id:id($("generationName").value,"model"),prompt:$("prompt").value,provider:$("provider").value,image_paths:$("generationImages").value.split(/\n/).map(x=>x.trim()).filter(Boolean),candidate_count:Number($("candidateCount").value),allow_paid:$("paid").checked,preview_only:true}));
-  bind("askAI", async () => { const prompt = $("prompt").value.trim(); if (!prompt) throw Error("请先写下希望制作或修改的内容。"); await rpc("ui/message", {role:"user",content:[{type:"text",text:prompt + ($("asset").value ? "\n当前选中的资产："+$("asset").value : "")}]}); notice("已把描述和当前资产发给本次聊天的 AI。"); });
+  bind("generateButton", async () => {
+    await ensureGameArt();
+    const asset_id=id($("generationName").value,"model"),prompt=$("prompt").value;
+    await call("design",{asset_id,description:prompt,role:$("assetRole").value});
+    return submitted("generate", {asset_id,prompt,provider:$("provider").value,image_paths:$("generationImages").value.split(/\n/).map(x=>x.trim()).filter(Boolean),candidate_count:Number($("candidateCount").value),allow_paid:$("paid").checked,preview_only:true});
+  });
+  bind("askAI", async () => { const prompt = $("prompt").value.trim(); if (!prompt) throw Error("请先写下希望制作或修改的内容。"); await ensureGameArt(); await rpc("ui/message", {role:"user",content:[{type:"text",text:prompt + "\n请读取 game_art_direction，结合游戏玩法与背景设计、制作并检查真实模型画面。资产用途："+$("assetRole").selectedOptions[0].textContent + ($("asset").value ? "\n当前选中的资产："+$("asset").value : "")}]}); notice("已把描述和当前资产发给本次聊天的 AI。"); });
   bind("composeButton", () => submitted("compose", {kit:$("kit").value,prefix:id($("kitPrefix").value,"corner"),position:position(),yaw:Number($("yaw").value)}));
   bind("saveLayout", () => submitted("compose", {mode:"save",template:$("templateName").value.trim()}));
   bind("placeLayout", () => submitted("compose", {mode:"place",template:$("layouts").value,position:position(),yaw:Number($("yaw").value)}));
