@@ -9,13 +9,13 @@
     "unreal": "5.7.2"
   },
   "automated": {
-    "pytest_passed": 225,
+    "pytest_passed": 226,
     "ruff": "passed",
     "gateway_full_tools": 69,
     "gateway_compact_tools": 3,
     "stale_images_and_source_guards": "passed",
     "resume_retains_successful_stages": "passed",
-    "focused_after_dependency_fix": "12 passed; 226 tests now collected"
+    "ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/37738838411"
   },
   "native": {
     "unity": {
@@ -100,7 +100,15 @@
     "detached_blender_recipe_and_source_jobs": "passed"
   },
   "portable_ci": {
-    "status": "pending"
+    "status": "passed",
+    "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/37738838387",
+    "platforms": [
+      "windows-latest",
+      "macos-14"
+    ],
+    "pytest_per_platform": 226,
+    "full_and_compact_packaged_mcp": "passed",
+    "native_panel_shutdown": "passed"
   },
   "limits": [
     "Native Windows editors and shipping builds are not covered.",
@@ -108,5 +116,35 @@
     "Furnishing covers generated upright rooms and sampled capsule clearance, not NavMesh traversal.",
     "Refraction, rigs, HDRP and arbitrary Blueprint graph generation are not supported.",
     "Asset ranking uses metadata and observed descriptions, not image embeddings."
-  ]
+  ],
+  "source_commit": "db78874f4b7c6d9a8a3681d2199392323aa59e33",
+  "cleanup": {
+    "temporary_fixture_bytes_removed": 2783466490,
+    "retained": [
+      "source",
+      "reproducible test scripts",
+      "concise verification",
+      "installed engines and development dependencies"
+    ],
+    "additional_download_build_cache_bytes_removed": 156906586,
+    "total_GiB": 2.74
+  },
+  "public_downloads": {
+    "Prompt-to-Scene-macos-arm64.zip": {
+      "sha256": "2571a251110b1e343176cef4c0090ec6fea206d3f1b4402184213819fca28665",
+      "bytes": 18288951,
+      "matched": true
+    },
+    "Prompt-to-Scene-windows-x64.zip": {
+      "sha256": "d2c1819421cee12e7f0a9e0b687fd71a8b60c8955233d549cf1fcceb264282e1",
+      "bytes": 27053071,
+      "matched": true
+    }
+  },
+  "public_macos_runtime": {
+    "ad_hoc_signature": "passed",
+    "downloaded_frozen_mcp_setup_bridge_service": "passed",
+    "full_tools": 69,
+    "compact_tools": 3
+  }
 }

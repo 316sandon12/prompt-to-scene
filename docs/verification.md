@@ -7,7 +7,7 @@ UE 5.7.2. [Sanitized record](verification-v0.10.json) · [Usage](PRODUCTION.zh-C
 
 | Check | Result |
 | --- | --- |
-| Python and MCP | 225 full-suite checks passed, followed by a focused 12-check workflow run including one added dependency-order regression (226 total tests). Full discovery exposes 69 tools; installed compact mode exposes 3. Exact-source/image guards, persisted preferences, saved designs and resume behavior are covered. |
+| Python and MCP | 226 tests passed on the release source in [CI](https://github.com/316sandon12/prompt-to-scene/actions/runs/37738838411), after local full-suite and focused regression checks. Full discovery exposes 69 tools; installed compact mode exposes 3. Exact-source/image guards, persisted preferences, saved designs and resume behavior are covered. |
 | Real material import | Actual Blender procedural alpha baking and native opaque emissive, cutout and alpha-blended materials passed in Built-in, URP and UE. Shader modes, alpha texture packing, culling and HDR emission parameters were asserted; actual images inspected. |
 | Native game camera | Before/after images use the real camera and scene lighting. Additional checks change the live camera's lens/aspect between captures and verify that the saved comparison stays at 1024×576. Unity also retains the projection matrix. |
 | Editable design reuse | Save a custom Blender design, alter one named part and import a new asset; the untouched part retains the same measured geometry hash. A recipe family is also saved, instantiated and adopted for future briefs. |
@@ -16,7 +16,7 @@ UE 5.7.2. [Sanitized record](verification-v0.10.json) · [Usage](PRODUCTION.zh-C
 | Hosts | Isolated native Codex plugin install/upgrade, 3-tool discovery and gateway call through app-server passed. Harness bundle configuration and shared stdio are covered; Harness is not installed locally for a fresh native-host run. |
 | UI and local package | Real browser inspection of saved designs and populated furnishing controls, no console errors. Frozen macOS MCP, setup, embedded bridges, native panel service and detached Blender recipe/source jobs passed. |
 
-Portable release CI results will be recorded after the Windows/macOS builds finish. Native Windows
+Windows/macOS builds, 226 tests per OS and frozen full/compact MCP/setup/service checks passed in [release CI](https://github.com/316sandon12/prompt-to-scene/actions/runs/37738838387). Both public ZIP checksums matched; the downloaded macOS app passed signature and actual runtime checks. [Download v0.10.0](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.10.0). Native Windows
 editors, shipping builds and autonomous aesthetic quality are not covered. Camera checks concern
 supported native cameras, not every custom render feature. Furnishing uses bounds and sampled
 clearance, not navigation-mesh traversal. Emission/alpha support does not include refraction.
