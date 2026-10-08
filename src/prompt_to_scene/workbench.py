@@ -115,10 +115,11 @@ def dispatch(action, values=None):
         "review": lambda review_id: reviews.read(None, review_id),
         "image": image,
     }
-    from . import art_adaptation, editor_tools, intake, project_profiles, semantics
+    from . import art_adaptation, editor_tools, intake, production, project_profiles, semantics
 
     routes.update(
         {
+            "workflow": lambda **v: production.dispatch(None, **v),
             "profile": lambda **v: project_profiles.configure(None, **v),
             "intake": lambda **v: intake.manage(None, **v),
             "semantic": lambda **v: semantics.start(None, **v),

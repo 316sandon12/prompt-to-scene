@@ -26,6 +26,10 @@ namespace PromptToScene.Editor
         public string normal_texture;
         public string roughness_texture, metallic_texture, mask_texture, reuse_path;
         public float normal_strength = 1;
+        public string surface = "opaque", opacity_texture, emission_texture;
+        public float alpha_cutoff = .5f, emission_strength = 0;
+        public float[] emission = new float[] { 0, 0, 0 };
+        public bool two_sided;
     }
     [Serializable] public class TransferRequest
     {
@@ -69,7 +73,7 @@ namespace PromptToScene.Editor
     [Serializable] internal class EditorHeartbeat
     {
         public string unity_version;
-        public string bridge_version = "0.9.1";
+        public string bridge_version = "0.10.0";
         public string engine = "unity";
         public string pipeline;
         public string scene;
@@ -205,7 +209,8 @@ namespace PromptToScene.Editor
                     float.IsNaN(material.normal_strength) || float.IsInfinity(material.normal_strength) ||
                     material.normal_strength < 0)
                     throw new Exception("Invalid material parameters");
-                foreach (string texture in new[] { material.base_color_texture, material.normal_texture, material.roughness_texture, material.metallic_texture, material.mask_texture })
+                PortableMaterials.Validate(material);
+                foreach (string texture in new[] { material.base_color_texture, material.normal_texture, material.roughness_texture, material.metallic_texture, material.mask_texture, material.opacity_texture, material.emission_texture })
                     if (!string.IsNullOrEmpty(texture) && !request.files.Any(f => f.name == texture && texture.EndsWith(".png")))
                         throw new Exception("Texture is absent from manifest: " + texture);
             }
@@ -262,7 +267,8 @@ namespace PromptToScene.Editor
                 }
                 string materialPath = target + "/" + layout.materials + layout.material_prefix + Sha256(Encoding.UTF8.GetBytes(data.name)).Substring(0, 16) + ".mat";
                 var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-                Shader shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" : "Standard");
+                Shader shader = Shader.Find(urp ? "Universal Render Pipeline/Lit" :
+                    data.two_sided ? "PromptToScene/Portable Standard" : "Standard");
                 if (shader == null) throw new Exception("Target shader not installed");
                 if (material == null)
                 {
@@ -291,6 +297,7 @@ namespace PromptToScene.Editor
                 else material.DisableKeyword(urp ? "_METALLICSPECGLOSSMAP" : "_METALLICGLOSSMAP");
                 if (string.IsNullOrEmpty(data.normal_texture)) material.DisableKeyword("_NORMALMAP");
                 else material.EnableKeyword("_NORMALMAP");
+                PortableMaterials.Apply(material, data, urp, Texture(layout, data.emission_texture, false));
                 EditorUtility.SetDirty(material);
                 materials.Add(data.name, material);
             }

@@ -1,4 +1,4 @@
-"""Executed by Blender, not the server's Python. Only static opaque PBR is supported."""
+"""Executed by Blender: portable static PBR, emission and alpha surfaces."""
 
 import hashlib
 import json
@@ -28,10 +28,11 @@ def export_material(material, folder):
             "Normal",
             "Roughness",
             "Metallic",
+            "Alpha",
+            "Emission Color",
         }:
             raise ValueError(f"{material.name}: {socket.name} requires a supported direct texture")
     for name in (
-        "Alpha",
         "Transmission Weight",
         "Coat Weight",
         "Subsurface Weight",
@@ -39,9 +40,9 @@ def export_material(material, folder):
         "Anisotropic IOR Level",
     ):
         socket = principled.inputs.get(name)
-        expected = 1 if name == "Alpha" else 0
+        expected = 0
         if socket and (socket.is_linked or abs(socket.default_value - expected) > 0.0001):
-            raise ValueError(f"{material.name}: {name} is unsupported in v0.2 (opaque PBR only)")
+            raise ValueError(f"{material.name}: {name} is unsupported; use portable PBR")
     for name, expected in (("IOR", 1.5), ("Specular IOR Level", 0.5)):
         if abs(principled.inputs[name].default_value - expected) > 0.0001:
             raise ValueError(f"{material.name}: keep {name} at its default ({expected})")
@@ -49,13 +50,19 @@ def export_material(material, folder):
         raise ValueError(f"{material.name}: colored specular tint is unsupported")
     emission = principled.inputs.get("Emission Color")
     strength = principled.inputs.get("Emission Strength")
-    if (
-        emission
-        and strength
-        and strength.default_value > 0
-        and any(v > 0.0001 for v in emission.default_value[:3])
-    ):
-        raise ValueError(f"{material.name}: emission is not supported in v0.2")
+    alpha = principled.inputs["Alpha"]
+    surface = str(material.get("pts_surface", "")).lower()
+    if not surface:
+        legacy = getattr(material, "blend_method", "OPAQUE")
+        surface = (
+            "mask"
+            if legacy == "CLIP"
+            else ("blend" if alpha.is_linked or alpha.default_value < 0.9999 else "opaque")
+        )
+    if surface not in {"opaque", "mask", "blend"}:
+        raise ValueError("pts_surface must be opaque, mask or blend")
+    if strength.is_linked or not 0 <= strength.default_value <= 1000:
+        raise ValueError("Emission Strength must be a constant between 0 and 1000")
     info = {
         "name": material.name,
         "fbx_name": "PTS_" + hashlib.sha256(material.name.encode()).hexdigest()[:16],
@@ -69,12 +76,23 @@ def export_material(material, folder):
         "mask_texture": "",
         "reuse_path": material.get("pts_reuse_path", ""),
         "normal_strength": 1.0,
+        "surface": surface,
+        "alpha_cutoff": float(material.get("pts_alpha_cutoff", 0.5)),
+        "two_sided": bool(material.get("pts_two_sided", surface == "mask")),
+        "opacity_texture": "",
+        "emission_texture": "",
+        "emission": list(emission.default_value[:3]),
+        "emission_strength": float(strength.default_value),
     }
+    if not 0 <= info["alpha_cutoff"] <= 1:
+        raise ValueError("pts_alpha_cutoff must be between 0 and 1")
     for input_name, field in (
         ("Base Color", "base_color_texture"),
         ("Normal", "normal_texture"),
         ("Roughness", "roughness_texture"),
         ("Metallic", "metallic_texture"),
+        ("Alpha", "opacity_texture"),
+        ("Emission Color", "emission_texture"),
     ):
         socket = principled.inputs[input_name]
         if not socket.is_linked:
@@ -91,7 +109,12 @@ def export_material(material, folder):
                 raise ValueError("Normal Map requires an Image Texture")
             link = node.inputs["Color"].links[0]
             node = link.from_node
-        if node.type != "TEX_IMAGE" or not node.image or link.from_socket.name != "Color":
+        if (
+            node.type != "TEX_IMAGE"
+            or not node.image
+            or link.from_socket.name
+            not in ({"Color", "Alpha"} if input_name == "Alpha" else {"Color"})
+        ):
             raise ValueError(
                 f"{material.name}: {input_name} requires a direct Image Texture; bake first"
             )
@@ -107,8 +130,9 @@ def export_material(material, folder):
         image = node.image
         if image.source not in {"FILE", "GENERATED"} or image.size[0] == 0:
             raise ValueError(f"Unsupported or missing image: {image.name}")
-        expected_space = "sRGB" if input_name == "Base Color" else "Non-Color"
-        if image.colorspace_settings.name != expected_space:
+        expected_space = "sRGB" if input_name in {"Base Color", "Emission Color"} else "Non-Color"
+        alpha_channel = input_name == "Alpha" and link.from_socket.name == "Alpha"
+        if not alpha_channel and image.colorspace_settings.name != expected_space:
             raise ValueError(f"{image.name}: set color space to {expected_space}")
         filename = (
             "tex_" + hashlib.sha256((material.name + field).encode()).hexdigest()[:16] + ".png"
@@ -121,6 +145,50 @@ def export_material(material, folder):
         info[field] = filename
         if input_name == "Base Color":
             info["color"] = [1, 1, 1, 1]
+        if input_name == "Emission Color":
+            info["emission"] = [1, 1, 1]
+    info["color"][3] = 1.0 if alpha.is_linked else float(alpha.default_value)
+    if alpha.is_linked:
+        import numpy as np
+
+        source = alpha.links[0].from_node.image
+        width, height = source.size
+        pixels = np.empty(width * height * 4, dtype=np.float32)
+        source.pixels.foreach_get(pixels)
+        channel = 3 if alpha.links[0].from_socket.name == "Alpha" else 0
+        opacity = pixels.reshape((-1, 4))[:, channel]
+        scalar = np.ones((width * height, 4), dtype=np.float32)
+        scalar[:, :3] = opacity[:, None]
+        image = bpy.data.images.new(material.name + "_Opacity", width=width, height=height)
+        image.colorspace_settings.name = "Non-Color"
+        image.pixels.foreach_set(scalar.ravel())
+        image.filepath_raw = str(folder / info["opacity_texture"])
+        image.file_format = "PNG"
+        image.save()
+        # Unity's standard shaders read opacity from the base texture alpha channel.
+        base = principled.inputs["Base Color"]
+        if base.is_linked:
+            source = base.links[0].from_node.image.copy()
+            if tuple(source.size) != (width, height):
+                source.scale(width, height)
+            source.pixels.foreach_get(scalar.ravel())
+            bpy.data.images.remove(source)
+        else:
+            scalar[:, :3] = 1
+        scalar[:, 3] = opacity
+        packed = bpy.data.images.new(
+            material.name + "_BaseAlpha", width=width, height=height, alpha=True
+        )
+        packed.colorspace_settings.name = "sRGB"
+        packed.pixels.foreach_set(scalar.ravel())
+        filename = (
+            "tex_"
+            + hashlib.sha256((material.name + "base_alpha").encode()).hexdigest()[:16]
+            + ".png"
+        )
+        packed.filepath_raw, packed.file_format = str(folder / filename), "PNG"
+        packed.save()
+        info["base_color_texture"] = filename
     if info["roughness_texture"] or info["metallic_texture"]:
         import numpy as np
 
@@ -214,6 +282,8 @@ def main():
                         "normal_texture",
                         "roughness_texture",
                         "metallic_texture",
+                        "opacity_texture",
+                        "emission_texture",
                     )
                 )
                 and len(obj.data.uv_layers) != 1

@@ -126,6 +126,9 @@ def plan(
         "context": context,
         "style": styles.read(project),
         "decisions": decisions,
+        "family": core.read_optional_json(root(project) / "design-family.json"),
+        "visual_preferences": core.read_optional_json(root(project) / "visual-preferences.json")
+        or [],
         "reference": {k: reference[k] for k in ("notes", "image", "sha256") if k in reference},
         "treatment": {
             "construction": context["construction"],
@@ -149,6 +152,11 @@ def plan(
         ],
     }
     matched = core.read_optional_json(root(project) / "style-match.json")
+    if result["family"]:
+        result["style"] = deepcopy(result["family"]["style"])
+        result["modeling_guidance"].append(
+            "Reuse this family's construction language and saved parts; keep its material scale."
+        )
     if matched:
         result["style_reference"] = {
             "source_token": matched["source_token"],
@@ -172,7 +180,9 @@ def for_recipe(project, asset_id, kind):
                 "or update design_asset explicitly before choosing a template."
             )
         return saved
-    if not (root(project) / "game-art.json").is_file():
+    if not any(
+        (root(project) / name).is_file() for name in ("game-art.json", "design-family.json")
+    ):
         return None  # Preserve legacy recipes until the project opts into game art direction.
     return plan(project, asset_id, kind, recipe_kind=kind)
 

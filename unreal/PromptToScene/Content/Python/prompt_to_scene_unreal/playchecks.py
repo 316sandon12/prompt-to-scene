@@ -117,7 +117,9 @@ def exercise(world):
             except Exception:
                 assertion(name, "runtime_template", False, "Configure interaction before testing")
                 continue
-            position = actor.get_actor_location()
+            position = unreal.MathLibrary.transform_location(
+                actor.get_actor_transform(), actor.get_editor_property("InteractionPoint")
+            )
             actor.call_method("TryInteract", args=(position + unreal.Vector(distance * 3, 0, 0),))
             assertion(
                 name, "range_rejection", actor.get_editor_property("InteractionCount") == count
@@ -144,6 +146,37 @@ def exercise(world):
                     and actor.get_editor_property("hidden")
                     and not actor.get_actor_enable_collision(),
                 )
+            elif kind == 3:
+                uses = actor.get_editor_property("UsesRequired")
+                assertion(
+                    name, "resource_progress", actor.get_editor_property("Collected") == (uses <= 1)
+                )
+                for _ in range(1, uses):
+                    actor.call_method("TryInteract", args=(position,))
+                assertion(
+                    name,
+                    "resource_depleted",
+                    actor.get_editor_property("Collected")
+                    and actor.get_editor_property("InteractionCount") == count + uses,
+                )
+                depleted = actor.get_editor_property("DepletedMesh")
+                assertion(
+                    name,
+                    "depleted_visual",
+                    actor.static_mesh_component.static_mesh == depleted
+                    if depleted
+                    else actor.get_editor_property("hidden"),
+                )
+                actor.call_method("TryInteract", args=(position,))
+                assertion(
+                    name,
+                    "depletion_is_once",
+                    actor.get_editor_property("InteractionCount") == count + uses,
+                )
+            elif kind == 4:
+                assertion(name, "switch_on", actor.get_editor_property("Open"))
+                actor.call_method("TryInteract", args=(position,))
+                assertion(name, "switch_off", not actor.get_editor_property("Open"))
             else:
                 after = pivot.get_editor_property("relative_rotation")
                 moved = any(
@@ -173,7 +206,10 @@ def finish(status="completed", error=None):
         return
     if status == "completed":
         for name, actor, initial in s["opened"]:
-            actor.call_method("TryInteract", args=(actor.get_actor_location(),))
+            position = unreal.MathLibrary.transform_location(
+                actor.get_actor_transform(), actor.get_editor_property("InteractionPoint")
+            )
+            actor.call_method("TryInteract", args=(position,))
             rotation = actor.get_editor_property("MovingPivot").get_editor_property(
                 "relative_rotation"
             )

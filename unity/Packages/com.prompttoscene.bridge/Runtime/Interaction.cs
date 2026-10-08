@@ -13,6 +13,12 @@ namespace PromptToScene
         public float interactionRange = 2.5f;
         public bool demoInput = true;
         public UnityEvent onInteracted = new UnityEvent();
+        public UnityEvent onDepleted = new UnityEvent();
+        public UnityEvent<string> onGameEvent = new UnityEvent<string>();
+        public string eventId = "", interactionLabel = "";
+        public int usesRequired = 3;
+        public Vector3 interactionPoint;
+        public GameObject depletedVisual;
         public bool IsOpen { get; private set; }
         public bool Collected { get; private set; }
         public int InteractionCount { get; private set; }
@@ -23,8 +29,10 @@ namespace PromptToScene
         // Call from your own controller/input system. Positions are Unity world meters.
         public bool TryInteract(Vector3 worldPosition)
         {
-            if (Collected || Vector3.Distance(worldPosition, transform.position) > interactionRange) return false;
+            if (Collected || Vector3.Distance(worldPosition, transform.TransformPoint(interactionPoint)) > interactionRange) return false;
             if (template == "pickup") Collected = true;
+            else if (template == "resource") Collected = InteractionCount + 1 >= Mathf.Max(1, usesRequired);
+            else if (template == "switch") IsOpen = !IsOpen;
             else
             {
                 if (!movingPivot) return false;
@@ -33,7 +41,17 @@ namespace PromptToScene
             }
             InteractionCount++;
             onInteracted.Invoke();
-            if (Collected) gameObject.SetActive(false);
+            if (!string.IsNullOrEmpty(eventId)) onGameEvent.Invoke(eventId);
+            if (Collected)
+            {
+                onDepleted.Invoke();
+                if (template == "resource" && depletedVisual)
+                {
+                    var visual = transform.Find("Visual"); if (visual) visual.gameObject.SetActive(false);
+                    depletedVisual.SetActive(true);
+                }
+                else gameObject.SetActive(false);
+            }
             return true;
         }
 

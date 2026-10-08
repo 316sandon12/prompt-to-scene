@@ -36,7 +36,20 @@ from .core import inspect_project, wait_for_status
 mcp = FastMCP(
     "Prompt-to-Scene",
     instructions="""
-Create static opaque PBR assets in Blender, then publish to the configured Unity or Unreal project.
+Use game_workflow as the primary entrypoint: search actions, describe their contract, then execute
+with values. Installed clients expose only game_workflow, open_workbench and workbench_action.
+All other tool names mentioned below remain callable through game_workflow by their exact name.
+Use produce for a durable batch of custom scripts, recipes, sources, saved designs or interactive
+props, optionally furnished into an existing level and reviewed. Poll its one parent request;
+resume reuses completed stages. Prefer custom bpy for detailed shapes, not recipe substitution.
+Use save_design/reuse_design for editable source families, and find_assets for purpose/style/size
+matching from metadata and observed descriptions. Use review with view=game for the actual game
+camera and lighting, review_images to inspect pixels, and feedback to retain concrete observations
+and preferences. Never accept appearance from technical checks alone. Repair named parts only.
+Furnish measures existing rooms and props, reserves approach/walking space, and undoes placement
+if native clearance fails. It does not infer arbitrary floor plans or prove NavMesh traversal.
+Create static PBR assets in Blender, then publish to the configured Unity or Unreal project.
+Emission, alpha-cutout and ordinary alpha blending are supported; refraction remains unsupported.
 open_workbench offers an optional MCP App; normal tools work without an embedded UI.
 Use compose_scene to build and furnish a kit, or save/place a reusable layout, with arbitrary yaw.
 Use edit_imported_part for grouping, locks and local replacements on existing source meshes.
@@ -50,7 +63,7 @@ resume_workflow continues saved multi-step jobs; never resubmit paid tasks just 
 If no project is connected, use list_projects then connect_project with the user's chosen project.
 Use inspect_library for nine designed recipes, semantic parts, styles and quality budgets.
 Use search_assets to find credited CC0 Poly Haven models, or import_asset for a local GLB/glTF,
-FBX or Blender model produced by another AI tool. Import automatically prepares static opaque PBR,
+FBX or Blender model produced by another AI tool. Import automatically prepares static PBR,
 measured simplification, native LODs and collision. Use preview_only then publish_prepared when
 the user wants to review first. Check the preparation report and before/studio views: sampled
 shape error is not an aesthetic guarantee. prepare_asset reprocesses the retained original.
@@ -95,8 +108,12 @@ Unreal Z-up (converted to centimeters by the adapter). Reuse asset_id for revisi
 Existing scene instance transforms are preserved. Unity retains prefab root components; Unreal
 retains its StaticMeshActor. Generated geometry and managed material properties are replaced.
 This is not an image-to-3D model. Author bpy Python or publish a saved .blend from another tool.
-For playable static props use create_interactive_prop (door/chest/pickup), or configure_interaction
-with a separate moving asset. Native runtime components/Blueprints expose a range-checked event.
+For playable props use create_interactive_prop (door/chest/pickup/resource/switch), or use
+configure_interaction
+with separate moving geometry for doors/chests. Resource uses, event_id, label, interaction_point
+and depleted_asset_id configure range-checked interactions and depleted visuals. Unity exposes
+onGameEvent/onDepleted; UE exposes GameEventId and OnInteracted/OnDepleted. They are hooks, not an
+automatic inventory/quest integration. Read individual native Play/PIE assertions when testing.
 protect_asset keeps custom material assignments and sibling attachment points; review_asset_update
 compares a prepared candidate before publishing. Missing protected slots stop reimport.
 set_scene_look applies/restores an owned lighting/sky/post/camera rig; capture it to inspect beauty.
@@ -174,6 +191,69 @@ def match_game_style(
 
 
 @mcp.tool()
+async def game_workflow(
+    operation: str = "search",
+    action: str | None = None,
+    values: dict | None = None,
+    query: str = "",
+):
+    """One entry for a game-development task. Search/describe only the capability needed.
+
+    Start with context and find_assets/find_designs, then produce a saved plan containing
+    recipe/custom/source/template/interactive items. A single task tracks building, importing,
+    gameplay attachment, optional room furnishing and review. Retry with resume, not a new plan.
+    review_images returns actual images; inspect them before saving feedback or repairing parts.
+    Existing tools are also available by their exact action name through this gateway.
+    """
+    import json
+
+    from mcp.types import CallToolResult
+
+    from . import production
+
+    if action in production.routes() or operation == "search":
+        result = production.dispatch(None, operation, action, values, query)
+        if operation == "search":
+            legacy = await mcp.list_tools()
+            result["existing_tools"] = [
+                {"action": t.name, "description": t.description.split("\n")[0]}
+                for t in legacy
+                if t.name not in {"game_workflow", "workbench_action"}
+                and query
+                and all(
+                    word in (t.name + " " + t.description).lower() for word in query.lower().split()
+                )
+            ]
+        if operation == "execute" and action == "review_images":
+            return [
+                json.dumps(result, ensure_ascii=False),
+                *[Image(path=row["path"]) for row in result["images"]],
+            ]
+        return result
+    legacy = {
+        t.name: t
+        for t in await mcp.list_tools()
+        if t.name not in {"game_workflow", "workbench_action"}
+    }
+    if action not in legacy:
+        raise ValueError("Unknown action; search workflow capabilities first")
+    if operation == "describe":
+        return {
+            "action": action,
+            "description": legacy[action].description,
+            "parameters": legacy[action].inputSchema,
+        }
+    if operation != "execute":
+        raise ValueError("Use search, describe or execute")
+    result = await mcp.call_tool(action, values or {})
+    if isinstance(result, tuple):
+        return CallToolResult(content=result[0], structuredContent=result[1])
+    if isinstance(result, dict):
+        return result
+    return CallToolResult(content=result)
+
+
+@mcp.tool()
 def design_asset(
     asset_id: str,
     description: str | None = None,
@@ -214,7 +294,7 @@ async def build_asset(
     Use stable asset_id (lowercase letters/digits/_/-) to update the same asset. Position is
     engine XYZ meters, applied ONLY when first placing the asset. Each script builds a complete
     asset from scratch. Delete default scene objects, create an Export collection, link meshes
-    to it. Static meshes, constant opaque PBR, direct base-color / tangent normal textures.
+    to it. Static PBR, emission and alpha mask/blend; supported designed graphs bake automatically.
     Unsupported materials fail explicitly. No paid model API or additional Blender MCP required.
     """
     return authoring.build_custom(
@@ -934,6 +1014,11 @@ def configure_interaction(
     pivot: list[float] | None = None,
     moving_offset: list[float] | None = None,
     demo_input: bool = True,
+    uses: int = 3,
+    event_id: str = "",
+    label: str = "",
+    depleted_asset_id: str | None = None,
+    interaction_point: list[float] | None = None,
 ) -> dict:
     """Attach/update door/chest/pickup behavior. Pivot/offset are local engine XYZ meters.
 
@@ -941,7 +1026,20 @@ def configure_interaction(
     the plain managed StaticMeshActor to a native Blueprint; later revisions keep that Actor.
     """
     return development.configure(
-        None, asset_id, kind, moving_asset_id, angle, distance, pivot, moving_offset, demo_input
+        None,
+        asset_id,
+        kind,
+        moving_asset_id,
+        angle,
+        distance,
+        pivot,
+        moving_offset,
+        demo_input,
+        uses=uses,
+        event_id=event_id,
+        label=label,
+        depleted_asset_id=depleted_asset_id,
+        interaction_point=interaction_point,
     )
 
 
@@ -1161,6 +1259,16 @@ def adapt_asset_materials(
 
 def main():
     from .intake import start_watcher
+
+    if os.environ.get("PTS_COMPACT_TOOLS") == "1":
+
+        @mcp._mcp_server.list_tools()
+        async def compact_tools():
+            return [
+                tool
+                for tool in await mcp.list_tools()
+                if tool.name in {"game_workflow", "open_workbench", "workbench_action"}
+            ]
 
     watcher = start_watcher()
     try:

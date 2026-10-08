@@ -348,7 +348,7 @@ def action(project, operation, *, asset_id=None, scope="selected", values=None, 
         "development_json",
     }:
         raise ValueError("Unknown edit field")
-    if "view" in values and values["view"] not in {"studio", "front", "back"}:
+    if "view" in values and values["view"] not in {"studio", "front", "back", "game"}:
         raise ValueError("Unknown preview view")
     if values.get("frame_id"):
         identifier(values["frame_id"])

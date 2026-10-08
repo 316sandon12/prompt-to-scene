@@ -17,6 +17,9 @@ namespace PromptToScene.Editor
     {
         public string command, mode, template, moving_asset_id, preset, level_id, path, candidate_request_id;
         public string scope_path, plan_id, plan_sha256;
+        public string event_id, label, depleted_asset_id;
+        public int uses = 3;
+        public float[] interaction_point = new float[] { 0, 0, 0 };
         public float angle, distance, duration, player_radius, player_height, max_step;
         public float[] pivot, offset, position;
         public bool demo_input, capture, preserve_configuration;
@@ -40,6 +43,7 @@ namespace PromptToScene.Editor
     {
         public string command, message, preset, template, prefab, level_id, candidate_request_id;
         public string mode, plan_id, scan_id, organization_status;
+        public string plan_json;
         public bool passed, truncated;
         public int changed, module_count, samples, frames;
         public float mean_frame_ms, p95_frame_ms;
@@ -81,13 +85,13 @@ namespace PromptToScene.Editor
 
         static DevelopmentResult Configure(string id, DevelopmentCommand c)
         {
-            if(!new[]{"door","chest","pickup"}.Contains(c.template) || c.distance<.1f || c.distance>20 || Mathf.Abs(c.angle)>170)
+            if(!new[]{"door","chest","pickup","resource","switch"}.Contains(c.template) || c.distance<.1f || c.distance>20 || Mathf.Abs(c.angle)>170 || c.uses<1 || c.uses>1000)
                 throw new Exception("Invalid interaction settings");
             string path=NativeLocations.Get(id).Prefab;
             var source=AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if(!source) throw new Exception("Import the base asset first");
             GameObject moving=null;
-            if(c.template!="pickup")
+            if(c.template=="door" || c.template=="chest")
             {
                 moving=AssetDatabase.LoadAssetAtPath<GameObject>(NativeLocations.Get(c.moving_asset_id).Prefab);
                 if(!moving || c.moving_asset_id==id) throw new Exception("Import a separate moving asset first");
@@ -101,6 +105,23 @@ namespace PromptToScene.Editor
                 if(keep && interact.template!=c.template) throw new Exception("Use configure_interaction explicitly to change the template kind");
                 interact.template=c.template;
                 if(!keep){interact.interactionRange=c.distance; interact.demoInput=c.demo_input;}
+                if(!keep)
+                {
+                    interact.eventId=c.event_id ?? ""; interact.interactionLabel=c.label ?? "";
+                    interact.usesRequired=c.uses; interact.interactionPoint=Vec(c.interaction_point);
+                    var depleted=root.transform.Find("DepletedVisual");
+                    if(depleted) Object.DestroyImmediate(depleted.gameObject);
+                    interact.depletedVisual=null;
+                    if(!string.IsNullOrEmpty(c.depleted_asset_id))
+                    {
+                        var depletedSource=AssetDatabase.LoadAssetAtPath<GameObject>(NativeLocations.Get(c.depleted_asset_id).Prefab);
+                        if(!depletedSource) throw new Exception("Import the depleted-state asset first");
+                        var instance=(GameObject)PrefabUtility.InstantiatePrefab(depletedSource,root.scene);
+                        instance.transform.SetParent(root.transform,false);instance.name="DepletedVisual";
+                        instance.GetComponent<AssetIdentity>().nestedPart=true;
+                        instance.SetActive(false);interact.depletedVisual=instance;
+                    }
+                }
                 var pivot=root.transform.Find("MovingPivot");
                 if(!pivot) {pivot=new GameObject("MovingPivot").transform; pivot.SetParent(root.transform,false);}
                 pivot.localPosition=Vec(c.pivot); pivot.localRotation=Quaternion.identity;
@@ -155,6 +176,19 @@ namespace PromptToScene.Editor
         static DevelopmentResult Level(DevelopmentCommand c)
         {
             var previous=Loaded<LevelMarker>().FirstOrDefault(l=>l.levelId==c.level_id);
+            if(c.mode=="inspect")
+            {
+                if(!previous) throw new Exception("Generated level is not loaded");
+                var plan=new DevelopmentCommand {
+                    boxes=previous.GetComponentsInChildren<MeshRenderer>().Select(r=>new BlockSetting {
+                        name=r.name,position=Vec(r.transform.position),size=Vec(r.transform.lossyScale),
+                        yaw=r.transform.eulerAngles.y,material=r.name.StartsWith("floor")?"floor":"wall"
+                    }).ToArray(),
+                    checkpoints=previous.checkpoints.Select(p=>new Checkpoint{position=Vec(p)}).ToArray(),
+                    player_radius=previous.playerRadius,player_height=previous.playerHeight,max_step=previous.maxStep
+                };
+                return new DevelopmentResult{command="level",level_id=c.level_id,plan_json=JsonUtility.ToJson(plan)};
+            }
             if(c.mode=="check")
             {
                 if(!previous) throw new Exception("Generated level is not loaded");

@@ -71,7 +71,7 @@ def create_bundles():
     root = marketplace / __version__
     root.mkdir(parents=True, exist_ok=True)
     command = runtime()
-    environment = {"PTS_HOME": str(registry.home())}
+    environment = {"PTS_HOME": str(registry.home()), "PTS_COMPACT_TOOLS": "1"}
     skill = registry.resources() / "plugins/shared/skills/prompt-to-scene"
     codex = root / "codex"
     codex.mkdir(exist_ok=True)

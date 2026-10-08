@@ -7,8 +7,8 @@ from . import core, registry, workflow
 
 def capture(project, asset_id, review_id=None, stage="before", view="studio", refresh=False):
     core.asset_id(asset_id)
-    if stage not in {"before", "after"} or view not in {"studio", "front", "back"}:
-        raise ValueError("Choose before/after and studio/front/back")
+    if stage not in {"before", "after"} or view not in {"studio", "front", "back", "game"}:
+        raise ValueError("Choose before/after and studio/front/back/game")
     target = registry.resolve(project)
     root = core.state_root(target.root)
     if review_id:

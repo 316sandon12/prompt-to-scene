@@ -2,6 +2,7 @@
 #include "Modules/ModuleManager.h"
 #include "Engine/Blueprint.h"
 #include "Engine/StaticMeshActor.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/SimpleConstructionScript.h"
 #include "Engine/SCS_Node.h"
 #include "Components/SceneComponent.h"
@@ -112,8 +113,14 @@ UBlueprint* UPTSTemplateBuilder::BuildInteractiveTemplate(const FString& Package
     B.Var(TEXT("InteractionCount"),UEdGraphSchema_K2::PC_Int,TEXT("0"));
     B.Var(TEXT("TemplateKind"),UEdGraphSchema_K2::PC_Int,TEXT("0"));
     B.Var(TEXT("InteractionRange"),UEdGraphSchema_K2::PC_Real,TEXT("250"));
+    B.Var(TEXT("UsesRequired"),UEdGraphSchema_K2::PC_Int,TEXT("3"));
+    B.Var(TEXT("GameEventId"),UEdGraphSchema_K2::PC_String,TEXT(""));
+    B.Var(TEXT("InteractionLabel"),UEdGraphSchema_K2::PC_String,TEXT(""));
+    B.Var(TEXT("InteractionPoint"),UEdGraphSchema_K2::PC_Struct,TEXT("(X=0,Y=0,Z=0)"),TBaseStructure<FVector>::Get());
+    B.Var(TEXT("DepletedMesh"),UEdGraphSchema_K2::PC_Object,TEXT("None"),UStaticMesh::StaticClass());
     B.Var(TEXT("OpenRotation"),UEdGraphSchema_K2::PC_Struct,TEXT("(Pitch=0,Yaw=90,Roll=0)"),TBaseStructure<FRotator>::Get());
     auto* Hook=B.Event(TEXT("OnInteracted"));
+    B.Event(TEXT("OnDepleted"));
     auto* Interact=B.Event(TEXT("Interact"));
     auto* Try=B.Event(TEXT("TryInteract"));
     FEdGraphPinType VectorType; VectorType.PinCategory=UEdGraphSchema_K2::PC_Struct; VectorType.PinSubCategoryObject=TBaseStructure<FVector>::Get();
@@ -130,19 +137,35 @@ UBlueprint* UPTSTemplateBuilder::BuildInteractiveTemplate(const FString& Package
     auto* Eq=B.Call(UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));
     B.Link(B.Get(TEXT("TemplateKind")),B.Pin(Eq,TEXT("A"))); B.Default(Eq,TEXT("B"),TEXT("2"));
     auto* Pickup=B.Branch(Next,B.Out(Eq));
+    auto* ResourceEq=B.Call(UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));
+    B.Link(B.Get(TEXT("TemplateKind")),B.Pin(ResourceEq,TEXT("A")));B.Default(ResourceEq,TEXT("B"),TEXT("3"));
+    auto* Resource=B.Branch(Pickup->GetElsePin(),B.Out(ResourceEq));
+    auto* Enough=B.Call(UKismetMathLibrary::StaticClass(),TEXT("GreaterEqual_IntInt"));
+    B.Link(B.Get(TEXT("InteractionCount")),B.Pin(Enough,TEXT("A")));B.Link(B.Get(TEXT("UsesRequired")),B.Pin(Enough,TEXT("B")));
+    auto* Depleted=B.Branch(Resource->GetThenPin(),B.Out(Enough));
+    B.Exec(Depleted->GetElsePin(),B.Call(BP->SkeletonGeneratedClass,TEXT("OnInteracted")));
     auto* Collected=B.Set(TEXT("Collected")); B.Default(Collected,TEXT("Collected"),TEXT("true"));
-    Next=B.Exec(Pickup->GetThenPin(),Collected);
+    Next=B.Exec(Pickup->GetThenPin(),Collected); B.Exec(Depleted->GetThenPin(),Collected);
+    Next=B.Exec(Next,B.Call(BP->SkeletonGeneratedClass,TEXT("OnDepleted")));
+    auto* Valid=B.Call(UKismetSystemLibrary::StaticClass(),TEXT("IsValid"));B.Link(B.Get(TEXT("DepletedMesh")),B.Pin(Valid,TEXT("Object")));
+    auto* HasDepleted=B.Branch(Next,B.Out(Valid));
+    auto* ChangeMesh=B.Call(UStaticMeshComponent::StaticClass(),TEXT("SetStaticMesh"));
+    B.Link(B.Get(TEXT("StaticMeshComponent")),B.Pin(ChangeMesh,TEXT("self")));B.Link(B.Get(TEXT("DepletedMesh")),B.Pin(ChangeMesh,TEXT("NewMesh")));
+    B.Exec(HasDepleted->GetThenPin(),ChangeMesh);
+    B.Exec(B.Pin(ChangeMesh,TEXT("then")),B.Call(BP->SkeletonGeneratedClass,TEXT("OnInteracted")));
     auto* Hide=B.Call(AActor::StaticClass(),TEXT("SetActorHiddenInGame")); B.Default(Hide,TEXT("bNewHidden"),TEXT("true"));
-    Next=B.Exec(Next,Hide);
+    Next=B.Exec(HasDepleted->GetElsePin(),Hide);
     auto* Collision=B.Call(AActor::StaticClass(),TEXT("SetActorEnableCollision")); B.Default(Collision,TEXT("bNewActorEnableCollision"),TEXT("false"));
     Next=B.Exec(Next,Collision);
     B.Exec(Next,B.Call(BP->SkeletonGeneratedClass,TEXT("OnInteracted")));
-    auto* OpenBranch=B.Branch(Pickup->GetElsePin(),B.Get(TEXT("Open")));
+    auto* OpenBranch=B.Branch(Resource->GetElsePin(),B.Get(TEXT("Open")));
     auto* Close=B.Rotation(OpenBranch->GetThenPin(),false);
     auto* Open=B.Rotation(OpenBranch->GetElsePin(),true);
     B.Exec(B.Pin(Close,TEXT("then")),B.Call(BP->SkeletonGeneratedClass,TEXT("OnInteracted")));
     B.Exec(B.Pin(Open,TEXT("then")),B.Call(BP->SkeletonGeneratedClass,TEXT("OnInteracted")));
-    auto* Location=B.Call(AActor::StaticClass(),TEXT("K2_GetActorLocation"));
+    auto* Transform=B.Call(AActor::StaticClass(),TEXT("GetTransform"));
+    auto* Location=B.Call(UKismetMathLibrary::StaticClass(),TEXT("TransformLocation"));
+    B.Link(B.Out(Transform),B.Pin(Location,TEXT("T")));B.Link(B.Get(TEXT("InteractionPoint")),B.Pin(Location,TEXT("Location")));
     auto* Distance=B.Call(UKismetMathLibrary::StaticClass(),TEXT("Vector_Distance"));
     B.Link(B.Out(Location),B.Pin(Distance,TEXT("V1"))); B.Link(B.Pin(Try,TEXT("WorldPosition")),B.Pin(Distance,TEXT("V2")));
     auto* Within=B.Call(UKismetMathLibrary::StaticClass(),TEXT("LessEqual_DoubleDouble"));

@@ -42,7 +42,7 @@ def main():
             async with stdio_client(parameters) as (read, write):
                 async with ClientSession(read, write) as client:
                     await client.initialize()
-                    assert len((await client.list_tools()).tools) == 68
+                    assert len((await client.list_tools()).tools) == 69
                     resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
                     assert "ui/initialize" in resource.contents[0].text
                     assert "repairButton" in resource.contents[0].text
@@ -112,6 +112,29 @@ def main():
                         )
 
         anyio.run(protocol)
+
+        async def compact_protocol():
+            parameters = StdioServerParameters(
+                command=binary, args=["--mcp"], env={**environment, "PTS_COMPACT_TOOLS": "1"}
+            )
+            async with stdio_client(parameters) as (read, write):
+                async with ClientSession(read, write) as client:
+                    await client.initialize()
+                    assert {t.name for t in (await client.list_tools()).tools} == {
+                        "game_workflow",
+                        "open_workbench",
+                        "workbench_action",
+                    }
+                    for action, operation in (
+                        ("produce", "describe"),
+                        ("list_projects", "execute"),
+                    ):
+                        response = await client.call_tool(
+                            "game_workflow", {"operation": operation, "action": action}
+                        )
+                        assert not response.isError, response
+
+        anyio.run(compact_protocol)
         # Native panels launch the frozen core without Python or an MCP client.
         native_root = project / ".prompt-to-scene"
         (native_root / "editor.json").write_text("{}")

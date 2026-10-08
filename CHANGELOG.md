@@ -1,12 +1,17 @@
 # Changelog
 
-## Unreleased — Game art direction
+## 0.10.0 — Game production workflow — 2026-10-08
 
 - Evidence-backed style matching: the connected host sees actual native thumbnails/reference images, infers shape/material/detail language, and saves numeric palette, roughness and shape defaults. Keep existing defaults when confidence is low; reject changed image evidence. No extra vision API is invoked.
 - Persistent gameplay/world/camera context and asset design snapshots shared by Codex and Harness. Detailed requests route to custom Blender modeling, with explicit recipe selection for simple forms and automatic preparation for designed custom builds.
 - Recipe joinery, framed doors, formed crests, handles/hinges, turned feet, repair plates and mechanical details. Directional wood grain follows each piece; baking caches track the grain attribute.
 - Explicit redesign retains independent geometry/material locks. Provider prompts use saved context within the existing limit and expose compacted fields. Image-only provider routes remain explicit.
-- Workbench context controls, 68 MCP tools and a reproducible same-camera Blender comparison. Native adapters are unchanged; this source update is not yet in the v0.9.1 portable apps.
+- Durable production jobs combine modeling, preparation, native import, interaction, furnishing and review. Installed hosts see three entrypoints; the gateway retains all 69 legacy/new tools.
+- Game-camera reviews retain actual lens/framing and scene lighting, with image-bound feedback and reusable preferences.
+- Versioned editable design families preserve source, named parts, locks and provenance. Existing asset search ranks purpose/style/material/size metadata.
+- Emission, alpha-cutout and ordinary alpha-blended PBR in Blender, Unity Built-in/URP and UE; supported custom procedural channels bake automatically.
+- Harvestable resources, use counts, interaction anchors, labels, game event hooks and optional depleted visuals; switches and native Play/PIE checks.
+- Furnish measured existing rooms with approach and walking space; failed native clearance undoes placement. Matching updates in the local workbench and bundled host guide.
 
 ## 0.8.0 — 2026-10-04
 

@@ -48,6 +48,9 @@
     if (response.isError) throw Error(response.content?.find(c => c.type === "text")?.text || "操作失败");
     return response.structuredContent || JSON.parse(response.content.find(c => c.type === "text").text);
   }
+  async function workflowAction(action, values = {}) {
+    return call("workflow", {operation:"execute", action, values});
+  }
   function output(result) {
     $("result").textContent = JSON.stringify(result, (key, value) => key === "url" && String(value).startsWith("data:") ? "[图像已显示]" : value, 2);
   }
@@ -121,6 +124,8 @@
     const selected = $("asset").value, assets = state.assets || [];
     $("asset").replaceChildren(option("", "选择已导入的资产"), ...assets.map(asset => option(asset.asset_id, asset.asset_id)));
     if (assets.some(a => a.asset_id === selected)) $("asset").value = selected;
+    const furnished = new Set(Array.from($("furnishAssets").selectedOptions).map(o=>o.value));
+    $("furnishAssets").replaceChildren(...assets.map(a=>{const o=option(a.asset_id,a.asset_id);o.selected=furnished.has(a.asset_id);return o;}));
     const layout = $("layouts").value;
     $("layouts").replaceChildren(option("", "选择已保存布局"), ...(state.layouts || []).map(item => option(item.name, item.name)));
     if ((state.layouts || []).some(item => item.name === layout)) $("layouts").value = layout;
@@ -134,11 +139,12 @@
     const signature = JSON.stringify((state.tasks || []).map(t => [t.request_id,t.status,t.stage,t.updated_utc]));
     if ($("tasks").dataset.signature === signature) return;
     $("tasks").dataset.signature = signature; $("tasks").replaceChildren();
-    for (const task of state.tasks || []) {
+    const childIds=new Set((state.tasks || []).flatMap(t=>t.children || []));
+    for (const task of (state.tasks || []).filter(t=>!childIds.has(t.request_id))) {
       const card = document.createElement("article"); card.className = "card";
       const commandNames={interaction:"交互配置",protection:"保留设置",update_review:"更新预检",look:"场景风格",level:"模块关卡",playcheck:"试玩检查",library:"项目素材",organize:"资源命名与分类"};
       const summary=task.status==="imported"?"原生资产已导入。":task.development?.command==="playcheck"&&task.status==="completed"?(task.development.passed?"试玩检查通过，已回到编辑模式。":"检查完成，有项目未通过。请查看详情。"):task.error || task.stage || task.development?.message || "";
-      card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.asset_id || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
+      card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.description || (task.kind==="production"?"制作任务":task.kind==="dressing"?"场景布置":task.asset_id) || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
       card.append(button("查看详情", () => { output(task); return task; }));
       if (task.development?.command === "organize" && task.development?.plan_id) card.append(button("查看整理记录", () => loadOrganization(task.development.plan_id)));
       if (task.kind && ["error","cancelled"].includes(task.status)) card.append(button("恢复", () => call("resume", {request_id:task.request_id})));
@@ -146,6 +152,10 @@
       if (task.kind === "semantic" && task.status === "completed") card.append(button("查看识别与纠正", () => semanticResults(task)));
       if (task.kind === "adaptation" && task.status === "completed") card.append(button("查看材质前后对照", () => adaptationResults(task)));
       if (task.kind === "quality" && task.status === "completed") card.append(button("查看前后对照", () => showReview(task)));
+      if (task.kind === "production" && task.status === "completed") {
+        if(task.review) card.append(button("查看游戏效果",()=>showReview(task.review)));
+        if(task.dressing?.undo_id)card.append(button("撤销本次布置",()=>call("undo",{undo_id:task.dressing.undo_id})));
+      }
       if (task.development?.command === "playcheck" && task.status === "completed" && task.development.screenshots?.length) card.append(button("查看试玩前后", async () => {await showImage({kind:"play_before",request_id:task.request_id},"交互前");await showImage({kind:"engine",request_id:task.request_id},"交互后",true);return task;}));
       if (task.undo_id) card.append(button("撤销布置", () => call("undo", {undo_id:task.undo_id})));
       const candidates = task.candidates || (task.preview_only && task.status === "completed" ? [{asset_task:task,result:task}] : []);
@@ -246,8 +256,8 @@
   bind("createLocal", async () => {
     await ensureGameArt();
     const kind=$("recipeKind").value, asset_id=id($("generationName").value,kind);
-    await call("design",{asset_id,description:$("prompt").value.trim()||kind,role:$("assetRole").value,recipe_kind:kind});
-    return submitted("create",{kind,asset_id});
+    const task=await workflowAction("produce",{description:$("prompt").value.trim()||kind,items:[{asset_id,method:"recipe",kind}]});
+    notice("制作、材质准备和导入已合并为一个任务，可在下方查看进度。");return task;
   });
   bind("importLocal", () => submitted("import", {asset_id:id($("generationName").value,"model"), source:{provider:"local",path:$("sourcePath").value}}));
   bind("generateButton", async () => {
@@ -256,7 +266,7 @@
     await call("design",{asset_id,description:prompt,role:$("assetRole").value});
     return submitted("generate", {asset_id,prompt,provider:$("provider").value,image_paths:$("generationImages").value.split(/\n/).map(x=>x.trim()).filter(Boolean),candidate_count:Number($("candidateCount").value),allow_paid:$("paid").checked,preview_only:true});
   });
-  bind("askAI", async () => { const prompt = $("prompt").value.trim(); if (!prompt) throw Error("请先写下希望制作或修改的内容。"); await ensureGameArt(); await rpc("ui/message", {role:"user",content:[{type:"text",text:prompt + "\n请读取 game_art_direction，结合游戏玩法与背景设计、制作并检查真实模型画面。资产用途："+$("assetRole").selectedOptions[0].textContent + ($("asset").value ? "\n当前选中的资产："+$("asset").value : "")}]}); notice("已把描述和当前资产发给本次聊天的 AI。"); });
+  bind("askAI", async () => { const prompt = $("prompt").value.trim(); if (!prompt) throw Error("请先写下希望制作或修改的内容。"); await ensureGameArt(); await rpc("ui/message", {role:"user",content:[{type:"text",text:prompt + "\n请通过 game_workflow 读取游戏方向，使用 produce 统一制作、导入；结合玩法与背景设计具体造型，并从游戏摄像机检查实际效果。资产用途："+$("assetRole").selectedOptions[0].textContent + ($("asset").value ? "\n当前选中的资产："+$("asset").value : "")}]}); notice("已把描述和当前资产发给本次聊天的 AI。"); });
   bind("composeButton", () => submitted("compose", {kit:$("kit").value,prefix:id($("kitPrefix").value,"corner"),position:position(),yaw:Number($("yaw").value)}));
   bind("saveLayout", () => submitted("compose", {mode:"save",template:$("templateName").value.trim()}));
   bind("placeLayout", () => submitted("compose", {mode:"place",template:$("layouts").value,position:position(),yaw:Number($("yaw").value)}));
@@ -273,7 +283,12 @@
   bind("groupParts", () => submitted("external_part", {asset_id:requiredAsset(),part:$("groupName").value,members:$("groupMembers").value.split(/\n/).map(x=>x.trim()).filter(Boolean)}));
   bind("replacePart", () => submitted("external_part", {asset_id:requiredAsset(),part:requiredPart(),replacement_path:$("replacementPath").value}));
   bind("saveBrief", async () => { const result = await call("art_brief", {notes:$("briefNotes").value,image_path:$("referencePath").value || null}); delete $("briefNotes").dataset.dirty; if (result.image) await showImage({kind:"reference"},"保存的美术参考"); notice("美术参考已保存到当前项目。"); return result; });
-  bind("qualityButton", () => submitted("quality", {asset_id:requiredAsset(),auto_fix:$("autoFix").checked,preset:$("usage").value}));
+  bind("qualityButton", () => submitted("quality", {asset_id:requiredAsset(),auto_fix:$("autoFix").checked,preset:$("usage").value,view:$("reviewView").value}));
+  bind("acceptVisual",async()=>{if(!activeReview)throw Error("先打开一组已完成的画面对照。");const proof=await workflowAction("review_images",{request_id:activeReview});return workflowAction("feedback",{request_id:activeReview,token:proof.token,accepted:true,observations:"用户在创作台查看对照后接受此版本。",preference:$("visualPreference").value});});
+  bind("saveDesign",()=>workflowAction("save_design",{name:$("designName").value.trim(),asset_id:requiredAsset(),description:$("designDescription").value}));
+  bind("listDesigns",async()=>{const result=await workflowAction("find_designs");$("savedDesigns").replaceChildren();for(const row of result.templates){const card=document.createElement("article");card.className="card";card.append(textNode("h3",row.name),textNode("p",row.notes),button("制作同系列新资产",()=>workflowAction("reuse_design",{name:row.name,asset_id:id("",row.name),family_style:true})));$("savedDesigns").append(card);}return result;});
+  bind("furnishRoomButton",()=>workflowAction("furnish",{level_id:$("levelName").value.trim(),asset_ids:Array.from($("furnishAssets").selectedOptions).map(o=>o.value),room_index:Number($("furnishRoom").value)}));
+  bind("configureCurrentInteraction",()=>{const kind=$("interactionKind").value;if(["door","chest"].includes(kind))throw Error("请在聊天中指定门或宝箱的独立活动部件。");return workflowAction("interaction",{asset_id:requiredAsset(),kind,uses:Number($("resourceUses").value),label:$("interactionLabel").value,event_id:$("interactionEvent").value.trim(),demo_input:$("interactionDemo").checked});});
   bind("repairButton", () => { if (!activeReview) throw Error("先打开一个已完成任务的前后对照。"); return submitted("repair", {request_id:activeReview,part:requiredPart(),changes:JSON.parse($("partChanges").value)}); });
   bind("analyze", async () => {
     let result = await call("performance", {asset_id:requiredAsset(),preset:$("usage").value});
@@ -421,7 +436,7 @@
     document.querySelectorAll(".localOnly").forEach(node => {node.hidden=embedded;});
     document.querySelectorAll(".inlineOnly").forEach(node => {node.hidden=!embedded;});
     if (embedded) {
-      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.9.1"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.10.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
       notify("ui/notifications/initialized", {});
       new ResizeObserver(() => notify("ui/notifications/size-changed",{height:Math.min(900,document.documentElement.scrollHeight)})).observe(document.body);
     }

@@ -11,8 +11,8 @@ export function apply(ctx) {
     try {
       const result = await ctx.tools.execute({
         callId: "pts-probe",
-        name: "mcp__prompt_to_scene__list_projects",
-        arguments: {},
+        name: "mcp__prompt_to_scene__game_workflow",
+        arguments: {operation: "execute", action: "list_projects"},
         signal: new AbortController().signal,
       });
       if (result.isError && attempts++ < 20) {
@@ -24,7 +24,7 @@ export function apply(ctx) {
         process.env.PTS_PROBE_RESULT,
         JSON.stringify({
           passed: !result.isError,
-          tool: "mcp__prompt_to_scene__list_projects",
+          tool: "mcp__prompt_to_scene__game_workflow",
         }),
       );
       clearInterval(timer);

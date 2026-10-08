@@ -69,7 +69,7 @@ def findings(native):
     return result
 
 
-def start(project, asset_id, auto_fix=False, preset="scene_prop"):
+def start(project, asset_id, auto_fix=False, preset="scene_prop", view="studio"):
     if type(auto_fix) is not bool:
         raise ValueError("auto_fix must be a boolean")
     info = workflow.inspect_asset(project, asset_id)
@@ -77,6 +77,8 @@ def start(project, asset_id, auto_fix=False, preset="scene_prop"):
         raise ValueError("Import this asset before checking it")
     if preset not in performance.PRESETS:
         raise ValueError("Unknown usage preset")
+    if view not in {"studio", "front", "back", "game"}:
+        raise ValueError("Unknown review view")
     return background.submit(
         project,
         "quality",
@@ -85,12 +87,13 @@ def start(project, asset_id, auto_fix=False, preset="scene_prop"):
             "auto_fix": auto_fix,
             "preset": preset,
             "revision": info["current"]["request_id"],
+            "view": view,
         },
         asset_id,
     )
 
 
-def run(job, asset_id, auto_fix, preset, revision):
+def run(job, asset_id, auto_fix, preset, revision, view="studio"):
     pending = job.state.get("part_repair")
     if pending:
         result = job.wait(pending)
@@ -110,7 +113,7 @@ def run(job, asset_id, auto_fix, preset, revision):
         art_design=design,
     )
     if not job.state.get("before_capture"):
-        capture = reviews.capture(job.project, asset_id, stage="before")
+        capture = reviews.capture(job.project, asset_id, stage="before", view=view)
         job.update(before_capture=capture, review_id=capture["review_id"], repair_count=0)
     job.wait(job.state["before_capture"])
     if not job.state.get("before"):
@@ -134,6 +137,7 @@ def run(job, asset_id, auto_fix, preset, revision):
         stage="after",
         review_id=job.state["review_id"],
         refresh=bool(pending),
+        view=view,
     )
     job.wait(capture)
     return {

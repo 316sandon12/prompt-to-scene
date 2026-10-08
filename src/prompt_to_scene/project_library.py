@@ -44,7 +44,7 @@ def annotate(project, path, tags=None, notes="", license="", source=""):
     return {"path": path, **data}
 
 
-def rank(entries, query, annotations=None, size=None, limit=20):
+def rank(entries, query, annotations=None, size=None, limit=20, requirements=None):
     terms = re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]+", query.lower())
     for key, words in ALIASES.items():
         if key in query:
@@ -80,18 +80,35 @@ def rank(entries, query, annotations=None, size=None, limit=20):
             ]
         ).lower()
         score = sum(3 if t == entry.get("name", "").lower() else 1 for t in set(terms) if t in text)
+        reasons = []
+        requirements = requirements or {}
+        for field in ("style", "uses", "materials"):
+            wanted = requirements.get(field, [])
+            wanted = [wanted] if isinstance(wanted, str) else wanted
+            observed = semantic.get(field, "")
+            observed = " ".join(observed) if isinstance(observed, list) else observed
+            for word in wanted:
+                if word.casefold() in (observed + " " + " ".join(entry["tags"])).casefold():
+                    score += 4
+                    reasons.append(field + ": " + word)
+        if (
+            requirements.get("max_triangles")
+            and entry.get("triangles", 0) > requirements["max_triangles"]
+        ):
+            continue
         if terms and score == 0:
             continue
         if size and entry.get("size"):
             score += max(0, 1 - abs(max(entry["size"]) - size) / max(size, 0.001))
         entry["score"] = round(score, 3)
+        entry["match_reasons"] = reasons
         if not entry.get("license"):
             entry["license"] = "Unknown — check the asset's original license"
         rows.append(entry)
     return sorted(rows, key=lambda r: (-r["score"], r["path"]))[:limit]
 
 
-def search(project, query="", request_id=None, size=None, limit=20):
+def search(project, query="", request_id=None, size=None, limit=20, requirements=None):
     if (
         not isinstance(query, str)
         or len(query) > 300
@@ -101,6 +118,24 @@ def search(project, query="", request_id=None, size=None, limit=20):
         raise ValueError("Use a short query and limit between 1 and 100")
     if size is not None:
         size = development.number(size, "Desired longest dimension", 0.01, 1000)
+    if requirements is not None:
+        if not isinstance(requirements, dict) or requirements.keys() - {
+            "style",
+            "uses",
+            "materials",
+            "max_triangles",
+        }:
+            raise ValueError("Match style, uses, materials and an optional maximum triangle count")
+        for key, value in requirements.items():
+            if key == "max_triangles":
+                development.number(value, key, 1, 2000000)
+            elif (
+                not isinstance(value, (str, list))
+                or len(value) > (120 if isinstance(value, str) else 12)
+                or isinstance(value, list)
+                and any(not isinstance(v, str) or len(v) > 120 for v in value)
+            ):
+                raise ValueError("Use short style/material/use descriptions")
     if not request_id:
         return development.request(project, "library", mode="index")
     receipt = workflow.job_status(project, request_id)
@@ -140,7 +175,7 @@ def search(project, query="", request_id=None, size=None, limit=20):
         **receipt,
         "development": {
             **data,
-            "entries": rank(data.get("entries", []), query, annotations, size, limit),
+            "entries": rank(data.get("entries", []), query, annotations, size, limit, requirements),
         },
         "query": query,
     }

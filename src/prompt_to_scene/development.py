@@ -5,7 +5,7 @@ import math
 
 from . import background, core, registry, workflow
 
-TEMPLATES = {"door", "chest", "pickup"}
+TEMPLATES = {"door", "chest", "pickup", "resource", "switch"}
 LOOKS = {"warm_cartoon", "cool_scifi", "moonlit", "neutral"}
 
 
@@ -32,7 +32,13 @@ def interactive(project, kind, asset_id, dimensions=None, position=None, color=N
         raise ValueError("Choose door, chest or pickup")
     core.asset_id(asset_id)
     core.asset_id(asset_id + "_moving")
-    defaults = {"door": [1.2, 0.14, 2.2], "chest": [1.1, 0.7, 0.8], "pickup": [0.35] * 3}
+    defaults = {
+        "door": [1.2, 0.14, 2.2],
+        "chest": [1.1, 0.7, 0.8],
+        "pickup": [0.35] * 3,
+        "resource": [1.0, 0.8, 0.7],
+        "switch": [0.3, 0.2, 0.4],
+    }
     dimensions = dimensions or defaults[kind]
     if len(dimensions) != 3:
         raise ValueError("Dimensions are width, depth, height in meters")
@@ -51,6 +57,60 @@ def interactive(project, kind, asset_id, dimensions=None, position=None, color=N
     )
 
 
+def interaction_values(
+    asset_id,
+    kind,
+    moving_asset_id=None,
+    angle=90,
+    distance=2.5,
+    pivot=None,
+    moving_offset=None,
+    demo_input=True,
+    preserve_configuration=False,
+    uses=3,
+    event_id="",
+    label="",
+    depleted_asset_id=None,
+    interaction_point=None,
+):
+    if kind not in TEMPLATES:
+        raise ValueError("Choose door, chest or pickup")
+    core.asset_id(asset_id)
+    if kind in {"door", "chest"} and not moving_asset_id:
+        raise ValueError("Door/chest needs a separate moving mesh asset")
+    if moving_asset_id:
+        core.asset_id(moving_asset_id)
+        if moving_asset_id == asset_id:
+            raise ValueError("The moving part must be a separate asset")
+    if type(uses) is not int or not 1 <= uses <= 1000:
+        raise ValueError("Uses must be an integer between 1 and 1000")
+    if not isinstance(label, str) or len(label) > 120:
+        raise ValueError("Use a short interaction label")
+    if event_id:
+        core.asset_id(event_id)
+    if depleted_asset_id:
+        core.asset_id(depleted_asset_id)
+        if kind != "resource":
+            raise ValueError("Depleted-state geometry is only used by resource interactions")
+        if depleted_asset_id == asset_id:
+            raise ValueError("Choose a separate depleted-state mesh")
+    return dict(
+        template=kind,
+        moving_asset_id=moving_asset_id,
+        angle=number(angle, "Open angle", -170, 170),
+        distance=number(distance, "Interaction distance", 0.1, 20),
+        pivot=core.position_values(pivot),
+        offset=core.position_values(moving_offset),
+        demo_input=bool(demo_input),
+        preserve_configuration=bool(preserve_configuration),
+        uses=uses,
+        event_id=event_id,
+        label=label,
+        depleted_asset_id=depleted_asset_id,
+        interaction_point=core.position_values(interaction_point),
+    )
+
+
 def configure(
     project,
     asset_id,
@@ -62,29 +122,30 @@ def configure(
     moving_offset=None,
     demo_input=True,
     preserve_configuration=False,
+    uses=3,
+    event_id="",
+    label="",
+    depleted_asset_id=None,
+    interaction_point=None,
 ):
-    if kind not in TEMPLATES:
-        raise ValueError("Choose door, chest or pickup")
-    core.asset_id(asset_id)
-    if kind != "pickup" and not moving_asset_id:
-        raise ValueError("Door/chest needs a separate moving mesh asset")
-    if moving_asset_id:
-        core.asset_id(moving_asset_id)
-        if moving_asset_id == asset_id:
-            raise ValueError("The moving part must be a separate asset")
-    return request(
-        project,
-        "interaction",
+    """Attach native gameplay hooks; existing game code owns rewards, inventory and quests."""
+    values = interaction_values(
         asset_id,
-        template=kind,
-        moving_asset_id=moving_asset_id,
-        angle=number(angle, "Open angle", -170, 170),
-        distance=number(distance, "Interaction distance", 0.1, 20),
-        pivot=core.position_values(pivot),
-        offset=core.position_values(moving_offset),
-        demo_input=bool(demo_input),
-        preserve_configuration=bool(preserve_configuration),
+        kind,
+        moving_asset_id,
+        angle,
+        distance,
+        pivot,
+        moving_offset,
+        demo_input,
+        preserve_configuration,
+        uses,
+        event_id,
+        label,
+        depleted_asset_id,
+        interaction_point,
     )
+    return request(project, "interaction", asset_id, **values)
 
 
 def protection(project, asset_id, mode="inspect", bindings=None, sockets=None):
@@ -168,7 +229,7 @@ def run_interactive(job, kind, asset_id, dimensions, position, color):
         return [-x, z, -y] if target.engine == "unity" else [-y, -x, z]
 
     # Verified against imported vertices: Unity(-x,z,-y), UE(-y,-x,z).
-    for role in ["base"] if kind == "pickup" else ["base", "moving"]:
+    for role in ["base", "moving"] if kind in {"door", "chest"} else ["base"]:
         key = role + "_task"
         if job.state.get(key) and workflow.job_status(job.project, job.state[key]["request_id"])[
             "status"
@@ -195,7 +256,7 @@ def run_interactive(job, kind, asset_id, dimensions, position, color):
                     job.project,
                     asset_id,
                     kind,
-                    None if kind == "pickup" else asset_id + "_moving",
+                    asset_id + "_moving" if kind in {"door", "chest"} else None,
                     angle=95 if kind == "chest" else 90,
                     pivot=pivot,
                     moving_offset=offset,

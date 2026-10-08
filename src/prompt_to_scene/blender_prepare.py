@@ -173,7 +173,6 @@ def compatible_materials(meshes):
         if shader.type != "BSDF_PRINCIPLED":
             raise ValueError(mat.name + ": mixed/unlit shaders need an opaque Principled export")
         for key, default in (
-            ("Alpha", 1),
             ("Transmission Weight", 0),
             ("Coat Weight", 0),
             ("Subsurface Weight", 0),
@@ -185,11 +184,8 @@ def compatible_materials(meshes):
         for key in ("Volume", "Displacement"):
             if output.inputs[key].is_linked:
                 raise ValueError(mat.name + ": apply geometry displacement before importing")
-        if shader.inputs["Emission Color"].is_linked or (
-            shader.inputs["Emission Strength"].default_value > 0
-            and max(shader.inputs["Emission Color"].default_value[:3]) > 0.0001
-        ):
-            raise ValueError(mat.name + ": emissive materials are outside the opaque prop contract")
+        if shader.inputs["Emission Strength"].is_linked:
+            raise ValueError(mat.name + ": emission strength must be constant")
         for node in nodes:
             if node.type == "TEX_IMAGE" and (not node.image or node.image.size[0] == 0):
                 raise ValueError(mat.name + ": missing source texture")
@@ -210,8 +206,7 @@ def prepare(meshes, folder, config):
         "warnings": [],
         "error_metric": "two-sided sampled surface distance, per-object diagonal",
     }
-    if external:
-        compatible_materials(meshes)
+    materials = compatible_materials(meshes)
     bpy.ops.file.pack_all()
     bpy.ops.wm.save_as_mainfile(filepath=str(folder / "original.blend"))
     report["normalization"] = normalize(meshes, config)
@@ -270,6 +265,18 @@ def prepare(meshes, folder, config):
                 bpy.data.objects.remove(source, do_unlink=True)
     else:
         scene["pts_texture_size"] = config["texture_size"]
+        # AI-authored procedural graphs need the same portable channels as external models.
+        # Existing image UVs must survive; recipes explicitly request a new shared atlas.
+        if scene.get("pts_bake_needed") or any(
+            socket.is_linked
+            for mat in materials
+            for node in mat.node_tree.nodes
+            if node.type == "BSDF_PRINCIPLED"
+            for socket in node.inputs
+        ):
+            runpy.run_path(str(Path(__file__).with_name("blender_surfaces.py")))["bake"](
+                meshes, folder, config["texture_size"], unwrap=bool(scene.get("pts_bake_needed"))
+            )
     # Preparation is complete in the saved source. Restoration must not normalize twice.
     scene["pts_preparation_report"] = json.dumps(report)
     scene["pts_prepared"] = True

@@ -181,7 +181,7 @@ def location(folder, material, objects, size, normal_sources):
     except UncacheableGraph:
         return None
     data = {
-        "version": 2,
+        "version": 3,
         "blender": list(bpy.app.version),
         "size": size,
         "graph": shader,
@@ -197,18 +197,20 @@ def read(path):
         return None
     try:
         manifest = json.loads((path / "manifest.json").read_text())
-        if set(manifest) != set(FIELDS):
+        if not set(FIELDS) <= set(manifest) <= {*FIELDS, "opacity", "emission"}:
             return None
-        for field in FIELDS:
+        for field in manifest:
             if (
                 hashlib.sha256((path / (field + ".png")).read_bytes()).hexdigest()
                 != manifest[field]
             ):
                 return None
         result = {}
-        for field in FIELDS:
+        for field in manifest:
             image = bpy.data.images.load(str(path / (field + ".png")), check_existing=False)
-            image.colorspace_settings.name = "sRGB" if field == "base" else "Non-Color"
+            image.colorspace_settings.name = (
+                "sRGB" if field in {"base", "emission"} else "Non-Color"
+            )
             image.pack()
             result[field] = image
         return result

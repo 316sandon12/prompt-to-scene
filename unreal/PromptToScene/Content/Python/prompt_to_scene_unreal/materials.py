@@ -1,4 +1,4 @@
-"""Explicit opaque PBR mapping. Generated material graphs belong to the bridge."""
+"""Portable PBR, alpha and emission. Generated material graphs belong to the bridge."""
 
 import hashlib
 
@@ -88,8 +88,22 @@ def build_material(data, source, target, layout=None):
         raise RuntimeError("Managed material path contains an incompatible asset")
     library = unreal.MaterialEditingLibrary
     library.delete_all_material_expressions(material)
-    material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_OPAQUE)
-    material.set_editor_property("two_sided", False)
+    surface = data.get("surface", "opaque")
+    material.set_editor_property(
+        "blend_mode",
+        {
+            "opaque": unreal.BlendMode.BLEND_OPAQUE,
+            "mask": unreal.BlendMode.BLEND_MASKED,
+            "blend": unreal.BlendMode.BLEND_TRANSLUCENT,
+        }[surface],
+    )
+    material.set_editor_property("two_sided", data.get("two_sided", False))
+    material.set_editor_property("opacity_mask_clip_value", data.get("alpha_cutoff", 0.5))
+    if surface == "blend":
+        material.set_editor_property(
+            "translucency_lighting_mode",
+            unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING,
+        )
 
     def node(kind, x, y):
         return library.create_material_expression(material, kind, x, y)
@@ -124,6 +138,59 @@ def build_material(data, source, target, layout=None):
     else:
         color = tint
     connect(color, unreal.MaterialProperty.MP_BASE_COLOR)
+    if surface != "opaque":
+        opacity = node(unreal.MaterialExpressionScalarParameter, -750, 750)
+        opacity.set_editor_property("parameter_name", "PTS_Opacity")
+        opacity.set_editor_property("default_value", data["color"][3])
+        texture = import_texture(
+            source,
+            texture_target,
+            data.get("opacity_texture", ""),
+            False,
+            linear=True,
+            prefix=layout["texture_prefix"],
+        )
+        if texture:
+            sample = node(unreal.MaterialExpressionTextureSample, -1000, 800)
+            sample.set_editor_property("texture", texture)
+            sample.set_editor_property(
+                "sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
+            )
+            library.connect_material_expressions(scaled_uv, "", sample, "Coordinates")
+            product = node(unreal.MaterialExpressionMultiply, -500, 750)
+            library.connect_material_expressions(sample, "R", product, "A")
+            library.connect_material_expressions(opacity, "", product, "B")
+            opacity = product
+        connect(
+            opacity,
+            unreal.MaterialProperty.MP_OPACITY_MASK
+            if surface == "mask"
+            else unreal.MaterialProperty.MP_OPACITY,
+        )
+    emissive = node(unreal.MaterialExpressionVectorParameter, -750, 1050)
+    emissive.set_editor_property("parameter_name", "PTS_Emission")
+    strength = data.get("emission_strength", 0)
+    emissive.set_editor_property(
+        "default_value",
+        unreal.LinearColor(*(v * strength for v in data.get("emission", [0, 0, 0])), 1),
+    )
+    texture = import_texture(
+        source,
+        texture_target,
+        data.get("emission_texture", ""),
+        False,
+        prefix=layout["texture_prefix"],
+    )
+    if texture:
+        sample = node(unreal.MaterialExpressionTextureSample, -1000, 1200)
+        sample.set_editor_property("texture", texture)
+        sample.set_editor_property("sampler_type", unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)
+        library.connect_material_expressions(scaled_uv, "", sample, "Coordinates")
+        product = node(unreal.MaterialExpressionMultiply, -500, 1050)
+        library.connect_material_expressions(sample, "RGB", product, "A")
+        library.connect_material_expressions(emissive, "RGB", product, "B")
+        emissive = product
+    connect(emissive, unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     for key, value, prop, y in (
         ("metallic_texture", data["metallic"], unreal.MaterialProperty.MP_METALLIC, -50),
         ("roughness_texture", data["roughness"], unreal.MaterialProperty.MP_ROUGHNESS, 100),

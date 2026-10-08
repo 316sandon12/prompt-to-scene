@@ -1,9 +1,43 @@
 # Verification
 
-Unreleased game-art source changes: **205 tests**, 68-tool stdio image/style handoff, local UI
-save flow and an actual same-camera Blender comparison. See the [focused record](verification-game-art.json)
-and [comparison](GAME-ART.zh-CN.md). The native adapters are unchanged; this check did not rerun
-Unity/UE editors or build new portable apps. The release results below remain specific to v0.9.1.
+## v0.10.0 — recorded on 2026-10-08
+
+Environment: macOS Apple Silicon, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in / URP 14.0.11,
+UE 5.7.2. [Sanitized record](verification-v0.10.json) · [Usage](PRODUCTION.zh-CN.md).
+
+| Check | Result |
+| --- | --- |
+| Python and MCP | 225 full-suite checks passed, followed by a focused 12-check workflow run including one added dependency-order regression (226 total tests). Full discovery exposes 69 tools; installed compact mode exposes 3. Exact-source/image guards, persisted preferences, saved designs and resume behavior are covered. |
+| Real material import | Actual Blender procedural alpha baking and native opaque emissive, cutout and alpha-blended materials passed in Built-in, URP and UE. Shader modes, alpha texture packing, culling and HDR emission parameters were asserted; actual images inspected. |
+| Native game camera | Before/after images use the real camera and scene lighting. Additional checks change the live camera's lens/aspect between captures and verify that the saved comparison stays at 1024×576. Unity also retains the projection matrix. |
+| Editable design reuse | Save a custom Blender design, alter one named part and import a new asset; the untouched part retains the same measured geometry hash. A recipe family is also saved, instantiated and adopted for future briefs. |
+| Furnished room | Build a real 6 m room, create table/shelf/resource through one parent task, place measured props and pass native player capsule clearance in both engines. |
+| Gameplay | Real Play / PIE checks pass range rejection, three resource uses, depleted visuals, one-time depletion and switch on/off. Unity additionally asserts runtime event callbacks; UE verifies Blueprint state and configured hooks. No maintainer builder module is installed in the runtime test projects. |
+| Hosts | Isolated native Codex plugin install/upgrade, 3-tool discovery and gateway call through app-server passed. Harness bundle configuration and shared stdio are covered; Harness is not installed locally for a fresh native-host run. |
+| UI and local package | Real browser inspection of saved designs and populated furnishing controls, no console errors. Frozen macOS MCP, setup, embedded bridges, native panel service and detached Blender recipe/source jobs passed. |
+
+Portable release CI results will be recorded after the Windows/macOS builds finish. Native Windows
+editors, shipping builds and autonomous aesthetic quality are not covered. Camera checks concern
+supported native cameras, not every custom render feature. Furnishing uses bounds and sampled
+clearance, not navigation-mesh traversal. Emission/alpha support does not include refraction.
+
+Reproduction (disposable projects remain under `.local`):
+
+```bash
+uv run pytest -q
+uv run ruff check .
+uv run python tools/production_smoke.py --engine unity --editor /path/to/Unity
+uv run python tools/production_smoke.py --engine unity --urp --editor /path/to/Unity
+uv run python tools/production_smoke.py --engine unreal --editor /path/to/UnrealEditor
+# Follow up on each same fixture without regenerating assets:
+uv run python tools/production_smoke.py --engine unity --editor /path/to/Unity --verify-existing
+uv run python tools/production_smoke.py --engine unity --urp --editor /path/to/Unity --verify-existing
+uv run python tools/production_smoke.py --engine unreal --editor /path/to/UnrealEditor --verify-existing
+```
+
+The earlier game-art comparisons remain in [their focused record](verification-game-art.json).
+The reusable maintainer scripts and concise evidence are retained; task-owned disposable projects,
+logs, build outputs and probe screenshots are removed after release verification.
 
 ## v0.9.1 — recorded on 2026-10-07
 

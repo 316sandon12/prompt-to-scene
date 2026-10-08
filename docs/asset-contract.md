@@ -8,12 +8,13 @@ The MCP client is the planner. Blender builds the asset. The target editor is th
 - Work in meters, Blender Z-up. Ground props at Z=0 with a sensible origin.
 - Static meshes only, 1–200,000 total triangles. Apply modifiers before publishing.
 - Assign every material slot a node material. Connect Principled BSDF directly to the active Material Output.
-- Use opaque materials: alpha=1, transmission/coat/subsurface/sheen/anisotropy=0, no emission.
+- Set material custom property `pts_surface` to `opaque`, `mask` or `blend`. Alpha is [0,1] or a supported texture; `pts_alpha_cutoff` defaults to 0.5. `pts_two_sided` defaults true for mask, false otherwise. Omitted mode infers blend for linked/non-opaque alpha.
+- Emission Color is linear RGB or a texture; Emission Strength is a constant [0,1000]. No physically refractive transmission; transmission/coat/subsurface/sheen/anisotropy remain zero.
 - Keep IOR=1.5, Specular IOR Level=0.5 and Specular Tint white. No volume or shader displacement.
 - Metallic and roughness are scalar constants in [0,1] or direct Non-Color image textures. Base color is scene-linear RGBA.
 - Base color can be a direct sRGB Image Texture. Normals can be a Non-Color Image Texture through a tangent-space Normal Map node.
 - Textured meshes need exactly one UV map. Connect the Image Texture's Color output; use default UV coordinates, flat projection, linear filtering and repeat. Texture transforms and named UV overrides are unsupported.
-- No rigs, shape keys, animation, unbaked procedural texture nodes, HDRP-specific features or transparent surfaces. Recipes bake their surfaces before validation; import_asset additionally bakes common opaque Principled PBR inputs. This final transport contract stays strict.
+- No rigs, shape keys, animation, unbaked procedural texture nodes, HDRP-specific features or physically refractive surfaces. Recipes and prepared custom/imported models bake supported Principled inputs before validation, including procedural alpha and emission color. `publish_blend` still expects prepared direct texture connections. This final transport contract stays strict.
 
 `build_asset` starts from Blender factory startup. Delete its default objects in your script. A script must fully construct the asset on each invocation. `publish_blend` opens a saved file without overwriting it; save changes in your other Blender tool first.
 
@@ -68,7 +69,7 @@ The current Unity package also accepts existing schema 1 requests (Unity-only, n
 
 `collision_mode` is `none`, `box` or `convex`; `collider=false` always disables it. Missing mode preserves old box behavior. UE primitive and convex counts use separate APIs; `collision_count` reports their sum, and warnings disclose a 26-DOP convex fallback if decomposition produces no hulls. Source metadata includes preparation settings, measured reductions, LOD counts and provenance. Update both server and bridge: older schema-2 adapters do not know LOD file names.
 
-External intake allows at most two million source triangles and 256 MiB per local model. Provider packages are bounded to 100 files / 512 MiB. Final export remains at most 200,000 triangles and 20 materials. Supported external materials must have a direct opaque Principled surface; shader displacement, mixed surfaces, unsupported lobes, emission and missing textures fail before import. Simplification error is sampled bidirectionally and does not certify all geometry or texture quality.
+External intake allows at most two million source triangles and 256 MiB per local model. Provider packages are bounded to 100 files / 512 MiB. Final export remains at most 200,000 triangles and 20 materials. Supported external materials must have a direct Principled surface; shader displacement, mixed surfaces, unsupported lobes and missing textures fail before import. Simplification error is sampled bidirectionally and does not certify all geometry or texture quality.
 
 ## Success semantics
 
@@ -85,3 +86,9 @@ Stable asset ID + stable material names preserve imported asset paths and their 
 Each active scene gets at most one automatically placed instance for an asset if none already exists; manually duplicated instances are not deleted. Position is used only for first placement. `inspect_scene` reports actual selection; `edit_scene` modifies native instances and `arrange_props` manages contextual placement/copies with undo.
 
 Unreal combines the exported meshes and updates the same native Static Mesh path. Existing StaticMeshActors tagged `PTS.Asset:<id>` in the current level are reused. Their GUIDs, transforms, labels and user tags survive. Generated mesh geometry, simple collision and material graphs are bridge-owned. Explicit component material overrides remain the user's responsibility. Levels/scenes are not saved automatically.
+
+## Portable surface additions in v0.10
+
+Schema 2 materials add optional `surface`, `alpha_cutoff`, `two_sided`, `opacity_texture`, `emission_texture`, `emission` (RGB) and `emission_strength`. Older manifests default to opaque, no emission and single-sided. Transfer hashes cover the added maps. Update the engine bridge with the app; older bridges do not implement these channels.
+
+Unity packs alpha into base-color RGBA, applies native opaque/cutout/transparent state, and uses URP Lit or Built-in Standard (a bundled cull-configurable Standard wrapper for two-sided surfaces). UE builds native masked/translucent material graphs and explicit opacity/emission inputs. Cross-engine pixel equality, refractive glass and lighting/bloom equivalence are not promised.

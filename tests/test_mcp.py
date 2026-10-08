@@ -29,6 +29,7 @@ def test_real_stdio_tool_discovery_and_error_reporting(tmp_path, engine):
                 catalog = await session.list_tools()
                 assert {tool.name for tool in catalog.tools} == {
                     "inspect_target",
+                    "game_workflow",
                     "game_art_direction",
                     "design_asset",
                     "match_game_style",

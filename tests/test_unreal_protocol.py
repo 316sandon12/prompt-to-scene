@@ -90,6 +90,37 @@ def test_rejects_missing_texture(request_and_root):
         protocol.validate(request, "crate", root)
 
 
+@pytest.mark.parametrize("surface", ["opaque", "mask", "blend"])
+def test_accepts_portable_surfaces_and_emission(request_and_root, surface):
+    request, root = request_and_root
+    request["materials"][0].update(
+        surface=surface,
+        emission=[0.1, 0.5, 1],
+        emission_strength=4,
+        alpha_cutoff=0.4,
+        two_sided=True,
+    )
+    protocol.validate(request, "crate", root)
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("surface", "glass"),
+        ("alpha_cutoff", float("nan")),
+        ("emission_strength", -1),
+        ("emission", [1]),
+        ("two_sided", "yes"),
+        ("opacity_texture", "missing.png"),
+    ],
+)
+def test_rejects_invalid_portable_materials(request_and_root, field, value):
+    request, root = request_and_root
+    request["materials"][0][field] = value
+    with pytest.raises(ValueError):
+        protocol.validate(request, "crate", root)
+
+
 def test_rejects_symlink_transfer(request_and_root, tmp_path):
     request, root = request_and_root
     file = root / request["work_dir"] / "model.fbx"

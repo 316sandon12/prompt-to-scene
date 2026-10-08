@@ -6,6 +6,30 @@ from pathlib import Path
 from . import core, preparation, sources, workflow
 
 
+def validate_changes(changes):
+    if not isinstance(changes, dict) or set(changes) - {
+        "scale",
+        "offset",
+        "rotation",
+        "color",
+        "roughness",
+        "metallic",
+    }:
+        raise ValueError("Unsupported part change")
+    for key, value in changes.items():
+        values = value if key in {"scale", "offset", "rotation", "color"} else [value]
+        if key in {"scale", "offset", "rotation", "color"}:
+            core.position_values(values)
+        for v in values:
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+                raise ValueError("Part values must be finite numbers")
+            if key in {"color", "roughness", "metallic"} and not 0 <= v <= 1:
+                raise ValueError("Material values must be between zero and one")
+            if key == "scale" and not 0.01 <= v <= 100:
+                raise ValueError("Scale must be between .01 and 100")
+    return changes
+
+
 def edit(
     project,
     asset_id,

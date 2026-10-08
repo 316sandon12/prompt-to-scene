@@ -1,0 +1,112 @@
+{
+  "version": "0.10.0",
+  "date": "2026-10-08",
+  "environment": {
+    "os": "macOS 15.8, Apple Silicon",
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1",
+    "urp": "14.0.11",
+    "unreal": "5.7.2"
+  },
+  "automated": {
+    "pytest_passed": 225,
+    "ruff": "passed",
+    "gateway_full_tools": 69,
+    "gateway_compact_tools": 3,
+    "stale_images_and_source_guards": "passed",
+    "resume_retains_successful_stages": "passed",
+    "focused_after_dependency_fix": "12 passed; 226 tests now collected"
+  },
+  "native": {
+    "unity": {
+      "portable_materials": true,
+      "native_game_camera": true,
+      "fixed_aspect_after_lens_change": true,
+      "editable_custom_design_preserves_other_parts": true,
+      "furnished_room_clearance": true,
+      "resource_and_switch_play_mode": true,
+      "assertions": {
+        "runtime_component": true,
+        "range_rejection": true,
+        "interaction_event": true,
+        "resource_progress": true,
+        "resource_use": true,
+        "resource_depleted": true,
+        "depleted_visual": true,
+        "game_event": true,
+        "level_loaded": true,
+        "walk_clearance": true,
+        "runtime_errors": true,
+        "runtime_frames": true,
+        "switch_on": true,
+        "switch_off": true
+      }
+    },
+    "unity-urp": {
+      "portable_materials": true,
+      "native_game_camera": true,
+      "fixed_aspect_after_lens_change": true,
+      "editable_custom_design_preserves_other_parts": true,
+      "furnished_room_clearance": true,
+      "resource_and_switch_play_mode": true,
+      "assertions": {
+        "runtime_component": true,
+        "range_rejection": true,
+        "interaction_event": true,
+        "resource_progress": true,
+        "resource_use": true,
+        "resource_depleted": true,
+        "depleted_visual": true,
+        "game_event": true,
+        "level_loaded": true,
+        "walk_clearance": true,
+        "runtime_errors": true,
+        "runtime_frames": true,
+        "switch_on": true,
+        "switch_off": true
+      }
+    },
+    "unreal": {
+      "portable_materials": true,
+      "native_game_camera": true,
+      "fixed_aspect_after_lens_change": true,
+      "editable_custom_design_preserves_other_parts": true,
+      "furnished_room_clearance": true,
+      "resource_and_switch_play_mode": true,
+      "assertions": {
+        "runtime_actor": true,
+        "range_rejection": true,
+        "interaction_event": true,
+        "resource_progress": true,
+        "resource_depleted": true,
+        "depleted_visual": true,
+        "depletion_is_once": true,
+        "walk_clearance": true,
+        "runtime_frames": true,
+        "runtime_errors": true,
+        "switch_on": true,
+        "switch_off": true
+      }
+    }
+  },
+  "hosts": {
+    "codex": "Isolated native plugin install/upgrade, three-tool discovery and gateway call through app-server passed.",
+    "harness": "Bundle configuration and shared stdio gateway tested; native Harness is not installed on this machine and was not rerun for this release."
+  },
+  "ui": "Local workbench opened in a real browser; saved designs listed, furnishing controls populated, no browser console errors.",
+  "local_portable_macos": {
+    "full_and_compact_mcp": "passed",
+    "embedded_bridges_and_setup": "passed",
+    "detached_blender_recipe_and_source_jobs": "passed"
+  },
+  "portable_ci": {
+    "status": "pending"
+  },
+  "limits": [
+    "Native Windows editors and shipping builds are not covered.",
+    "Tests verify transport, source preservation, camera framing and gameplay hooks, not autonomous aesthetic quality.",
+    "Furnishing covers generated upright rooms and sampled capsule clearance, not NavMesh traversal.",
+    "Refraction, rigs, HDRP and arbitrary Blueprint graph generation are not supported.",
+    "Asset ranking uses metadata and observed descriptions, not image embeddings."
+  ]
+}

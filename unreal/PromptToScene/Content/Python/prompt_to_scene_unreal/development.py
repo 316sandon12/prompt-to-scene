@@ -49,13 +49,14 @@ def execute(request, root):
 def interaction(asset_id, c):
     kind = c["template"]
     if (
-        kind not in {"door", "chest", "pickup"}
+        kind not in {"door", "chest", "pickup", "resource", "switch"}
         or not 0.1 <= c["distance"] <= 20
         or abs(c["angle"]) > 170
     ):
         raise ValueError("Invalid interaction settings")
     base = protection.mesh_for(asset_id)
-    moving = protection.mesh_for(c["moving_asset_id"]) if kind != "pickup" else None
+    moving = protection.mesh_for(c["moving_asset_id"]) if kind in {"door", "chest"} else None
+    depleted = protection.mesh_for(c["depleted_asset_id"]) if c.get("depleted_asset_id") else None
     template = unreal.load_class(
         None, "/PromptToScene/Templates/BP_PTSInteraction.BP_PTSInteraction_C"
     )
@@ -80,11 +81,13 @@ def interaction(asset_id, c):
     if moving:
         default_tags.append("PTS.Part:" + c["moving_asset_id"])
     defaults.set_editor_property("tags", [unreal.Name(t) for t in default_tags])
-    defaults.set_editor_property("TemplateKind", {"door": 0, "chest": 1, "pickup": 2}[kind])
+    kinds = {"door": 0, "chest": 1, "pickup": 2, "resource": 3, "switch": 4}
+    defaults.set_editor_property("TemplateKind", kinds[kind])
     rotation = (
         unreal.Rotator(pitch=c["angle"]) if kind == "chest" else unreal.Rotator(yaw=c["angle"])
     )
     if not keep:
+        configure_gameplay(defaults, c, depleted)
         defaults.set_editor_property("InteractionRange", c["distance"] * 100)
         defaults.set_editor_property("OpenRotation", rotation)
         defaults.set_editor_property(
@@ -144,8 +147,9 @@ def interaction(asset_id, c):
                     )
                 actions.actors().destroy_actor(actor)
                 actor = replacement
-            actor.set_editor_property("TemplateKind", {"door": 0, "chest": 1, "pickup": 2}[kind])
+            actor.set_editor_property("TemplateKind", kinds[kind])
             if not keep:
+                configure_gameplay(actor, c, depleted)
                 actor.set_editor_property("InteractionRange", c["distance"] * 100)
                 actor.set_editor_property("OpenRotation", rotation)
                 actor.set_editor_property(
@@ -177,7 +181,7 @@ def interaction(asset_id, c):
             for actor in actions.targets({"scope": "asset", "asset_id": c["moving_asset_id"]}):
                 actions.actors().destroy_actor(actor)
         actions.actors().set_selected_level_actors(converted)
-    for mesh in [base, *([moving] if moving else [])]:
+    for mesh in [base, *([moving] if moving else []), *([depleted] if depleted else [])]:
         enable_collision(mesh)
     return dict(
         command="interaction",
@@ -189,6 +193,17 @@ def interaction(asset_id, c):
             "Demo input: aim and press E."
         ),
     )
+
+
+def configure_gameplay(actor, c, depleted):
+    uses = c.get("uses", 3)
+    if type(uses) is not int or not 1 <= uses <= 1000:
+        raise ValueError("Invalid resource uses")
+    actor.set_editor_property("UsesRequired", uses)
+    actor.set_editor_property("GameEventId", c.get("event_id", ""))
+    actor.set_editor_property("InteractionLabel", c.get("label", ""))
+    actor.set_editor_property("InteractionPoint", vec(c.get("interaction_point", [0, 0, 0])))
+    actor.set_editor_property("DepletedMesh", depleted)
 
 
 def enable_collision(mesh):
@@ -248,6 +263,27 @@ def level(c, root):
     tag = "PTS.Level:" + name
     existing = [a for a in actions.actors().get_all_level_actors() if tag in map(str, a.tags)]
     path = root / "levels" / (name + ".json")
+    if c["mode"] == "inspect":
+        plan = json.loads(path.read_text())
+        if plan["scene"] != actions.scene() or not existing:
+            raise ValueError("Load the scene containing this level")
+        boxes = []
+        for box in plan["boxes"]:
+            actor = next(
+                (a for a in existing if a.get_actor_label() == name + "_" + box["name"]), None
+            )
+            if not actor:
+                raise ValueError("A level block was removed")
+            pos, size = actor.get_actor_location(), actor.get_actor_scale3d()
+            boxes.append(
+                {
+                    **box,
+                    "position": [pos.x / 100, pos.y / 100, pos.z / 100],
+                    "size": [size.x, size.y, size.z],
+                    "yaw": actor.get_actor_rotation().yaw,
+                }
+            )
+        return dict(command="level", plan_json=json.dumps({**plan, "boxes": boxes}))
     if c["mode"] == "check":
         plan = json.loads(path.read_text())
         if plan["scene"] != actions.scene() or not existing:

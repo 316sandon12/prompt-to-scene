@@ -132,7 +132,10 @@ def submit(project, asset_id, source, settings=None, position=None, preview_only
     from . import project_profiles
 
     settings = project_profiles.preparation_defaults(project, settings)
-    source = validate_source(source)
+    checked = validate_source(source)
+    if source.get("sha256") and source["sha256"] != checked.get("sha256"):
+        raise ValueError("Source changed after the plan was saved; submit its new revision")
+    source = checked
     config = preparation.options(settings, styles.read(project)["quality"])
     return workflow.submit(
         project,

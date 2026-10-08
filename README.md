@@ -1,10 +1,9 @@
 # Prompt-to-Scene
 
-**New on `main`: game-aware art direction and reference style matching.** The connected AI host
-reads real project images, remembers shape/material/palette decisions and designs assets for the
-game's world, interaction and camera. Simple recipes now have construction detail and aligned
-wood grain; specific shapes use custom Blender scripts. [Usage and actual comparison](docs/GAME-ART.zh-CN.md).
-This source update is not yet included in the v0.9.1 portable downloads.
+**v0.10: one task from game-aware design to imported, furnished and interactive assets.**
+Use the actual game camera to refine appearance, retain editable design families, and transfer
+emission, cutout and ordinary transparent materials. Installed hosts use three entrypoints with
+on-demand access to the full workflow. [Six additions and practical prompts](docs/PRODUCTION.zh-CN.md).
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
@@ -12,7 +11,7 @@ This source update is not yet included in the v0.9.1 portable downloads.
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.9 is experimental and adds shared project conventions, automatic source intake, native editor workshops, evidence-backed asset descriptions and reference material previews. Modeling needs Blender; organization needs only the engine editor. Use Codex, DeepSeek Harness or the local workshop.
+> v0.10 adds durable production tasks, reusable design families, game-camera feedback, portable alpha/emission, resource/switch hooks and measured room furnishing. Modeling needs Blender; organization needs only the engine editor. Use Codex, DeepSeek Harness or the local workshop.
 
 ![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 
@@ -106,7 +105,7 @@ Try: **“Prepare this GLB for 8,000 triangles, make its largest dimension 1.5 m
 | Contextual placement | Real scene bounds; around/along/under/right/front layouts, conservative overlap checks, optional under-anchor fitting, repeated instances and placement undo. |
 | Draft comparison | Two or three real 3D alternatives with studio/front/back views. Drafts stay outside engine assets and scenes; the chosen design is baked and published. |
 
-These features are available through both AI hosts and the local workshop. The MCP server exposes 68 tools; the host skill handles tool selection and exact-request waiting. [Tool contract](docs/architecture.md).
+These features are available through both AI hosts and the local workshop. Installed clients expose three entrypoints; `game_workflow` discovers and invokes all 69 tools. Legacy full discovery remains available for manual clients. [Tool contract](docs/architecture.md).
 
 ## Refine by conversation
 
@@ -130,9 +129,9 @@ Background jobs, exact-request receipts, cancellation, source history and engine
 
 ## Supported scope
 
-Static meshes, opaque PBR, Unity Built-in/URP, and UE native Static Mesh assets. Custom shapes use AI-authored Blender Python or existing GLB/glTF, FBX and Blender files. Each revision retains source/provenance and reports geometry/material/UV/budget checks.
+Static meshes, PBR with emission/alpha-cutout/ordinary alpha blending, Unity Built-in/URP, and UE native Static Mesh assets. Custom shapes use AI-authored Blender Python or existing GLB/glTF, FBX and Blender files. Each revision retains source/provenance and reports geometry/material/UV/budget checks.
 
-Automatic baking covers recipe surfaces and common opaque Principled PBR graphs. Mixed shaders, transparency, emission, skeletal rigs/animation, HDRP and arbitrary Blueprint generation are outside this release. Image-to-3D requires an optional external provider; no inference model is bundled. Shape error uses bidirectional surface sampling, not a guaranteed maximum distance; inspect textures and silhouettes. Collision is approximate: UE falls back to a native 26-DOP convex hull with an explicit warning if decomposition produces no hulls. Recipe candidates are deterministic structural alternatives; service candidates depend on the provider. Layout supports upright yaw with conservative oriented bounds, not exact concave collision. Reports do not score beauty. Generated Python is trusted local code.
+Automatic baking covers recipe surfaces and common Principled PBR graphs. Refraction, mixed shaders, skeletal rigs/animation, HDRP and arbitrary Blueprint generation are outside this release. Image-to-3D requires an optional external provider; no inference model is bundled. Shape error uses bidirectional surface sampling, not a guaranteed maximum distance; inspect textures and silhouettes. Collision is approximate: UE falls back to a native 26-DOP convex hull with an explicit warning if decomposition produces no hulls. Recipe candidates are deterministic structural alternatives; service candidates depend on the provider. Layout supports upright yaw with conservative oriented bounds, not exact concave collision. Reports do not score beauty. Generated Python is trusted local code.
 
 [Asset contract](docs/asset-contract.md) · [Unreal details](docs/unreal.md) · [Authoring walkthrough in Chinese](docs/AUTHORING.zh-CN.md)
 

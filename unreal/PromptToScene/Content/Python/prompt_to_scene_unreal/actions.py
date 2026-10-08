@@ -228,10 +228,23 @@ def execute(request, root):
         return {"objects": [describe(a) for a in selected]}
     if operation == "preview":
         view = request.get("view", "studio")
-        if view not in {"studio", "front", "back"}:
+        if view not in {"studio", "front", "back", "game"}:
             raise ValueError("Invalid preview view")
         editor = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem)
         old_camera = editor.get_level_viewport_camera_info()
+        game_camera = None
+        if view == "game":
+            candidates = [
+                a for a in actors().get_all_level_actors() if isinstance(a, unreal.CameraActor)
+            ]
+            tagged = [a for a in candidates if "PTS.GameCamera" in map(str, a.tags)]
+            candidates = tagged or candidates
+            if len(candidates) != 1:
+                raise ValueError(
+                    "Game review needs one CameraActor, or tag the chosen camera PTS.GameCamera"
+                )
+            game_camera = candidates[0]
+        frame = None
         frame_id = request.get("frame_id")
         if frame_id:
             if not re.fullmatch(r"[a-f0-9]{32}", frame_id):
@@ -251,23 +264,74 @@ def execute(request, root):
             else:
                 if request.get("review_stage") != "before":
                     raise ValueError("Capture before first")
-                focus(selected, view)
-                pos, rot = editor.get_level_viewport_camera_info()
+                if game_camera:
+                    pos, rot = game_camera.get_actor_location(), game_camera.get_actor_rotation()
+                else:
+                    focus(selected, view)
+                    pos, rot = editor.get_level_viewport_camera_info()
+                frame = {
+                    "scene": scene(),
+                    "asset_id": request["asset_id"],
+                    "view": view,
+                    "position": [pos.x, pos.y, pos.z],
+                    "rotation": {"pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll},
+                }
+                if game_camera:
+                    component = game_camera.camera_component
+                    frame["camera"] = {
+                        "field_of_view": component.field_of_view,
+                        "ortho_width": component.ortho_width,
+                        "aspect_ratio": component.aspect_ratio,
+                        "orthographic": component.projection_mode
+                        == unreal.CameraProjectionMode.ORTHOGRAPHIC,
+                    }
                 write_json(
                     frame_path,
-                    {
-                        "scene": scene(),
-                        "asset_id": request["asset_id"],
-                        "view": view,
-                        "position": [pos.x, pos.y, pos.z],
-                        "rotation": {"pitch": rot.pitch, "yaw": rot.yaw, "roll": rot.roll},
-                    },
+                    frame,
                 )
-        else:
+        elif not game_camera:
             focus(selected, view)
         path = root / "previews" / (revision + ".png")
         path.parent.mkdir(exist_ok=True)
-        task = unreal.AutomationLibrary.take_high_res_screenshot(1024, 768, str(path), delay=0.3)
+        capture_camera = None
+        if game_camera:
+            capture_camera = actors().spawn_actor_from_class(
+                unreal.CameraActor,
+                game_camera.get_actor_location(),
+                game_camera.get_actor_rotation(),
+            )
+            source, target = game_camera.camera_component, capture_camera.camera_component
+            for key in (
+                "field_of_view",
+                "ortho_width",
+                "aspect_ratio",
+                "projection_mode",
+                "post_process_settings",
+                "post_process_blend_weight",
+            ):
+                target.set_editor_property(key, source.get_editor_property(key))
+            if frame:
+                capture_camera.set_actor_location(unreal.Vector(*frame["position"]), False, False)
+                capture_camera.set_actor_rotation(unreal.Rotator(**frame["rotation"]), False)
+                for key, value in frame["camera"].items():
+                    if key != "orthographic":
+                        target.set_editor_property(key, value)
+                target.set_editor_property(
+                    "projection_mode",
+                    unreal.CameraProjectionMode.ORTHOGRAPHIC
+                    if frame["camera"]["orthographic"]
+                    else unreal.CameraProjectionMode.PERSPECTIVE,
+                )
+            _game_cameras[revision] = capture_camera
+        try:
+            task = unreal.AutomationLibrary.take_high_res_screenshot(
+                1024, 768, str(path), camera=capture_camera, delay=0.3
+            )
+        except Exception:
+            if capture_camera:
+                actors().destroy_actor(capture_camera)
+                _game_cameras.pop(revision, None)
+            raise
         _captures[revision] = (path, time.monotonic(), task, old_camera)
         return None
     if operation not in {"transform", "tint", "ground"}:
@@ -355,6 +419,9 @@ def execute(request, root):
     return {"undo_id": revision, "objects": [describe(a) for a in selected], "changed": changed}
 
 
+_game_cameras = {}
+
+
 def process(root):
     for revision, (path, started, task, old_camera) in list(_captures.items()):
         if path.is_file() and path.stat().st_size > 8:
@@ -384,6 +451,8 @@ def process(root):
                 unreal.UnrealEditorSubsystem
             ).set_level_viewport_camera_info(*old_camera)
             del _captures[revision]
+        if revision not in _captures and revision in _game_cameras:
+            actors().destroy_actor(_game_cameras.pop(revision))
     for path in sorted((root / "actions").glob("*.json")):
         from . import organization, playchecks
 

@@ -72,13 +72,27 @@ namespace PromptToScene.Editor
             foreach(var a in candidates)
             {
                 var item=a.GetComponent<Interaction>();Assert(a.assetId,"runtime_component",item!=null);if(!item)continue;
-                Assert(a.assetId,"range_rejection",!item.TryInteract(item.transform.position+Vector3.one*item.interactionRange*2));
+                var point=item.transform.TransformPoint(item.interactionPoint);
+                Assert(a.assetId,"range_rejection",!item.TryInteract(point+Vector3.one*item.interactionRange*2));
                 int count=item.InteractionCount;var initial=item.movingPivot?item.movingPivot.localRotation:Quaternion.identity;
                 var moving=item.movingPivot?item.movingPivot.GetComponentInChildren<Renderer>():null;
                 var center=moving?moving.bounds.center:Vector3.zero;
-                bool accepted=item.TryInteract(item.transform.position);
+                int events=0,depletedEvents=0;string eventId=null;
+                item.onInteracted.AddListener(()=>events++);item.onDepleted.AddListener(()=>depletedEvents++);
+                item.onGameEvent.AddListener(value=>eventId=value);
+                bool accepted=item.TryInteract(point);
                 Assert(a.assetId,"interaction_event",accepted && item.InteractionCount==count+1);
                 if(item.template=="pickup")Assert(a.assetId,"pickup_hidden",item.Collected&&!item.gameObject.activeSelf);
+                else if(item.template=="resource")
+                {
+                    Assert(a.assetId,"resource_progress",item.Collected==(item.usesRequired<=1));
+                    for(int use=1;use<item.usesRequired;use++) Assert(a.assetId,"resource_use",item.TryInteract(point));
+                    Assert(a.assetId,"resource_depleted",item.Collected&&depletedEvents==1&&events==item.usesRequired&&!item.TryInteract(point));
+                    Assert(a.assetId,"depleted_visual",item.depletedVisual?item.depletedVisual.activeSelf:!item.gameObject.activeSelf);
+                    if(!string.IsNullOrEmpty(item.eventId)) Assert(a.assetId,"game_event",eventId==item.eventId);
+                }
+                else if(item.template=="switch")
+                {Assert(a.assetId,"switch_on",item.IsOpen);Assert(a.assetId,"switch_off",item.TryInteract(point)&&!item.IsOpen);}
                 else {Assert(a.assetId,"opens_geometry",item.IsOpen&&item.movingPivot&&Quaternion.Angle(initial,item.movingPivot.localRotation)>1&&moving&&Vector3.Distance(center,moving.bounds.center)>.001f);opened.Add(Tuple.Create(item,initial));}
             }
             if(!string.IsNullOrEmpty(pending.command.level_id))
@@ -101,7 +115,7 @@ namespace PromptToScene.Editor
                 if(!exercised && EditorApplication.timeSinceStartup-playStart>.75){Exercise();exercised=true;playStart=EditorApplication.timeSinceStartup;}
                 if(exercised && EditorApplication.timeSinceStartup-playStart>=pending.command.duration)
                 {
-                    foreach(var saved in opened){var item=saved.Item1;bool accepted=item.TryInteract(item.transform.position);Assert(item.GetComponent<AssetIdentity>().assetId,"closes_again",accepted&&!item.IsOpen&&Quaternion.Angle(item.movingPivot.localRotation,saved.Item2)<.1f);}
+                    foreach(var saved in opened){var item=saved.Item1;bool accepted=item.TryInteract(item.transform.TransformPoint(item.interactionPoint));Assert(item.GetComponent<AssetIdentity>().assetId,"closes_again",accepted&&!item.IsOpen&&Quaternion.Angle(item.movingPivot.localRotation,saved.Item2)<.1f);}
                     Finish("completed",null);
                 }
             }

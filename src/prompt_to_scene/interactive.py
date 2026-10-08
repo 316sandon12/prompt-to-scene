@@ -73,6 +73,20 @@ elif c['kind']=='chest':
         box('Lid',(0,0,h*.10),(w,d,h*.20),wood)
         for x in (-w*.32,w*.32): box('Band',(x,0,h*.205),(w*.065,d,.025),metal)
         box('Latch',(0,-d*.52,h*.035),(w*.12,.035,h*.1),metal)
+elif c['kind']=='resource':
+    stone=material('Stone',[.16,.19,.22],0,.78)
+    crystal=material('Mineral',[.045,.26,.22],.18,.30)
+    for i,(x,y,z,s) in enumerate([(-.18,0,.27,.65),(.2,.06,.3,.7),(0,-.16,.2,.5)]):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2,radius=1,location=(x*w,y*d,z*h))
+        o=bpy.context.object;o.name='Rock'+str(i);o.scale=(w*s*.55,d*s*.5,h*s*.6)
+        bpy.ops.object.transform_apply(location=False,rotation=False,scale=True)
+        for col in list(o.users_collection):col.objects.unlink(o)
+        collection.objects.link(o);o.data.materials.append(stone);o['pts_part']='rock'
+    for x,z in [(-.2,.55),(.1,.7),(.27,.48)]:
+        box('Mineral',(x*w,-d*.12,z*h),(w*.13,d*.18,h*.35),crystal)['pts_part']='mineral'
+elif c['kind']=='switch':
+    box('Housing',(0,0,h/2),(w,d*.55,h),metal)
+    box('Button',(0,-d*.38,h*.57),(w*.5,d*.35,h*.35),wood)
 else:
     o=box('Pickup',(0,0,h/2),(w*.72,d*.72,h*.72),metal)
     o.rotation_euler[2]=math.pi/4

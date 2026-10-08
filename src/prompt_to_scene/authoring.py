@@ -6,14 +6,20 @@ from . import core, design, game_art, kits, preparation, recipes, styles, workfl
 
 
 def catalog(project=None):
+    root = game_art.root(project)
+    family = core.read_optional_json(root / "design-family.json")
     return {
         "styles": styles.PRESETS,
         "quality": styles.QUALITY,
         "recipes": {
             k: {"parameters": v, "parts": design.PARTS[k]} for k, v in recipes.DEFAULTS.items()
         },
-        "project_style": styles.read(project),
+        "project_style": deepcopy(family["style"]) if family else styles.read(project),
         "game_art": game_art.configure(project),
+        "design_family": family,
+        "visual_preferences": core.read_optional_json(root / "visual-preferences.json") or [],
+        "style_reference": core.read_optional_json(root / "style-match.json"),
+        "art_reference": core.read_optional_json(root / "art-brief.json"),
         "kits": kits.KITS,
         "variants": design.VARIANTS,
         "preparation_defaults": preparation.options(),

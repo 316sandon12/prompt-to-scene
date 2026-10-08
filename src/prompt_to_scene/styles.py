@@ -133,4 +133,5 @@ def save(project=None, name=None, quality=None, overrides=None):
     validate(data)
     root = core.state_root(registry.resolve(project).root)
     core.atomic_json(root / "art-direction.json", data)
+    (root / "design-family.json").unlink(missing_ok=True)
     return data

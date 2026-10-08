@@ -28,6 +28,10 @@ namespace PromptToScene.Editor
         public string scene, asset_id, view;
         public float[] position, rotation;
         public float size;
+        public float fov, near, far, orthoSize;
+        public float aspect;
+        public float[] projection;
+        public bool orthographic;
     }
     [Serializable] public class RendererState { public string path; public string[] materials; }
     [Serializable] public class SceneObject
@@ -280,10 +284,20 @@ namespace PromptToScene.Editor
                 var camera = cameraObject.AddComponent<Camera>();
                 float size = Mathf.Max(bounds.extents.magnitude, .2f);
                 string view = string.IsNullOrEmpty(action.view) ? "studio" : action.view;
-                if (!new[] { "studio", "front", "back" }.Contains(view)) throw new Exception("Invalid preview view");
+                if (!new[] { "studio", "front", "back", "game" }.Contains(view)) throw new Exception("Invalid preview view");
                 var direction = view == "front" ? new Vector3(0, .25f, -3) : view == "back" ? new Vector3(-1.8f, 1.25f, 2.2f) : new Vector3(1.8f, 1.25f, -2.2f);
                 camera.transform.position = bounds.center + direction * size;
                 camera.transform.LookAt(bounds.center);
+                if (view == "game")
+                {
+                    var source = Camera.main;
+                    if (!source || source.gameObject.scene != UnityEngine.SceneManagement.SceneManager.GetActiveScene())
+                        throw new Exception("Game review needs the scene's MainCamera. Set its game view, then retry.");
+                    camera.CopyFrom(source);
+                    camera.transform.SetPositionAndRotation(source.transform.position, source.transform.rotation);
+                    var extra = source.GetComponents<Component>().FirstOrDefault(c => c && c.GetType().Name == "UniversalAdditionalCameraData");
+                    if (extra) EditorJsonUtility.FromJsonOverwrite(EditorJsonUtility.ToJson(extra), cameraObject.AddComponent(extra.GetType()));
+                }
                 if (!string.IsNullOrEmpty(action.frame_id))
                 {
                     if (!Id(action.frame_id) || !new[] { "before", "after" }.Contains(action.review_stage)) throw new Exception("Invalid comparison");
@@ -294,24 +308,46 @@ namespace PromptToScene.Editor
                         if (frame.scene != SceneKey || frame.asset_id != action.asset_id || frame.view != view) throw new Exception("Comparison scene or asset changed");
                         camera.transform.position = Vec(frame.position);
                         camera.transform.rotation = Quaternion.Euler(Vec(frame.rotation)); size = frame.size;
+                        if (view == "game")
+                        {
+                            camera.fieldOfView = frame.fov; camera.orthographic = frame.orthographic;
+                            camera.orthographicSize = frame.orthoSize;
+                            camera.nearClipPlane = frame.near; camera.farClipPlane = frame.far;
+                            if (frame.aspect > 0) camera.aspect = frame.aspect;
+                            if (frame.projection != null && frame.projection.Length == 16)
+                            { var matrix = new Matrix4x4(); for (int i=0;i<16;i++) matrix[i]=frame.projection[i]; camera.projectionMatrix=matrix; }
+                        }
                     }
                     else
                     {
                         if (action.review_stage != "before") throw new Exception("Capture before first");
                         AssetBridge.WriteJson(framePath, new PreviewFrame { scene = SceneKey, asset_id = action.asset_id, view = view,
-                            position = Vec(camera.transform.position), rotation = Vec(camera.transform.eulerAngles), size = size });
+                            position = Vec(camera.transform.position), rotation = Vec(camera.transform.eulerAngles), size = size,
+                            fov = camera.fieldOfView, orthographic = camera.orthographic, orthoSize = camera.orthographicSize,
+                            near = camera.nearClipPlane, far = camera.farClipPlane, aspect = camera.aspect,
+                            projection = Enumerable.Range(0,16).Select(i=>camera.projectionMatrix[i]).ToArray() });
                     }
                 }
-                camera.nearClipPlane = .01f; camera.farClipPlane = Mathf.Max(100, size * 20);
-                camera.clearFlags = CameraClearFlags.SolidColor;
-                camera.backgroundColor = new Color(.07f, .09f, .13f);
-                var light = lightObject.AddComponent<Light>();
-                light.type = LightType.Directional; light.intensity = 1.5f;
-                light.transform.rotation = Quaternion.Euler(40, -35, 0);
-                texture = new RenderTexture(1024, 768, 24); camera.targetTexture = texture;
+                if (view != "game")
+                {
+                    camera.nearClipPlane = .01f; camera.farClipPlane = Mathf.Max(100, size * 20);
+                    camera.clearFlags = CameraClearFlags.SolidColor;
+                    camera.backgroundColor = new Color(.07f, .09f, .13f);
+                    var light = lightObject.AddComponent<Light>();
+                    light.type = LightType.Directional; light.intensity = 1.5f;
+                    light.transform.rotation = Quaternion.Euler(40, -35, 0);
+                }
+                int width=1024, height=768;
+                if(view=="game")
+                {
+                    float aspect=Mathf.Clamp(camera.aspect,.1f,10f);
+                    width=aspect>=1?1024:Mathf.Max(1,Mathf.RoundToInt(1024*aspect));
+                    height=aspect>=1?Mathf.Max(1,Mathf.RoundToInt(1024/aspect)):1024;
+                }
+                texture = new RenderTexture(width, height, 24); camera.targetTexture = texture;
                 camera.Render(); RenderTexture.active = texture;
-                image = new Texture2D(1024,768,TextureFormat.RGB24,false);
-                image.ReadPixels(new Rect(0,0,1024,768),0,0); image.Apply();
+                image = new Texture2D(width,height,TextureFormat.RGB24,false);
+                image.ReadPixels(new Rect(0,0,width,height),0,0); image.Apply();
                 Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllBytes(path, image.EncodeToPNG());
             }
             finally

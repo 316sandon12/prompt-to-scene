@@ -118,12 +118,27 @@ def validate(request, filename, root):
             raise ValueError("Invalid metallic/roughness")
         if not finite(material.get("normal_strength"), 0):
             raise ValueError("Invalid normal strength")
+        if material.get("surface", "opaque") not in {"opaque", "mask", "blend"} or not finite(
+            material.get("alpha_cutoff", 0.5), 0, 1
+        ):
+            raise ValueError("Invalid alpha surface")
+        emission = material.get("emission", [0, 0, 0])
+        if (
+            not isinstance(emission, list)
+            or len(emission) != 3
+            or not all(finite(v, 0, 1000) for v in emission)
+            or not finite(material.get("emission_strength", 0), 0, 1000)
+            or type(material.get("two_sided", False)) is not bool
+        ):
+            raise ValueError("Invalid emission or face settings")
         for key in (
             "base_color_texture",
             "normal_texture",
             "roughness_texture",
             "metallic_texture",
             "mask_texture",
+            "opacity_texture",
+            "emission_texture",
         ):
             texture = material.get(key, "")
             if not isinstance(texture, str) or (

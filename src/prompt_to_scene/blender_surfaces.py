@@ -109,6 +109,19 @@ def bake(meshes, folder, size, unwrap=True, normal_sources=None):
         selected = [obj for obj in meshes if mat in list(obj.data.materials)]
         cache_path = cache["location"](folder, mat, selected, size, normal_sources)
         images = cache["read"](cache_path)
+        fields = [
+            ("base", "Base Color"),
+            ("roughness", "Roughness"),
+            ("metallic", "Metallic"),
+            ("normal", "Normal"),
+        ]
+        fields += [
+            (field, socket)
+            for field, socket in (("opacity", "Alpha"), ("emission", "Emission Color"))
+            if shader.inputs[socket].is_linked
+        ]
+        if images and set(images) != {field for field, _ in fields}:
+            images = None
         if images:
             stats["reused_materials"].append(mat.name)
         else:
@@ -119,16 +132,13 @@ def bake(meshes, folder, size, unwrap=True, normal_sources=None):
             images = {}
             emission = nodes.new("ShaderNodeEmission")
             target = nodes.new("ShaderNodeTexImage")
-            for field, socket_name in (
-                ("base", "Base Color"),
-                ("roughness", "Roughness"),
-                ("metallic", "Metallic"),
-                ("normal", "Normal"),
-            ):
+            for field, socket_name in fields:
                 image = bpy.data.images.new(
                     mat.name + "_" + field, width=size, height=size, alpha=False
                 )
-                image.colorspace_settings.name = "sRGB" if field == "base" else "Non-Color"
+                image.colorspace_settings.name = (
+                    "sRGB" if field in {"base", "emission"} else "Non-Color"
+                )
                 target.image = image
                 nodes.active = target
                 if field == "normal":
@@ -170,7 +180,7 @@ def bake(meshes, folder, size, unwrap=True, normal_sources=None):
                     else:
                         value = socket.default_value
                         emission.inputs["Color"].default_value = (
-                            value if field == "base" else (value, value, value, 1)
+                            value if field in {"base", "emission"} else (value, value, value, 1)
                         )
                     links.new(emission.outputs["Emission"], output.inputs["Surface"])
                     bpy.ops.object.bake(type="EMIT")
@@ -189,12 +199,7 @@ def bake(meshes, folder, size, unwrap=True, normal_sources=None):
             nodes.remove(target)
             cache["write"](cache_path, images)
             stats["baked_materials"].append(mat.name)
-        for field, socket_name in (
-            ("base", "Base Color"),
-            ("roughness", "Roughness"),
-            ("metallic", "Metallic"),
-            ("normal", "Normal"),
-        ):
+        for field, socket_name in fields:
             texture = nodes.new("ShaderNodeTexImage")
             texture.image = images[field]
             if field == "normal":
