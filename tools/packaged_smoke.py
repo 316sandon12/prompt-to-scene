@@ -20,7 +20,9 @@ def main():
     parser.add_argument("--blender", help="Also verify a detached packaged Blender job locally")
     args = parser.parse_args()
     binary = str(args.executable.resolve())
-    with tempfile.TemporaryDirectory(prefix="pts package test ") as directory:
+    scratch = Path(__file__).resolve().parents[1] / ".local"
+    scratch.mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="pts package test ", dir=scratch) as directory:
         home = Path(directory)
         project = home / "Unity Project"
         (project / "Assets").mkdir(parents=True)
@@ -50,6 +52,23 @@ def main():
                         "connect_project", {"project_path": str(project)}
                     )
                     assert not response.isError, response
+                    image = await client.call_tool(
+                        "game_workflow", {"operation": "execute", "action": "image_example"}
+                    )
+                    assert not image.isError, image
+                    image_task = json.loads(image.content[0].text)
+                    preview = await client.call_tool(
+                        "game_workflow",
+                        {
+                            "operation": "execute",
+                            "action": "image_preview",
+                            "values": {
+                                "asset_id": image_task["asset_id"],
+                                "revision": image_task["revision"],
+                            },
+                        },
+                    )
+                    assert not preview.isError and any(c.type == "image" for c in preview.content)
                     assert (
                         project / "Packages/com.prompttoscene.bridge/Editor/SceneActions.cs"
                     ).is_file()

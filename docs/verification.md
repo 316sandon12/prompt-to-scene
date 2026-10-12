@@ -1,5 +1,34 @@
 # Verification
 
+## v0.11.0 — recorded on 2026-10-13
+
+Environment: macOS Apple Silicon, Unity 2022.3.62f3c1 and UE 5.7.2.
+[Sanitized record](verification-v0.11.json) · [Image workflow](IMAGES.zh-CN.md).
+
+| Check | Result |
+| --- | --- |
+| Python and MCP | 243 tests passed locally, including 17 image tests covering real alpha, image/reference retention, provider contracts, mixed production tasks, stale imports, revision restore and compact MCP image content. Installed discovery remains 3 tools; full discovery remains 69. Lint, formatting, lockfile and JavaScript syntax checks passed. |
+| Unity | Real image import → update → restore passed. Sprite reference and GUID stayed stable; dimensions, sRGB, alpha, sampling, UI mipmap settings and asymmetric nine-slice borders were asserted. |
+| Unreal | Real image import → update → restore passed. Texture2D and SlateBrushAsset references stayed stable; UI settings, dimensions and normalized nine-slice margins were asserted. |
+| Generated artwork | The actual bundled AI-generated transparent potion icon imported successfully in both editors at 256×256. The original image and generation prompt are retained in `examples/images`. |
+| Workbench | Browser checks cover the image tab, actual alpha preview, retained versions, reuse controls and host prompt handoff. No observed browser warnings/errors. One final screenshot is retained in the guide. |
+| Provider | A local HTTP fixture verifies base64 generation, multipart reference upload and reuse of a saved provider result. Ambiguous outcomes do not automatically repeat a potentially billed request. |
+
+No paid remote image API, native Windows editor, arbitrary image model compatibility or autonomous
+art-quality judgment is certified. The workflow prepares artwork; existing UI layouts, text and
+interactions remain controlled by the game. Image import uses renderer-independent texture settings;
+Blender and 3D shader validation were not repeated for this change.
+
+Reproduction (disposable projects stay under `.local`):
+
+```bash
+uv run pytest -q tests/test_image_assets.py
+uv run python tools/image_smoke.py --engine unity --editor /path/to/Unity
+uv run python tools/image_smoke.py --engine unreal --editor /path/to/UnrealEditor
+uv run python tools/image_smoke.py --engine unity --editor /path/to/Unity --reuse --demo-only
+uv run python tools/image_smoke.py --engine unreal --editor /path/to/UnrealEditor --reuse --demo-only
+```
+
 ## v0.10.0 — recorded on 2026-10-08
 
 Environment: macOS Apple Silicon, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in / URP 14.0.11,

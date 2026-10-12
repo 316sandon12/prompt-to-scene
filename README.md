@@ -1,5 +1,7 @@
 # Prompt-to-Scene
 
+**v0.11 adds game images and UI artwork to the same workflow.** Generate icons, button/panel backgrounds, portraits and backgrounds using the host image tool or an explicitly configured Images API. Inherit project art direction, prepare real alpha and size, import Unity Sprites / UE UI textures and brushes, and restore retained revisions. Try the bundled AI icon in **Workbench → 图片与 UI**. [Image workflow guide](docs/IMAGES.zh-CN.md).
+
 **v0.10: one task from game-aware design to imported, furnished and interactive assets.**
 Use the actual game camera to refine appearance, retain editable design families, and transfer
 emission, cutout and ordinary transparent materials. Installed hosts use three entrypoints with
@@ -11,7 +13,7 @@ on-demand access to the full workflow. [Six additions and practical prompts](doc
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.10 adds durable production tasks, reusable design families, game-camera feedback, portable alpha/emission, resource/switch hooks and measured room furnishing. Modeling needs Blender; organization needs only the engine editor. Use Codex, DeepSeek Harness or the local workshop.
+> v0.11 supports styled props, game images/UI artwork, interactive assets, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
 
 ![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
 

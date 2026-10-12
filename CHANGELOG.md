@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0 — Game images and UI artwork — 2026-10-13
+
+- Project-aware image briefs inherit gameplay, world, palette, visual preferences and retained references. Host image tools hand real files back through the existing compact MCP gateway.
+- Optional Images API adapter supports base64 text generation and GPT Image-compatible reference edits. Explicit remote choice, OS-stored credentials, redirect refusal and no automatic resubmission after unknown provider outcomes.
+- PNG/JPEG/WebP preparation retains originals, normalizes EXIF/ICC, checks real alpha, handles aspect ratio and pixel art, and stores reusable revisions.
+- Unity Sprite / UE UI Texture2D + SlateBrushAsset imports, native nine-slice borders, stable references on update and old-version restore. Color textures use separate surface settings.
+- New image workbench, real preview pixels, bundled AI-generated potion example, and mixed model/image production batches. No Blender dependency for image workflows.
+- Artwork pipeline only: engine UI labels/events remain editable; no automatic full menus, sprite-sheet animation or PBR generation.
+
 ## 0.10.0 — Game production workflow — 2026-10-08
 
 - Evidence-backed style matching: the connected host sees actual native thumbnails/reference images, infers shape/material/detail language, and saves numeric palette, roughness and shape defaults. Keep existing defaults when confidence is low; reject changed image evidence. No extra vision API is invoked.

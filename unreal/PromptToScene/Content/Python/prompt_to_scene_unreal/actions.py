@@ -148,6 +148,10 @@ def validate(request, filename):
 def execute(request, root):
     operation = request["operation"]
     revision = request["request_id"]
+    if operation == "image":
+        from .image_assets import execute as import_image
+
+        return import_image(request, root)
     selected = targets(request)
     if operation == "develop":
         from .development import execute as develop

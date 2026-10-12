@@ -1,13 +1,13 @@
 ---
 name: prompt-to-scene
-description: Create and refine styled Blender assets inside Unity or Unreal with Prompt-to-Scene. Use for game-aware modeling, native material import, reusable designs, room furnishing, gameplay hooks, asset organization and Play checks.
+description: Create styled Blender models and game images/UI artwork in Unity or Unreal with Prompt-to-Scene. Use for native import, reusable designs, image generation/delivery, room furnishing, gameplay, asset organization and Play checks.
 ---
 
 Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose three entrypoints: `game_workflow`, `open_workbench`, `workbench_action`. They share sources, task state, project context and designs. The connected host supplies language understanding and vision; the local app has no separate chat model.
 
 ## One request to a usable game asset
 
-1. Inspect the connected project using `game_workflow(operation="execute", action="context")`. If unconfigured, describe and execute `list_projects` / `connect_project` through the same gateway. Do not switch projects just because another editor is open. Blender must be installed; UE needs one restart after bridge installation.
+1. Inspect the connected project using `game_workflow(operation="execute", action="context")`. If unconfigured, describe and execute `list_projects` / `connect_project` through the same gateway. Do not switch projects just because another editor is open. Blender is required for model creation, not image/UI artwork; UE needs one restart after bridge installation.
 2. Read `game_art_direction` and existing style. Save the user's world, gameplay and camera once, inferring reasonable choices from their words without requiring a form. Look for reusable project assets (`find_assets`) and saved designs (`find_designs`) where relevant.
 3. For a themed asset, interpret silhouette, construction, material scale, wear and interaction points into concrete decisions. Prefer custom Blender geometry when the shape exceeds the nine recipe types. Recipes are for fitting simple props, not arbitrary concept art.
 4. Describe `produce`, then submit up to twelve unique new asset IDs. Each item uses `method=custom` with a complete bpy `script`, `recipe` with kind/parameters, `source` with a local path, `template` with a saved design name, or `interactive` with a template kind. Detailed requests should use explicit custom scripts; do not silently default to a recipe. Include concrete design `decisions` and the intended `description`.
@@ -15,6 +15,31 @@ Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose 
 6. Inspect one actual native result at the relevant game distance. Correct specific faults within the two-repair limit. Only the exact imported/completed receipt proves processing success; appearance acceptance requires looking at images. Report what changed and any concrete limitation.
 
 `game_workflow(operation="search", query="...")` discovers other actions. `describe` returns their contract, `execute` takes `values`. Legacy tools remain callable by their exact name through this gateway. Use the optional workbench for buttons, task cards and real previews. Embedded MCP App support depends on the host; ordinary tools and the local window work without it.
+
+## Game images and UI artwork
+
+Use `plan_image` for icons, button/panel backgrounds, portraits, backgrounds or color textures.
+It snapshots the project's world, palette, saved preferences and actual reference files. Read the
+returned prompt/references and use the host's image generation/editing tool when available, with
+real alpha when requested. Then `import_image(asset_id, source=<actual local output>, plan_id)`
+prepares and imports the image. A text-only host cannot generate pixels: use an explicitly
+configured `image_provider` / `generate_image`, or a real file from another image tool. Do not
+invent image paths or quietly replace artwork with primitives. A configured key alone is not
+authorization to send references or spend provider credits. Set allow_remote only for a service
+and image count the user has chosen. Poll/resume tasks, never regenerate merely to check progress.
+
+`image_preview` returns real pixels. Check silhouette at game size, clipping, readability, alpha
+and style; `publish_image` imports a prepared or older saved revision. `image_library` lists image
+history and native paths. Reuse asset IDs to preserve native references. `image_example` imports
+the bundled actual AI-generated icon without Blender or an API. `produce` accepts `method=image`
+with source path, kind and optional image settings in parameters, alongside models in one task.
+
+Unity gets Sprites (ordinary textures for texture kind); UE gets UI Texture2D and SlateBrushAsset.
+Button/panel margins are left/top/right/bottom final pixels and become native nine-slice borders.
+Keep UI text in engine components for localization; these assets do not implement menus or events.
+Do not pass images to model part edits, camera captures or 3D arrangement. Do not claim seamless
+tiling/PBR/animation or aesthetic acceptance from a successful image import. Missing alpha stops
+transparent imports; use the host tool to fix it or choose opaque when appropriate.
 
 ## Match the game's appearance
 

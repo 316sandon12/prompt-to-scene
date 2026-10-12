@@ -51,6 +51,7 @@ def main():
         ),
         ("unreal/PromptToScene", "resources/unreal/PromptToScene"),
         ("plugins/shared", "resources/plugins/shared"),
+        ("examples/images", "resources/examples/images"),
         ("src/prompt_to_scene/blender_export.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_recipe.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_surfaces.py", "prompt_to_scene"),

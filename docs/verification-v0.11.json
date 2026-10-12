@@ -1,0 +1,214 @@
+{
+  "version": "0.11.0",
+  "recorded_on": "2026-10-13",
+  "platform": "macOS Apple Silicon",
+  "automated": {
+    "tests_passed": 243,
+    "image_tests_passed": 17,
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "javascript_syntax": "passed",
+    "lockfile": "passed",
+    "mcp_full_tools": 69,
+    "mcp_installed_tools": 3
+  },
+  "native": {
+    "unity": {
+      "version": "2022.3.62f3c1",
+      "revision_flow": {
+        "engine": "unity",
+        "imported": {
+          "asset_id": "ui_panel",
+          "revision": "c0f69d9ae52242be8ab030deac695e1d",
+          "kind": "panel",
+          "texture_path": "Assets/PromptToScene/Images/ui_panel/ui_panel.png",
+          "texture_guid": "5061ca1845d7d45dca5d553e0d6ae6ec",
+          "sprite_path": "Assets/PromptToScene/Images/ui_panel/ui_panel.png",
+          "request_id": "69a5652194344c22b9e235632c4b7d54",
+          "engine": "unity",
+          "width": 128,
+          "height": 64,
+          "border": [
+            8,
+            4,
+            12,
+            6
+          ]
+        },
+        "updated": {
+          "asset_id": "ui_panel",
+          "revision": "172c037ba70349b6b7013da3d900820a",
+          "kind": "panel",
+          "texture_path": "Assets/PromptToScene/Images/ui_panel/ui_panel.png",
+          "texture_guid": "5061ca1845d7d45dca5d553e0d6ae6ec",
+          "sprite_path": "Assets/PromptToScene/Images/ui_panel/ui_panel.png",
+          "request_id": "351db79164f84999aeb3801d798ddb93",
+          "engine": "unity",
+          "width": 128,
+          "height": 64,
+          "border": [
+            8,
+            4,
+            12,
+            6
+          ]
+        },
+        "restored": {
+          "asset_id": "ui_panel",
+          "revision": "c0f69d9ae52242be8ab030deac695e1d",
+          "kind": "panel",
+          "texture_path": "Assets/PromptToScene/Images/ui_panel/ui_panel.png",
+          "texture_guid": "5061ca1845d7d45dca5d553e0d6ae6ec",
+          "sprite_path": "Assets/PromptToScene/Images/ui_panel/ui_panel.png",
+          "request_id": "6eb1944e082b4abe9ec94e21c88ed548",
+          "engine": "unity",
+          "width": 128,
+          "height": 64,
+          "border": [
+            8,
+            4,
+            12,
+            6
+          ]
+        },
+        "native_reference_retained": true,
+        "nine_slice_verified": true,
+        "source_alpha": true
+      },
+      "generated_example": {
+        "status": "completed",
+        "image": {
+          "asset_id": "example_potion",
+          "revision": "04ae33e410de47e4aa4ce5b51c35cc67",
+          "kind": "icon",
+          "texture_path": "Assets/PromptToScene/Images/example_potion/example_potion.png",
+          "texture_guid": "d88dd5f4ceaeb41cf8312db2ad451a25",
+          "sprite_path": "Assets/PromptToScene/Images/example_potion/example_potion.png",
+          "request_id": "4058ea398ed349b0912fc644bb2039cf",
+          "engine": "unity",
+          "width": 256,
+          "height": 256,
+          "border": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      }
+    },
+    "unreal": {
+      "version": "5.7.2",
+      "revision_flow": {
+        "engine": "unreal",
+        "imported": {
+          "asset_id": "ui_panel",
+          "revision": "bf94f90fae9748518a3d39208bff38ab",
+          "kind": "panel",
+          "texture_path": "/Game/PromptToScene/Images/ui_panel/T_ui_panel",
+          "brush_path": "/Game/PromptToScene/Images/ui_panel/B_ui_panel",
+          "width": 128,
+          "height": 64,
+          "border": [
+            8,
+            4,
+            12,
+            6
+          ],
+          "engine": "unreal",
+          "request_id": "58fa8d63fe014b17aba945f35fc95c89"
+        },
+        "updated": {
+          "asset_id": "ui_panel",
+          "revision": "a7328a91094a482b811f58741b97f63c",
+          "kind": "panel",
+          "texture_path": "/Game/PromptToScene/Images/ui_panel/T_ui_panel",
+          "brush_path": "/Game/PromptToScene/Images/ui_panel/B_ui_panel",
+          "width": 128,
+          "height": 64,
+          "border": [
+            8,
+            4,
+            12,
+            6
+          ],
+          "engine": "unreal",
+          "request_id": "e968360c516f4a68be2f2effc5ee4d5d"
+        },
+        "restored": {
+          "asset_id": "ui_panel",
+          "revision": "bf94f90fae9748518a3d39208bff38ab",
+          "kind": "panel",
+          "texture_path": "/Game/PromptToScene/Images/ui_panel/T_ui_panel",
+          "brush_path": "/Game/PromptToScene/Images/ui_panel/B_ui_panel",
+          "width": 128,
+          "height": 64,
+          "border": [
+            8,
+            4,
+            12,
+            6
+          ],
+          "engine": "unreal",
+          "request_id": "5a143227a72b49dfb3ab2b00807bb293"
+        },
+        "native_reference_retained": true,
+        "nine_slice_verified": true,
+        "source_alpha": true
+      },
+      "generated_example": {
+        "status": "completed",
+        "image": {
+          "asset_id": "example_potion",
+          "revision": "5b20922e98e44ee4bf51f6572e973dab",
+          "kind": "icon",
+          "texture_path": "/Game/PromptToScene/Images/example_potion/T_example_potion",
+          "brush_path": "/Game/PromptToScene/Images/example_potion/B_example_potion",
+          "width": 256,
+          "height": 256,
+          "border": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "engine": "unreal",
+          "request_id": "9f5dd4d0ed66469b8615f6d655a028b5"
+        }
+      }
+    }
+  },
+  "browser": {
+    "image_tab": "passed",
+    "actual_alpha_preview": "passed",
+    "reuse_image_controls": "passed",
+    "host_prompt_handoff": "passed",
+    "observed_console_errors": 0,
+    "screenshot": "images/image-workbench.jpg"
+  },
+  "provider": {
+    "local_http_generation_and_reference_edits": "passed",
+    "saved_response_resume": "passed",
+    "uncertain_request_automatic_retries": false,
+    "paid_remote_api_tested": false
+  },
+  "artwork": {
+    "path": "examples/images/healing-potion.png",
+    "prompt_and_method": "examples/images/README.md",
+    "generated_with": "host imagegen",
+    "original_dimensions": [
+      1254,
+      1254
+    ],
+    "native_import_dimensions": [
+      256,
+      256
+    ]
+  },
+  "limitations": [
+    "No native Windows editor run",
+    "No paid remote image API run",
+    "No guarantee of arbitrary model or shader compatibility",
+    "Artwork workflow does not create complete interactive UI layouts"
+  ]
+}

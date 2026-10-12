@@ -20,6 +20,7 @@ from . import (
     core,
     game_art,
     generation,
+    image_assets,
     kits,
     performance,
     quality,
@@ -97,6 +98,7 @@ def state():
         result["game_art"] = game_art.configure(None)
         result["style_match"] = core.read_optional_json(game_art.root(None) / "style-match.json")
         result["layouts"] = compositions.templates(None)
+        result["images"] = image_assets.catalog(None)["assets"]
         root = core.state_root(target.root)
         jobs = sorted(
             (root / "jobs").glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True
@@ -131,7 +133,11 @@ def state():
                 (root / folder).glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True
             )[:30]:
                 item = core.read_optional_json(path) or {}
-                if item.get("operation") == "develop" or item.get("development"):
+                if (
+                    item.get("operation") in {"develop", "image"}
+                    or item.get("development")
+                    or item.get("image")
+                ):
                     task_paths.append((path.stat().st_mtime, path.stem))
         revisions = list(
             dict.fromkeys(revision for _, revision in sorted(task_paths, reverse=True))

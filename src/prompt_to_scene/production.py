@@ -10,6 +10,8 @@ from . import (
     core,
     development,
     game_art,
+    image_assets,
+    image_provider,
     project_library,
     quality,
     recipes,
@@ -46,12 +48,35 @@ def submit(project, items, description="", furnish=None, review_view=None):
         }:
             raise ValueError("Unknown asset plan field; describe produce for its contract")
         name = core.asset_id(row["asset_id"])
-        if name in names or workflow.inspect_asset(project, name)["current"]["status"] != "unknown":
+        if (
+            name in names
+            or workflow.inspect_asset(project, name)["current"]["status"] != "unknown"
+            or image_assets.catalog(project, name)["assets"]
+        ):
             raise ValueError("Choose unique new asset IDs; use part edits for existing assets")
         names.add(name)
         method = row.get("method", "recipe")
-        if method not in {"recipe", "custom", "source", "template", "interactive"}:
-            raise ValueError("Choose recipe, custom, source, template or interactive")
+        if method not in {"recipe", "custom", "source", "template", "interactive", "image"}:
+            raise ValueError("Choose recipe, custom, source, template, interactive or image")
+        if method == "image":
+            if row.get("position") is not None or row.get("interaction"):
+                raise ValueError(
+                    "Image artwork goes to the asset library, without 3D placement or interaction"
+                )
+            source, data = image_assets.read_source(row["source"])
+            parameters = row.get("parameters") or {}
+            image_assets.settings(row.get("kind", "icon"), **parameters)
+            row["source"] = {"path": str(source), "sha256": image_assets.digest(data)}
+            row["design"] = image_assets.plan(
+                project,
+                name,
+                row.get("description") or description or name,
+                kind=row.get("kind", "icon"),
+                **parameters,
+            )
+            row["method"] = method
+            prepared.append(row)
+            continue
         if row.get("position") is not None:
             core.position_values(row["position"])
         if method == "recipe":
@@ -87,6 +112,10 @@ def submit(project, items, description="", furnish=None, review_view=None):
             # Owned new instances are subsequently moved into the room, never duplicated.
             row["position"] = [-30 - len(prepared) * 4, 0, 0]
         prepared.append(row)
+    if (furnish or review_view) and all(row["method"] == "image" for row in prepared):
+        raise ValueError(
+            "Image-only tasks use image_preview; furnishing/game-camera review requires a model"
+        )
     if furnish:
         if not isinstance(furnish, dict) or furnish.keys() - {
             "level_id",
@@ -131,6 +160,15 @@ def run(job, items, description, furnish, review_view):
         def make():
             method, position = row["method"], row.get("position")
             previous = job.state.get("asset_" + str(index))
+            if method == "image":
+                if previous and previous.get("revision"):
+                    return image_assets.publish(job.project, name, previous["revision"])
+                path, data = image_assets.read_source(row["source"]["path"])
+                if image_assets.digest(data) != row["source"]["sha256"]:
+                    raise ValueError("Source image changed after the task was planned")
+                return image_assets.import_image(
+                    job.project, name, str(path), row["design"]["plan_id"]
+                )
             if previous and method != "interactive":
                 current = workflow.inspect_asset(job.project, name)["current"]
                 if current.get("request_id") != previous["request_id"]:
@@ -194,14 +232,21 @@ def run(job, items, description, furnish, review_view):
         dressing = step(
             "furnishing",
             lambda: scene_dressing.submit(
-                job.project, asset_ids=[r["asset_id"] for r in items], duplicate=False, **furnish
+                job.project,
+                asset_ids=[r["asset_id"] for r in items if r["method"] != "image"],
+                duplicate=False,
+                **furnish,
             ),
         )
     review = None
     if review_view:
         review = step(
             "review_task",
-            lambda: quality.start(job.project, items[-1]["asset_id"], view=review_view),
+            lambda: quality.start(
+                job.project,
+                [r for r in items if r["method"] != "image"][-1]["asset_id"],
+                view=review_view,
+            ),
         )
     return {
         "stage": "Ready in the game project",
@@ -224,6 +269,14 @@ def task_status(project, request_id, wait_seconds=0):
 def routes():
     return {
         "context": authoring.catalog,
+        "plan_image": image_assets.plan,
+        "import_image": image_assets.import_image,
+        "generate_image": image_assets.generate,
+        "publish_image": image_assets.publish,
+        "image_library": image_assets.catalog,
+        "image_preview": image_assets.preview,
+        "image_provider": image_provider.configure,
+        "image_example": image_assets.example,
         "produce": submit,
         "find_assets": project_library.search,
         "reuse_asset": project_library.reuse,
@@ -244,6 +297,24 @@ def routes():
 
 
 EXAMPLES = {
+    "plan_image": {
+        "asset_id": "healing_potion",
+        "prompt": "A cozy herbalist healing potion icon",
+        "kind": "icon",
+    },
+    "import_image": {
+        "asset_id": "healing_potion",
+        "source": "/absolute/path/generated.png",
+        "plan_id": "<plan_image plan_id>",
+    },
+    "generate_image": {"plan_id": "<plan_image plan_id>", "allow_remote": False},
+    "publish_image": {"asset_id": "healing_potion", "revision": "<retained image revision>"},
+    "image_preview": {"asset_id": "healing_potion", "revision": "<retained image revision>"},
+    "image_provider": {
+        "endpoint": "http://localhost:8189/v1",
+        "model": "<your image model>",
+        "api_style": "gpt_image",
+    },
     "produce": {
         "description": "Matching herbalist furniture",
         "items": [
@@ -317,6 +388,8 @@ def dispatch(project, operation="search", action=None, values=None, query=""):
                 "source": "local source path",
                 "template": "template + optional version/part_changes",
                 "interactive": "door/chest/pickup/resource/switch",
+                "image": "source image path + kind (icon/button/panel/portrait/background/texture) "
+                "+ optional image settings in parameters",
             }
             if action == "produce"
             else None,

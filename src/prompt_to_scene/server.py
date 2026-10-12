@@ -39,6 +39,16 @@ mcp = FastMCP(
 Use game_workflow as the primary entrypoint: search actions, describe their contract, then execute
 with values. Installed clients expose only game_workflow, open_workbench and workbench_action.
 All other tool names mentioned below remain callable through game_workflow by their exact name.
+For game images/UI, use plan_image to inherit world/palette/references, then the host's image
+generation tool and import_image(source=<real local file>, plan_id=...). If the host has no image
+tool, configure image_provider and explicitly use generate_image; never pretend a chat-only LLM
+generates image files. Remote APIs can charge and upload references: require existing user choice
+before allow_remote=true. image_preview returns real pixels; publish_image imports a reviewed or
+older retained revision. image_library lists image assets separately from models. No Blender is
+needed for images. Use icon/button/panel/portrait/background/texture; UI text stays in the engine.
+Unity imports Sprite (texture for texture kind); UE imports UI Texture2D and a SlateBrushAsset,
+with nine-slice borders for panels/buttons. These are artwork assets, not complete gameplay UI.
+Never call model part edits or model preview on an image. Inspect alpha/size and actual pixels.
 Use produce for a durable batch of custom scripts, recipes, sources, saved designs or interactive
 props, optionally furnished into an existing level and reviewed. Poll its one parent request;
 resume reuses completed stages. Prefer custom bpy for detailed shapes, not recipe substitution.
@@ -224,10 +234,11 @@ async def game_workflow(
                     word in (t.name + " " + t.description).lower() for word in query.lower().split()
                 )
             ]
-        if operation == "execute" and action == "review_images":
+        if operation == "execute" and action in {"review_images", "image_preview"}:
+            images = result["images"] if action == "review_images" else [result]
             return [
                 json.dumps(result, ensure_ascii=False),
-                *[Image(path=row["path"]) for row in result["images"]],
+                *[Image(path=row["path"]) for row in images],
             ]
         return result
     legacy = {

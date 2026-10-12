@@ -1,9 +1,9 @@
 {
   "FileVersion": 3,
-  "Version": 11,
-  "VersionName": "0.10.0",
+  "Version": 12,
+  "VersionName": "0.11.0",
   "FriendlyName": "Prompt-to-Scene",
-  "Description": "Import AI-authored Blender props and report verified Unreal scene results.",
+  "Description": "Import AI-authored models and game images with native materials, UI brushes and verified results.",
   "Category": "Editor",
   "CreatedBy": "316sandon12",
   "CreatedByURL": "https://github.com/316sandon12",

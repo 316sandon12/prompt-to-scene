@@ -88,7 +88,7 @@
     const data = await call("image", values);
     if (!append) $("previews").replaceChildren();
     const figure = document.createElement("figure"), img = document.createElement("img");
-    img.src = data.url; img.alt = caption; figure.append(img, textNode("figcaption", caption)); $("previews").append(figure);
+    img.src = data.url; img.alt = caption; if(values.kind==="game_image")img.classList.add("alphaPreview"); figure.append(img, textNode("figcaption", caption)); $("previews").append(figure);
   }
   async function showReview(task) {
     const record = task.review || await call("review", {review_id:task.review_id});
@@ -118,6 +118,7 @@
   function render(state) {
     if (snapshot.active && snapshot.active !== state.active) { organizationPlan=null; $("organizationRows").replaceChildren(); $("organizationSummary").textContent="项目已切换，请重新扫描。"; $("organizationPage").textContent="尚未扫描"; for(const id of ["applyOrganization","undoOrganization","organizationPrevious","organizationNext"])$(id).disabled=true; $("organizationHistoryList").replaceChildren(); }
     snapshot = state;
+    renderImageLibrary(state.images || []);
     $("version").textContent = "v" + state.version;
     $("connection").textContent = state.target ? `${state.target.engine || ""} · ${(state.active || "").split(/[/\\]/).filter(Boolean).pop()}` : (state.connection_message || "尚未连接项目，请先打开连接与设置。");
     $("connection").title=state.active || "";
@@ -143,8 +144,8 @@
     for (const task of (state.tasks || []).filter(t=>!childIds.has(t.request_id))) {
       const card = document.createElement("article"); card.className = "card";
       const commandNames={interaction:"交互配置",protection:"保留设置",update_review:"更新预检",look:"场景风格",level:"模块关卡",playcheck:"试玩检查",library:"项目素材",organize:"资源命名与分类"};
-      const summary=task.status==="imported"?"原生资产已导入。":task.development?.command==="playcheck"&&task.status==="completed"?(task.development.passed?"试玩检查通过，已回到编辑模式。":"检查完成，有项目未通过。请查看详情。"):task.error || task.stage || task.development?.message || "";
-      card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.description || (task.kind==="production"?"制作任务":task.kind==="dressing"?"场景布置":task.asset_id) || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
+      const summary=task.image?.revision&&task.status==="completed"?"图片已导入，可用于游戏 UI。":task.status==="imported"?"原生资产已导入。":task.development?.command==="playcheck"&&task.status==="completed"?(task.development.passed?"试玩检查通过，已回到编辑模式。":"检查完成，有项目未通过。请查看详情。"):task.error || task.stage || task.development?.message || "";
+      card.append(textNode("small", humanStatus(task.status)), textNode("h3", task.image?.asset_id || task.description || (task.kind==="production"?"制作任务":task.kind==="dressing"?"场景布置":task.asset_id) || commandNames[task.development?.command] || task.kind || "编辑器任务"), textNode("p",summary));
       card.append(button("查看详情", () => { output(task); return task; }));
       if (task.development?.command === "organize" && task.development?.plan_id) card.append(button("查看整理记录", () => loadOrganization(task.development.plan_id)));
       if (task.kind && ["error","cancelled"].includes(task.status)) card.append(button("恢复", () => call("resume", {request_id:task.request_id})));
@@ -152,13 +153,19 @@
       if (task.kind === "semantic" && task.status === "completed") card.append(button("查看识别与纠正", () => semanticResults(task)));
       if (task.kind === "adaptation" && task.status === "completed") card.append(button("查看材质前后对照", () => adaptationResults(task)));
       if (task.kind === "quality" && task.status === "completed") card.append(button("查看前后对照", () => showReview(task)));
+      const imageRevision=task.image_revision || task.image?.revision;
+      const imageAsset=task.image?.asset_id || task.asset_id;
+      if(imageRevision) {
+        card.append(button("查看图片",()=>showImage({kind:"game_image",asset_id:imageAsset,request_id:imageRevision},imageAsset+" · 图片素材")));
+        if(task.preview_only)card.append(button("导入这张图片",()=>workflowAction("publish_image",{asset_id:imageAsset,revision:imageRevision})));
+      }
       if (task.kind === "production" && task.status === "completed") {
         if(task.review) card.append(button("查看游戏效果",()=>showReview(task.review)));
         if(task.dressing?.undo_id)card.append(button("撤销本次布置",()=>call("undo",{undo_id:task.dressing.undo_id})));
       }
       if (task.development?.command === "playcheck" && task.status === "completed" && task.development.screenshots?.length) card.append(button("查看试玩前后", async () => {await showImage({kind:"play_before",request_id:task.request_id},"交互前");await showImage({kind:"engine",request_id:task.request_id},"交互后",true);return task;}));
       if (task.undo_id) card.append(button("撤销布置", () => call("undo", {undo_id:task.undo_id})));
-      const candidates = task.candidates || (task.preview_only && task.status === "completed" ? [{asset_task:task,result:task}] : []);
+      const candidates = task.candidates || (task.preview_only && task.status === "completed" && task.kind!=="image_generation" ? [{asset_task:task,result:task}] : []);
       candidates.forEach((candidate, index) => {
         const model = candidate.asset_task;
         if (!model || candidate.result?.status !== "completed") return;
@@ -231,6 +238,90 @@
     document.querySelectorAll("[data-tab]").forEach(t => t.setAttribute("aria-selected", String(t.dataset.tab === name)));
     document.querySelectorAll(".pane").forEach(p => {p.hidden = p.id !== name;});
     $("scenePreview").hidden=name==="organizer";$("organizationPreview").hidden=name!=="organizer";
+    document.querySelector(".toolbar").hidden=name==="images";
+    $("objectList").hidden=name==="images";
+    $("scenePreview").querySelector("h2").textContent=name==="images"?"图片预览 · 棋盘格表示透明":"当前场景与预览";
+  }
+  const imageDefaults={icon:[256,256,true],button:[512,256,true],panel:[512,512,true],portrait:[768,1024,true],background:[1920,1080,false],texture:[1024,1024,false]};
+  function imageDefaultsChanged() {
+    const kind=$("imageKind").value,[width,height,alpha]=imageDefaults[kind];
+    $("imageWidth").value=width;$("imageHeight").value=height;$("imageAlpha").checked=alpha;
+    $("imageFit").value=alpha?"contain":"cover";
+    $("imageBorder").value=["button","panel"].includes(kind)?Array(4).fill(Math.floor(Math.min(width,height)/8)).join(", "):"0, 0, 0, 0";
+  }
+  $("imageKind").onchange=imageDefaultsChanged;
+  async function imagePlan() {
+    await ensureGameArt();
+    $("imageName").value=id($("imageName").value,$("imageKind").value);
+    const border=$("imageBorder").value.split(/[,，\s]+/).filter(Boolean).map(Number);
+    const values={asset_id:$("imageName").value,prompt:$("imagePrompt").value.trim()||$("imageName").value,
+      kind:$("imageKind").value,width:Number($("imageWidth").value),height:Number($("imageHeight").value),
+      transparent:$("imageAlpha").checked,pixel_art:$("imagePixel").checked,fit:$("imageFit").value,border};
+    const references=$("imageReferences").value.split(/\n/).map(x=>x.trim()).filter(Boolean);
+    if(references.length)values.reference_paths=references;
+    return workflowAction("plan_image",values);
+  }
+  bind("imageBrief",async()=>{
+    const plan=await imagePlan();
+    const message=`请用当前客户端可用的图片生成工具，按 Prompt-to-Scene 的图片计划 ${plan.plan_id} 为 ${plan.asset_id} 生成素材。\n${plan.effective_prompt}\n参考图片：${plan.references.map(r=>r.path).join("、")||"无"}\n生成后调用 game_workflow 执行 import_image，asset_id=${plan.asset_id}，plan_id=${plan.plan_id}，source 填实际图片的本地路径。检查 image_preview；等待导入任务成功。没有图片工具时说明并使用已配置的图片服务，不要编造文件路径。`;
+    $("imageHandoff").value=message;$("imageHandoffBox").hidden=false;
+    if(embedded){await rpc("ui/message",{role:"user",content:[{type:"text",text:message}]});notice("已把图片任务交给当前 AI。");}
+    else notice("图片指令已准备好，可复制给 Codex 或 Harness。生成后会自动接回导入流程。");
+    return plan;
+  });
+  bind("copyImageBrief",async()=>{await navigator.clipboard.writeText($("imageHandoff").value);notice("已复制图片生成指令。");});
+  bind("pickGameImage",async()=>{$("imageSource").value=await local("pick",{kind:"reference"});});
+  async function takeImage(previewOnly) {
+    if(!$("imageSource").value.trim())throw Error("请选择生成好的图片，或用「交给 AI 生成」准备指令。");
+    const plan=await imagePlan();
+    const result=await workflowAction("import_image",{asset_id:plan.asset_id,source:$("imageSource").value.trim(),plan_id:plan.plan_id,preview_only:previewOnly});
+    await showImage({kind:"game_image",asset_id:plan.asset_id,request_id:result.revision},plan.asset_id+" · 实际准备后的图片");
+    notice(previewOnly?"预览已准备，可从图片库导入。":"图片已排队导入，请保持目标编辑器打开。");return result;
+  }
+  bind("importGameImage",()=>takeImage(false));bind("previewGameImage",()=>takeImage(true));
+  bind("exampleGameImage",async()=>{
+    const task=await workflowAction("image_example");
+    await showImage({kind:"game_image",asset_id:task.asset_id,request_id:task.revision},"示例药水 · AI 生成的实际透明图标");
+    notice("示例图标已排队导入，无需配置图片服务。");return task;
+  });
+  bind("saveImageProvider",async()=>{
+    const result=await workflowAction("image_provider",{endpoint:$("imageEndpoint").value.trim(),model:$("imageModel").value.trim(),api_style:$("imageApiStyle").value,api_key:$("imageKey").value||null});
+    $("imageKey").value="";notice("图片服务配置已保存。");return result;
+  });
+  bind("loadImageProvider",async()=>{
+    const data=await workflowAction("image_provider");$("imageEndpoint").value=data.endpoint||"";$("imageModel").value=data.model||"";$("imageApiStyle").value=data.api_style||"gpt_image";
+    notice(data.configured?"已读取图片服务配置。":"尚未配置，可先用当前 AI 客户端生成图片。");return data;
+  });
+  bind("generateGameImage",async()=>{
+    const plan=await imagePlan();const task=await workflowAction("generate_image",{plan_id:plan.plan_id,allow_remote:$("imageRemote").checked,preview_only:$("imageReviewFirst").checked});
+    notice("图片任务已开始，可在下方查看进度。");return task;
+  });
+  function renderImageLibrary(rows) {
+    const signature=JSON.stringify(rows);
+    if($("imageAssets").dataset.signature===signature)return;
+    $("imageAssets").dataset.signature=signature;$("imageAssets").replaceChildren();
+    for(const row of rows) {
+      const card=document.createElement("article");card.className="card";
+      card.append(textNode("h3",row.asset_id),textNode("small",row.current?.texture_path||"已准备，尚未导入"));
+      const revisions=document.createElement("select");revisions.setAttribute("aria-label",row.asset_id+" 的图片版本");
+      for(const version of row.revisions)revisions.append(option(version.revision,`${new Date(version.created_utc).toLocaleString()} · ${version.settings.width}×${version.settings.height}${row.current?.revision===version.revision?" · 当前使用":""}`));
+      card.append(revisions);
+      card.append(button("查看",async()=>{const v=row.revisions.find(r=>r.revision===revisions.value);await showImage({kind:"game_image",asset_id:row.asset_id,request_id:v.revision},row.asset_id+" · 实际图片");return v;}));
+      card.append(button("导入／恢复此版",()=>workflowAction("publish_image",{asset_id:row.asset_id,revision:revisions.value})));
+      card.append(button("以此图继续制作",()=>{
+        const version=row.revisions.find(r=>r.revision===revisions.value),s=version.settings;
+        $("imageName").value=row.asset_id;$("imageKind").value=s.kind;$("imagePrompt").value=version.prompt;
+        $("imageWidth").value=s.width;$("imageHeight").value=s.height;$("imageFit").value=s.fit;
+        $("imageAlpha").checked=s.transparent;$("imagePixel").checked=s.pixel_art;$("imageBorder").value=s.border.join(", ");
+        $("imageReferences").value=version.reference_path;$("imagePrompt").focus();
+        notice("已沿用这张图的尺寸与风格参考。描述修改后，点「交给 AI 生成」。");
+      }));
+      const report=row.revisions[0]?.report;
+      card.append(textNode("p",`${report?.has_alpha?"带透明通道":"不透明"} · ${row.revisions.length} 个版本`));
+      for(const warning of report?.warnings||[])card.append(textNode("small",warning));
+      $("imageAssets").append(card);
+    }
+    if(!rows.length)$("imageAssets").append(textNode("p","生成并导入后的图片会保留在这里，可以查看和恢复旧版。"));
   }
   for (const tab of document.querySelectorAll("[data-tab]")) tab.onclick = () => selectTab(tab.dataset.tab);
   $("asset").onchange = () => loadAsset().catch(error => notice(error.message,true)); $("part").onchange = partInfo;
@@ -436,7 +527,7 @@
     document.querySelectorAll(".localOnly").forEach(node => {node.hidden=embedded;});
     document.querySelectorAll(".inlineOnly").forEach(node => {node.hidden=!embedded;});
     if (embedded) {
-      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.10.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.11.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
       notify("ui/notifications/initialized", {});
       new ResizeObserver(() => notify("ui/notifications/size-changed",{height:Math.min(900,document.documentElement.scrollHeight)})).observe(document.body);
     }

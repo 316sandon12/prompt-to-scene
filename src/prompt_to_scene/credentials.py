@@ -39,9 +39,12 @@ def _windows():
 
 def get(provider):
     value = os.environ.get(
-        {"meshy": "MESHY_API_KEY", "local": "PTS_LOCAL_API_KEY", "vision": "PTS_VISION_API_KEY"}[
-            provider
-        ]
+        {
+            "meshy": "MESHY_API_KEY",
+            "local": "PTS_LOCAL_API_KEY",
+            "vision": "PTS_VISION_API_KEY",
+            "image": "PTS_IMAGE_API_KEY",
+        }[provider]
     )
     if value:
         return value
@@ -69,7 +72,7 @@ def get(provider):
 
 def put(provider, value):
     if (
-        provider not in {"meshy", "local", "vision"}
+        provider not in {"meshy", "local", "vision", "image"}
         or not isinstance(value, str)
         or not 1 <= len(value) <= 4096
     ):
@@ -107,4 +110,7 @@ def put(provider, value):
         if not api.CredWriteW(ctypes.byref(record), 0):
             raise RuntimeError("Could not save the credential in Windows Credential Manager")
     else:
-        raise ValueError("Set MESHY_API_KEY or PTS_LOCAL_API_KEY on this platform")
+        raise ValueError(
+            "Set the provider's MESHY_API_KEY / PTS_LOCAL_API_KEY / "
+            "PTS_VISION_API_KEY / PTS_IMAGE_API_KEY on this platform"
+        )

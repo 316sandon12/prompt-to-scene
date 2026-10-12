@@ -11,6 +11,7 @@ from . import (
     development,
     game_art,
     generation,
+    image_assets,
     levels,
     organization,
     parts,
@@ -48,8 +49,10 @@ def image(kind, request_id=None, asset_id=None, view="studio"):
         path = root / "previews" / (workflow.identifier(request_id) + suffix + ".png")
         if workflow.job_status(None, request_id)["status"] != "completed":
             raise ValueError("Wait for this capture to finish")
+    elif kind == "game_image":
+        path = Path(image_assets.preview(None, asset_id, request_id)["path"])
     else:
-        raise ValueError("Choose an engine, studio or reference image")
+        raise ValueError("Choose an engine, studio, reference or game_image preview")
     if not path.is_file() or path.stat().st_size > 10 * 1024**2:
         raise ValueError("Image missing or too large")
     mime = {

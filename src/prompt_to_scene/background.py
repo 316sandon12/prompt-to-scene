@@ -20,6 +20,7 @@ def submit(project, kind, parameters, asset_id=None):
         "editor",
         "production",
         "dressing",
+        "image_generation",
     }:
         raise ValueError("Unknown workflow")
     target = registry.resolve(project)
@@ -106,6 +107,7 @@ def run(path):
         development,
         editor_tools,
         generation,
+        image_assets,
         intake,
         production,
         quality,
@@ -127,6 +129,7 @@ def run(path):
             "editor": editor_tools.run_job,
             "production": production.run,
             "dressing": scene_dressing.run,
+            "image_generation": image_assets.run,
         }[job.spec["kind"]](job, **job.spec["parameters"])
         job.update(**result, status="completed", error=None, completed_utc=workflow.now())
     except Exception as error:

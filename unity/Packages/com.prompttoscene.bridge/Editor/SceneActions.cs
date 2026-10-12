@@ -22,6 +22,7 @@ namespace PromptToScene.Editor
         public string object_id;
         public bool snap_to_surface;
         public string development_json;
+        public string image_json;
     }
     [Serializable] public class PreviewFrame
     {
@@ -50,6 +51,7 @@ namespace PromptToScene.Editor
         public int changed;
         public AssetMetrics[] metrics;
         public DevelopmentResult development;
+        public ImageAssetResult image;
     }
 
     public static class SceneActions
@@ -157,6 +159,7 @@ namespace PromptToScene.Editor
         static SceneResult Execute(SceneAction a)
         {
             var result = new SceneResult { request_id = a.request_id, scene = SceneKey };
+            if (a.operation == "image") return ImageAssets.Execute(a);
             if (a.operation == "develop") return DevelopmentActions.Execute(a);
             if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); return result; }
             if (a.operation == "arrange") return SceneLayout.Arrange(a, SceneKey);

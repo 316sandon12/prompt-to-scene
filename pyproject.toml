@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prompt-to-scene"
-version = "0.10.0"
-description = "An MCP workflow from AI-authored Blender assets to verified Unity and Unreal scenes."
+version = "0.11.0"
+description = "An MCP workflow for AI-authored models and game images in Unity and Unreal."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = [
     "mcp>=1.20,<2",
+    "pillow>=11,<13",
 ]
 
 [project.urls]
@@ -35,6 +36,7 @@ packages = ["src/prompt_to_scene"]
 "unity/Packages/com.prompttoscene.bridge" = "prompt_to_scene/resources/unity/Packages/com.prompttoscene.bridge"
 "unreal/PromptToScene" = "prompt_to_scene/resources/unreal/PromptToScene"
 "plugins/shared" = "prompt_to_scene/resources/plugins/shared"
+"examples/images" = "prompt_to_scene/resources/examples/images"
 
 [tool.ruff]
 line-length = 100

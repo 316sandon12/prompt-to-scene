@@ -6,10 +6,13 @@ from . import core, design, game_art, kits, preparation, recipes, styles, workfl
 
 
 def catalog(project=None):
+    from .image_assets import PRESETS
+
     root = game_art.root(project)
     family = core.read_optional_json(root / "design-family.json")
     return {
         "styles": styles.PRESETS,
+        "image_presets": PRESETS,
         "quality": styles.QUALITY,
         "recipes": {
             k: {"parameters": v, "parts": design.PARTS[k]} for k, v in recipes.DEFAULTS.items()
