@@ -210,5 +210,49 @@
     "No paid remote image API run",
     "No guarantee of arbitrary model or shader compatibility",
     "Artwork workflow does not create complete interactive UI layouts"
-  ]
+  ],
+  "cleanup": {
+    "removed": [
+      "isolated Unity and UE image fixtures",
+      "pytest disposable projects",
+      "test workbench URL and logs",
+      "verified release downloads and unpacked Mac test app",
+      "temporary release notes",
+      "repository Ruff and Python bytecode caches"
+    ],
+    "freed_bytes": 389627904,
+    "task_editor_and_workbench_processes_stopped": true,
+    "preserved": [
+      "source and tests",
+      "retained verification record",
+      "documented final screenshot and generated example",
+      "development environment and installed engines"
+    ]
+  },
+  "release": {
+    "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.11.0",
+    "source_commit": "fad93859ef2d5d250f1c84d416db9d8437f8b141",
+    "ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38286737607",
+    "main_ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38286720575",
+    "ci_tests_per_os": 243,
+    "ci_platforms": [
+      "macOS arm64",
+      "Windows x64"
+    ],
+    "frozen_image_mcp_and_setup_smoke": "passed on both platforms",
+    "downloads": {
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "sha256": "c1580a7ca36c5b9cc4f1fa1b8a7fad4869d6c8894596801584d59a685eee0311",
+        "bytes": 24264639,
+        "checksum_matched": true
+      },
+      "Prompt-to-Scene-windows-x64.zip": {
+        "sha256": "ab9c80f2c9dd3ad8948ac007e08c33c292b69492730c06531f7274f0fccbcfe6",
+        "bytes": 35316886,
+        "checksum_matched": true
+      }
+    },
+    "downloaded_macos_signature": "passed",
+    "downloaded_macos_frozen_image_mcp_setup_service": "passed"
+  }
 }

@@ -14,6 +14,15 @@ Environment: macOS Apple Silicon, Unity 2022.3.62f3c1 and UE 5.7.2.
 | Workbench | Browser checks cover the image tab, actual alpha preview, retained versions, reuse controls and host prompt handoff. No observed browser warnings/errors. One final screenshot is retained in the guide. |
 | Provider | A local HTTP fixture verifies base64 generation, multipart reference upload and reuse of a saved provider result. Ambiguous outcomes do not automatically repeat a potentially billed request. |
 
+Windows and macOS each passed 243 tests, portable builds and frozen MCP/setup/service checks,
+including the bundled image example and real MCP image response, in
+[release CI](https://github.com/316sandon12/prompt-to-scene/actions/runs/38286737607).
+Both public ZIP checksums matched. The downloaded macOS app passed ad-hoc signature verification
+and its actual frozen image/MCP/setup/service checks.
+[Download v0.11.0](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.11.0).
+Task-owned test editors and workbench processes were stopped. Disposable fixtures, logs, downloads
+and caches were removed; source, tests, concise evidence and the documented screenshot remain.
+
 No paid remote image API, native Windows editor, arbitrary image model compatibility or autonomous
 art-quality judgment is certified. The workflow prepares artwork; existing UI layouts, text and
 interactions remain controlled by the game. Image import uses renderer-independent texture settings;
