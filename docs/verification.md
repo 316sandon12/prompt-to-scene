@@ -1,5 +1,19 @@
 # Verification
 
+## v0.12.0 — recorded on 2026-10-13
+
+UI redesign on macOS Apple Silicon. [Workspace guide](STUDIO.zh-CN.md) · [Sanitized record](verification-v0.12.json).
+
+| Check | Result |
+| --- | --- |
+| Affected Python/MCP checks | 51 tests passed, including two new project-independent bundled-preview cases; the final preview resolver adjustment also passed both focused cases. |
+| Local browser | All 11 navigation panes, model instruction handoff, image sample queueing, real thumbnails, task filters, preview expansion/Escape and keyboard navigation exercised. No observed local-page console warnings/errors. |
+| Responsive layout | Desktop 1440/1180 widths, 390 px narrow view, and a 720 px embedded host fixture inspected without page horizontal overflow. The connection page was checked at desktop and narrow widths. |
+| Embedded protocol fixture | Inline styles and real previews loaded; model handoff reached the fixture as `ui/message`. One MutationObserver error was observed in the fixture browser log, with no matching API use in repository code; its source is unresolved. This is not certification of every live MCP Apps host. |
+| Evidence | One final screenshot is retained in the workspace guide. It labels the bundled sample and offline editor truthfully. |
+
+Portable release validation is recorded below after the builds complete. This change does not modify native import algorithms or model generation. Earlier native Blender/Unity/UE evidence remains in the versioned records; those engines were not restarted for a visual redesign.
+
 ## v0.11.0 — recorded on 2026-10-13
 
 Environment: macOS Apple Silicon, Unity 2022.3.62f3c1 and UE 5.7.2.

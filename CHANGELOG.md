@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0 — Creative workspace — 2026-10-13
+
+- Shared charcoal/lime design for the local workbench, embedded MCP App and connection page; grouped sidebar navigation and responsive layouts keep creation controls separate from previews.
+- Large real-image canvas, explicit built-in sample labels, preview expansion with Escape, and an independent thumbnail library with retained-version selection and reuse.
+- Actual editor connectivity, project counters, active/completed task filters, visible busy states, keyboard tab navigation and a skip link that preserves local authentication.
+- Local model creation now offers copyable AI instructions; embedded hosts retain the existing prompt handoff. Advanced image/provider controls and legacy setup tools stay available behind disclosures.
+- Bundled model/image examples work before a project is connected. Styles and sample resources are included in wheels and portable apps; mutable art references bypass preview caching.
+- This redesign covers the web/embedded workbench and connection page. Native engine panels and model-generation algorithms are unchanged.
+
 ## 0.11.0 — Game images and UI artwork — 2026-10-13
 
 - Project-aware image briefs inherit gameplay, world, palette, visual preferences and retained references. Host image tools hand real files back through the existing compact MCP gateway.

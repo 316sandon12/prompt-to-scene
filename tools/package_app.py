@@ -52,6 +52,7 @@ def main():
         ("unreal/PromptToScene", "resources/unreal/PromptToScene"),
         ("plugins/shared", "resources/plugins/shared"),
         ("examples/images", "resources/examples/images"),
+        ("docs/images/authoring-chair.png", "resources/docs/images"),
         ("src/prompt_to_scene/blender_export.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_recipe.py", "prompt_to_scene"),
         ("src/prompt_to_scene/blender_surfaces.py", "prompt_to_scene"),
@@ -62,6 +63,7 @@ def main():
         ("src/prompt_to_scene/blender_edit.py", "prompt_to_scene"),
         ("src/prompt_to_scene/workbench.html", "prompt_to_scene"),
         ("src/prompt_to_scene/workbench.js", "prompt_to_scene"),
+        ("src/prompt_to_scene/studio.css", "prompt_to_scene"),
         ("src/prompt_to_scene/setup.html", "prompt_to_scene"),
         ("src/prompt_to_scene/workshop.js", "prompt_to_scene"),
     ):

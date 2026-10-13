@@ -48,6 +48,18 @@ def main():
                     resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
                     assert "ui/initialize" in resource.contents[0].text
                     assert "repairButton" in resource.contents[0].text
+                    assert (
+                        '<link rel="stylesheet" href="/studio.css">'
+                        not in resource.contents[0].text
+                    )
+                    assert "--accent:" in resource.contents[0].text
+                    artwork = await client.call_tool(
+                        "workbench_action",
+                        {"action": "image", "values": {"kind": "example", "view": "model"}},
+                    )
+                    assert not artwork.isError, artwork
+                    example = artwork.structuredContent or json.loads(artwork.content[0].text)
+                    assert example["url"].startswith("data:image/png;base64,")
                     response = await client.call_tool(
                         "connect_project", {"project_path": str(project)}
                     )
@@ -263,9 +275,12 @@ def main():
             for route, marker in (
                 ("/workbench", b"qualityButton"),
                 ("/workbench.js", b"ui/initialize"),
+                ("/studio.css", b"--accent:"),
             ):
                 with urllib.request.urlopen(origin + route) as response:
                     assert marker in response.read()
+                    if route.endswith(".css"):
+                        assert response.headers["Content-Type"].startswith("text/css")
             request = urllib.request.Request(origin + "/api/state", headers={"X-PTS-Token": token})
             with urllib.request.urlopen(request) as response:
                 assert json.load(response)["active"] == str(project.resolve())

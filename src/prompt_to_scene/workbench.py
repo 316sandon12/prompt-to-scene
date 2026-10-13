@@ -31,14 +31,26 @@ URI = "ui://prompt-to-scene/workbench.html"
 def page():
     source = Path(__file__).with_name("workbench.html").read_text(encoding="utf-8")
     script = Path(__file__).with_name("workbench.js").read_text(encoding="utf-8")
+    styles = Path(__file__).with_name("studio.css").read_text(encoding="utf-8")
+    source = source.replace(
+        '<link rel="stylesheet" href="/studio.css">', "<style>" + styles + "</style>"
+    )
     return source.replace(
         '<script src="/workbench.js" defer></script>', "<script>" + script + "</script>"
     )
 
 
 def image(kind, request_id=None, asset_id=None, view="studio"):
-    root = core.state_root(registry.resolve().root)
-    if kind == "reference":
+    root = None if kind == "example" else core.state_root(registry.resolve().root)
+    if kind == "example":
+        examples = {
+            "model": "docs/images/authoring-chair.png",
+            "image": "examples/images/healing-potion.png",
+        }
+        if view not in examples:
+            raise ValueError("Choose the model or image example")
+        path = registry.resources() / examples[view]
+    elif kind == "reference":
         path = Path(quality.brief(None).get("image", ""))
         if path.parent != root / "references":
             raise ValueError("No reference image saved")
@@ -52,7 +64,7 @@ def image(kind, request_id=None, asset_id=None, view="studio"):
     elif kind == "game_image":
         path = Path(image_assets.preview(None, asset_id, request_id)["path"])
     else:
-        raise ValueError("Choose an engine, studio, reference or game_image preview")
+        raise ValueError("Choose an engine, studio, reference, game_image or example preview")
     if not path.is_file() or path.stat().st_size > 10 * 1024**2:
         raise ValueError("Image missing or too large")
     mime = {

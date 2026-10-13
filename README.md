@@ -1,11 +1,6 @@
 # Prompt-to-Scene
 
-**v0.11 adds game images and UI artwork to the same workflow.** Generate icons, button/panel backgrounds, portraits and backgrounds using the host image tool or an explicitly configured Images API. Inherit project art direction, prepare real alpha and size, import Unity Sprites / UE UI textures and brushes, and restore retained revisions. Try the bundled AI icon in **Workbench → 图片与 UI**. [Image workflow guide](docs/IMAGES.zh-CN.md).
-
-**v0.10: one task from game-aware design to imported, furnished and interactive assets.**
-Use the actual game camera to refine appearance, retain editable design families, and transfer
-emission, cutout and ordinary transparent materials. Installed hosts use three entrypoints with
-on-demand access to the full workflow. [Six additions and practical prompts](docs/PRODUCTION.zh-CN.md).
+**v0.12: a dark creative workspace built around real asset previews.** Grouped navigation, a larger preview canvas, focused creation controls, image thumbnails with retained revisions, and filterable tasks. The local workbench and optional embedded MCP App share the same design. [Workspace guide](docs/STUDIO.zh-CN.md) · [Image workflow](docs/IMAGES.zh-CN.md).
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
@@ -13,11 +8,11 @@ on-demand access to the full workflow. [Six additions and practical prompts](doc
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.11 supports styled props, game images/UI artwork, interactive assets, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
+> v0.12 supports styled props, game images/UI artwork, interactive assets, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
 
-![Actual Blender prop with baked PBR materials](docs/images/authoring-chair.png)
+![v0.12 creative workspace](docs/images/studio-workbench-v0.12.jpg)
 
-*An actual studio render of the built-in chair, with editable semantic parts and baked PBR surfaces. Engine lighting and rendering can produce different results.*
+*Actual workbench screenshot with the bundled transparent icon. This disposable demo project has an offline editor and a queued import; sample previews are explicitly labeled.*
 
 ## Install
 
@@ -31,7 +26,7 @@ Keep the editor open outside Play mode. Restart UE once after installing the bri
 
 > “Use Prompt-to-Scene. Set a cozy art style for this project and show me three chair designs before publishing one.”
 
-Or choose a prop in **创作工作台 / Workshop**, compare candidates and publish your favorite. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
+Or open **进入创作工作台 → 模型创作**, describe your asset, and use **生成制作指令** to copy the brief into your AI chat. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
 
 Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
 

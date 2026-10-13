@@ -1,3 +1,4 @@
+import base64
 import json
 from types import SimpleNamespace
 
@@ -18,6 +19,16 @@ from prompt_to_scene import (
     workbench,
     workflow,
 )
+
+
+@pytest.mark.parametrize("view", ["model", "image"])
+def test_studio_examples_do_not_require_a_project_or_engine(monkeypatch, view):
+    monkeypatch.setattr(registry, "resolve", lambda *_: pytest.fail("must not access a project"))
+    preview = workbench.image("example", view=view)
+    assert preview["url"].startswith("data:image/png;base64,")
+    assert base64.b64decode(preview["url"].split(",", 1)[1]).startswith(b"\x89PNG\r\n\x1a\n")
+    with pytest.raises(ValueError, match="model or image"):
+        workbench.image("example", view="../../private.png")
 
 
 @pytest.fixture

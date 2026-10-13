@@ -1,0 +1,45 @@
+{
+  "version": "0.12.0",
+  "recorded_on": "2026-10-13",
+  "platform": "macOS Apple Silicon",
+  "automated": {
+    "affected_tests_passed": 51,
+    "final_example_resolver_cases_passed": 2,
+    "mcp_full_tools": 69,
+    "mcp_installed_tools": 3,
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "javascript_syntax": "passed",
+    "html_control_ids": "passed",
+    "documentation_links": "passed"
+  },
+  "browser": {
+    "all_navigation_panes": 11,
+    "local_model_instruction_handoff": "passed",
+    "image_sample_queue_and_task_filters": "passed",
+    "real_image_thumbnails": "passed",
+    "preview_expand_and_escape": "passed",
+    "keyboard_navigation": "passed",
+    "responsive_widths": [
+      1440,
+      1180,
+      390
+    ],
+    "embedded_fixture_width": 720,
+    "embedded_ui_message_handoff": "passed",
+    "observed_local_console_errors": 0,
+    "embedded_console_note": "One MutationObserver observe error; source unresolved; repository code has no MutationObserver. Fixture interactions passed.",
+    "screenshot": "images/studio-workbench-v0.12.jpg"
+  },
+  "limitations": [
+    "No live-host embedded UI certification",
+    "No native engine rerun for this UI-only change; see v0.11/v0.10 records",
+    "Previews are real image files and screenshots, not a new interactive 3D viewport"
+  ],
+  "release": {
+    "status": "pending"
+  },
+  "cleanup": {
+    "status": "pending"
+  }
+}

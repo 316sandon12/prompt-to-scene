@@ -5,188 +5,15 @@
     content="width=device-width,initial-scale=1"
   /><title>Prompt-to-Scene · Setup</title>
   <script src="/workshop.js" defer></script>
-  <style>
-    :root {
-      color-scheme: dark;
-      font:
-        15px/1.6 system-ui,
-        sans-serif;
-      background: #0d1520;
-      color: #eaf0f6;
-    }
-    * {
-      box-sizing: border-box;
-    }
-    body {
-      margin: 0;
-    }
-    main {
-      max-width: 1000px;
-      margin: 40px auto;
-      padding: 0 24px 60px;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid #263748;
-      padding-bottom: 24px;
-    }
-    small,
-    .muted {
-      color: #9ab0c4;
-    }
-    h1 {
-      font-size: 32px;
-      letter-spacing: -1px;
-      margin: 0;
-    }
-    h2 {
-      font-size: 19px;
-      margin: 0 0 12px;
-    }
-    p {
-      margin: 10px 0;
-    }
-    section {
-      padding: 24px;
-      margin: 20px 0;
-      background: #152231;
-      border: 1px solid #293b50;
-      border-radius: 14px;
-    }
-    .row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .grow {
-      flex: 1;
-      min-width: 220px;
-    }
-    input,
-    select,
-    button {
-      font: inherit;
-      border-radius: 8px;
-      padding: 10px 13px;
-      border: 1px solid #3b526a;
-      background: #0d1927;
-      color: inherit;
-    }
-    input,
-    select {
-      width: 100%;
-    }
-    button {
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    button:hover {
-      border-color: #72dec3;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: wait;
-    }
-    .primary {
-      background: #86edcc;
-      color: #08251e;
-      border: 0;
-      font-weight: 700;
-    }
-    .pill {
-      border-radius: 30px;
-      background: #243b4c;
-      padding: 4px 12px;
-      font-size: 12px;
-    }
-    .good {
-      color: #86edcc;
-    }
-    .warn {
-      color: #f8ca88;
-    }
-    .error {
-      color: #ffadad;
-    }
-    a {
-      color: #9adbf5;
-    }
-    .notice {
-      white-space: pre-wrap;
-      background: #101d2c;
-      border-left: 3px solid #86edcc;
-      padding: 14px;
-      margin: 14px 0;
-      overflow-wrap: anywhere;
-    }
-    .task {
-      padding: 14px 0;
-      border-top: 1px solid #304153;
-    }
-    .task p {
-      margin: 4px 0;
-    }
-    .code {
-      font-family: ui-monospace, monospace;
-      font-size: 12px;
-      overflow-wrap: anywhere;
-    }
-    img {
-      width: 100%;
-      border-radius: 10px;
-      margin-top: 12px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-    }
-    .hidden {
-      display: none;
-    }
-    details {
-      margin: 14px 0;
-    }
-    summary {
-      cursor: pointer;
-      color: #9ab0c4;
-    }
-    label {
-      display: block;
-      margin: 10px 0 5px;
-    }
-    .steps {
-      color: #86edcc;
-      font-size: 13px;
-      letter-spacing: 1px;
-    }
-    footer {
-      color: #9ab0c4;
-      font-size: 13px;
-    }
-    @media (max-width: 640px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-      header {
-        align-items: flex-start;
-        gap: 12px;
-      }
-      h1 {
-        font-size: 25px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/studio.css" />
+  <body class="setup-app">
   <main>
     <header>
-<a id="workbenchLink" href="/workbench">打开统一创作台 →</a>
+<a id="workbenchLink" class="button-link primary" href="/workbench">进入创作工作台 →</a>
       <div>
-        <div class="steps">INSTALL ONCE · CREATE BY CONVERSATION</div>
-        <h1>Prompt-to-Scene</h1>
-        <small>把一句想法，放进你的游戏项目。Blender → Unity / Unreal</small>
+        <div class="steps">CONNECT YOUR WORKSPACE</div>
+        <h1>连接你的创作环境</h1>
+        <small>Prompt-to-Scene · 模型、图片与游戏项目，从这里连在一起。</small>
       </div>
       <span class="pill" id="version">设置</span>
     </header>
@@ -291,6 +118,7 @@
         <div id="tasks"></div>
       </details>
     </section>
+    <details class="legacy-workshop"><summary>原有快捷工具与高级操作</summary><p class="muted">日常制作请使用上方创作工作台。这里保留旧版快捷入口。</p>
     <section id="assetSources">
       <h2>从模型文件或素材库开始</h2>
       <p class="muted">
@@ -566,6 +394,7 @@
       >
       · <button id="close">退出设置服务</button>
     </footer>
+    </details>
   </main>
   <script>
     const token = location.hash.slice(1),

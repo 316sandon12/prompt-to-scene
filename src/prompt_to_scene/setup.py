@@ -202,12 +202,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path in {"/workshop.js", "/workbench.js"} and self.headers.get(
+        if path in {"/workshop.js", "/workbench.js", "/studio.css"} and self.headers.get(
             "Host"
         ) == "127.0.0.1:" + str(self.server.server_port):
             self.reply(
                 Path(__file__).with_name(path[1:]).read_bytes(),
-                content_type="text/javascript; charset=utf-8",
+                content_type="text/css; charset=utf-8"
+                if path.endswith(".css")
+                else "text/javascript; charset=utf-8",
             )
             return
         if path in {"/", "/workbench"} and self.headers.get("Host") == "127.0.0.1:" + str(
