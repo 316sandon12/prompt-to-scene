@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0 — Linked creations — 2026-10-14
+
+- Link model, rendered transparent icon, item data and pickup through one resumable task. Stable native references retain manual fields and event configuration.
+- Generate editable Unity Canvas and UE UMG inventory, health/skill HUD and pause templates, with integration hooks and optional demo input.
+- Add a unified creation page, real source-geometry orbit/part picking, retained model/image revisions, and a complete herbalist example.
+- Add rectangle image edits, mask-aware API framing, exact outside-pixel preservation, before/after review and restore.
+- Retain accepted/avoid art samples with versions and a shared UI theme; apply relevant samples in model/image briefs.
+- Include native Blender/Unity/UE verification tools and engine-only UE templates; no C++ build step for users.
+
 ## 0.12.0 — Creative workspace — 2026-10-13
 
 - Shared charcoal/lime design for the local workbench, embedded MCP App and connection page; grouped sidebar navigation and responsive layouts keep creation controls separate from previews.

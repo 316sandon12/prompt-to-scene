@@ -15,6 +15,7 @@ namespace PromptToScene.Editor
     [Serializable] public class Checkpoint { public float[] position; }
     [Serializable] public class DevelopmentCommand
     {
+        public string content_json;
         public string command, mode, template, moving_asset_id, preset, level_id, path, candidate_request_id;
         public string scope_path, plan_id, plan_sha256;
         public string event_id, label, depleted_asset_id;
@@ -69,6 +70,7 @@ namespace PromptToScene.Editor
             var result=new SceneResult{request_id=a.request_id,scene=Scene.path};
             switch(c.command)
             {
+                case "game_item": case "game_ui": result.development=GameCreations.Execute(c); break;
                 case "interaction": result.development=Configure(a.asset_id,c); break;
                 case "protection": result.development=SceneProtection.Edit(a.asset_id,c); break;
                 case "update_review": result.development=SceneProtection.Review(a.asset_id,c); break;

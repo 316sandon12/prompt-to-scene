@@ -17,3 +17,13 @@ The C++ source constructs typed native K2 nodes, validates connections and compi
 The same builder produces `EUW_PTSWorkshop.uasset`, an Editor Utility Widget with ordinary UMG controls and typed `OnClicked` events calling the engine's Python Script Library. It has no dependency on this builder at installation or runtime.
 
 Follow steps 1–3 above using `generate_workshop.py` instead of `generate.py`. A Blueprint-only host uses the `UnrealEditor` target with `-Project=/absolute/path/to/HostProject.uproject`. Require commandlet exit code zero and `Python script executed successfully`; copy `Content/Templates/EUW_PTSWorkshop.uasset` back to the repository. Open the normal plugin in a separate UE 5.7.2 project and check the Tools/Content Browser entry, selection operations and retained before/after images. `tools/unreal_pipeline_driver.py` plus `tools/pipeline_smoke.py` exercise native operations without installing the C++ builder in that project.
+
+## Native game UI and linked item templates (v0.13)
+
+Run `generate_game_ui.py` after building the module to produce `BP_PTSGameItem`,
+`BP_PTSItemPickup`, and inventory/HUD/pause Widget Blueprints plus their UI hosts.
+Copy all eight generated `.uasset` files into the normal plugin. These reference only
+stock engine classes and the existing interaction template. Validate with
+`tools/creations_smoke.py --engine unreal --editor <UnrealEditor>` in a separate
+normal-plugin fixture. It checks actual PIE events, native references and manual
+layout/data retention, including a real icon rendered from retained Blender source.

@@ -19,6 +19,10 @@ def vec(values, scale=100):
 def execute(request, root):
     c = json.loads(request.get("development_json", "{}"))
     command = c.get("command")
+    if command in {"game_item", "game_ui"}:
+        from . import game_creations
+
+        return game_creations.execute(request, c, root)
     if command == "interaction":
         data = interaction(request["asset_id"], c)
     elif command in {"protection", "update_review"}:

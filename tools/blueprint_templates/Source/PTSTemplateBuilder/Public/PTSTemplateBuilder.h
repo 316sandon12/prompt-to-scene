@@ -12,4 +12,12 @@ public:
     static UBlueprint* BuildInteractiveTemplate(const FString& PackagePath);
     UFUNCTION(BlueprintCallable, Category="PromptToScene")
     static UBlueprint* BuildWorkshopTemplate(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildItemTemplate(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildGameUITemplate(const FString& PackagePath, const FString& Kind);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildUIHostTemplate(const FString& PackagePath, const FString& Kind);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildItemPickupTemplate(const FString& PackagePath);
 };

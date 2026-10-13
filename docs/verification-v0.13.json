@@ -1,0 +1,96 @@
+{
+  "version": "0.13.0",
+  "recorded_on": "2026-10-14",
+  "platform": "macOS Apple Silicon",
+  "automated": {
+    "full_suite_passed": 258,
+    "final_affected_tests_passed": 13,
+    "mcp_full_tools": 69,
+    "mcp_installed_tools": 3,
+    "ruff_check": "passed",
+    "ruff_format": "passed"
+  },
+  "native": {
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1 Built-in",
+    "unreal": "5.7.2",
+    "unity_checks": {
+      "linked_items": 3,
+      "screen_templates": [
+        "hud",
+        "inventory",
+        "pause"
+      ],
+      "actual_geometry_parts": [
+        "body",
+        "brass_bands",
+        "cork",
+        "emblem",
+        "seal"
+      ],
+      "native_manual_edits_and_references_retained": true,
+      "play_hooks_verified": true,
+      "runtime": [
+        "inventory item selection/details",
+        "pickup count",
+        "health fill with a valid Sprite",
+        "skill icon",
+        "pause/resume",
+        "settings event",
+        "custom persistent event retained",
+        "cursor restoration"
+      ],
+      "screenshot": "images/native-inventory-v0.13.png"
+    },
+    "unreal_checks": {
+      "linked_items": 3,
+      "screen_templates": [
+        "hud",
+        "inventory",
+        "pause"
+      ],
+      "actual_geometry_parts": [
+        "body",
+        "brass_bands",
+        "cork",
+        "emblem",
+        "seal"
+      ],
+      "native_manual_edits_and_references_retained": true,
+      "play_hooks_verified": true,
+      "runtime": [
+        "inventory item selection/details",
+        "pickup ItemData and Interact",
+        "health percent",
+        "skill icon",
+        "pause/resume",
+        "settings event",
+        "serialized image aspect constraints",
+        "no maintainer C++ plugin installed"
+      ],
+      "screenshot": "images/native-inventory-ue-v0.13.png"
+    }
+  },
+  "browser": {
+    "linked_creation_gallery": "passed",
+    "real_geometry_orbit_and_named_part_selection": "passed",
+    "source_revision_selector": "passed",
+    "rectangle_drag_and_edit_plan": "passed",
+    "local_file_round_trip_and_before_after": "passed with retained crop fixture; no paid image generation",
+    "sample_edit_history_and_theme_controls": "passed",
+    "responsive_widths_without_horizontal_overflow": [
+      1440,
+      390
+    ],
+    "observed_console_warnings_errors": 0,
+    "screenshot": "images/creations-workbench-v0.13.jpg"
+  },
+  "limitations": [
+    "Native editor checks ran on macOS, not Windows or shipping game builds.",
+    "UE templates are saved with 5.7.2; older asset compatibility is unverified.",
+    "UI templates expose editable controls and integration events; project inventory persistence, settings screens and arbitrary UI remain game code.",
+    "Real geometry preview uses approximate solid materials; use native rendering for final shading.",
+    "Paid image APIs were not called; mask framing and pixel preservation are covered by fixture tests.",
+    "Codex/Harness share the packaged protocol and capability-aware handoff; this is not a new live-host certification."
+  ]
+}

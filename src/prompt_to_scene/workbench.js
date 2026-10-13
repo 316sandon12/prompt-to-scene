@@ -5,9 +5,12 @@
   const token = location.hash.slice(1);
   let seq = 0, snapshot = {}, currentAsset = null, activeReview = null, refreshing = false;
   let organizationPlan = null;
-  let activeTab = "generate", taskFilter = "all", previewSequence = 0, previewIsExample = true;
+  let hostCapabilities = {};
+  let activeTab = "creations", taskFilter = "all", previewSequence = 0, previewIsExample = true;
   const previewCache = new Map();
   const tabs = {
+    creations: ["CREATE / WORKSPACE", "我的作品", "描述、查看、修改，让作品走进游戏。"],
+    samples: ["REFINE / ART LIBRARY", "美术样本", "记住每一次选择，让新作品延续同一种风格。"],
     generate: ["CREATE / 3D ASSETS", "模型创作", "从一个想法，到游戏里的下一件作品。"],
     images: ["CREATE / GAME ART", "图片与 UI", "让每一张素材，都属于同一个游戏世界。"],
     compose: ["CREATE / SCENE", "场景布置", "把单件作品，组合成有生活感的场景。"],
@@ -122,7 +125,7 @@
     const sequence = append ? previewSequence : ++previewSequence;
     const data = await cachedImage(values);
     if (sequence !== previewSequence) return;
-    if (!append) $("previews").replaceChildren();
+    if (!append) { window.PTS?.clearVisual?.(); $("previews").replaceChildren(); }
     $("previewEmpty").hidden = true;
     const figure = document.createElement("figure"), img = document.createElement("img");
     img.src = data.url; img.alt = caption;
@@ -133,6 +136,8 @@
     $("previewMeta").textContent = img.classList.contains("alphaPreview") ? "棋盘格表示透明" : values.kind === "engine" ? "当前引擎画面" : "原始渲染图";
   }
   async function showExample() {
+    const item=snapshot.creations?.["game-items"]?.[0];
+    if(activeTab==="creations" && item){await showImage({kind:"game_image",asset_id:item.icon_asset_id,request_id:item.icon_revision},item.name+" · 当前作品");return;}
     const isImage = activeTab === "images";
     await showImage({kind:"example", view:isImage ? "image" : "model"}, isImage ? "治疗药水 · AI 生成的透明图标示例" : "薄荷阅读椅 · Blender 实际渲染示例");
   }
@@ -179,6 +184,7 @@
       currentAsset = null;
     }
     snapshot = state;
+    window.dispatchEvent(new CustomEvent("pts:state",{detail:state}));
     const online = !!state.target?.editor_responding;
     $("editorStatus").classList.toggle("online", online);
     $("editorStatus").querySelector("span").textContent = !state.target ? "未连接项目" : online ? (state.target.editor?.playing ? "引擎运行中" : "编辑器在线") : "编辑器离线";
@@ -325,6 +331,8 @@
     document.querySelector(".toolbar").hidden = name === "images";
     $("objectDetails").hidden = name === "images";
     $("imageLibraryPanel").hidden = name !== "images";
+    $("creationLibraryPanel").hidden = name !== "creations";
+    window.dispatchEvent(new CustomEvent("pts:tab",{detail:name}));
     [$("sectionLabel").textContent, $("pageTitle").textContent, $("pageSubtitle").textContent] = tabs[name];
     $("scenePreview").querySelector("h2").textContent = name === "images" ? "图片与 UI 预览" : "作品预览";
     expandPreview(false);
@@ -667,17 +675,23 @@
     document.querySelectorAll(".localOnly").forEach(node => {node.hidden=embedded;});
     document.querySelectorAll(".inlineOnly").forEach(node => {node.hidden=!embedded;});
     if (embedded) {
-      await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.12.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      const initialized = await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.13.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      hostCapabilities = initialized?.hostCapabilities || {};
       notify("ui/notifications/initialized", {});
       new ResizeObserver(() => notify("ui/notifications/size-changed",{height:Math.min(900,document.documentElement.scrollHeight)})).observe(document.body);
     }
     await refresh();
     if (!embedded) $("askAI").textContent = "生成制作指令";
-    let saved = "generate";
+    let saved = "creations";
     try { saved = sessionStorage.getItem("pts-studio-tab") || saved; } catch (_) { /* Optional UI preference. */ }
-    selectTab(tabs[saved] ? saved : "generate");
+    selectTab(tabs[saved] ? saved : "creations");
     notice(!snapshot.target ? "先连接 Unity 或 Unreal 项目。你也可以先浏览内置示例。" : snapshot.target.editor_responding ? "编辑器在线，可以开始创作。项目设定会沿用到新的作品。" : "项目已连接，编辑器暂未在线。可以准备图片与制作指令，导入任务会等待编辑器。");
     setInterval(() => { if (!document.hidden) refresh().catch(error => notice(error.message,true)); }, 5000);
   }
+  window.PTS={$,call,workflowAction,action,bind,button,textNode,option,notice,showImage,waitAction,refresh,selectTab,output,
+    state:()=>snapshot,local,embedded,beginVisual(){previewIsExample=false;++previewSequence;},
+    async choosePart(asset,part){$("asset").value=asset;await loadAsset();if(part){$("part").value=part;partInfo();}selectTab("edit");},
+    async handoff(message){if(!embedded || !hostCapabilities.message)return false;try{await rpc("ui/message",{role:"user",content:[{type:"text",text:message}]});return true;}catch(_){return false;}}
+  };
   start().catch(error => notice(error.message,true));
 })();

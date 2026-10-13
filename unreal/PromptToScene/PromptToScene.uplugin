@@ -1,7 +1,7 @@
 {
   "FileVersion": 3,
   "Version": 13,
-  "VersionName": "0.12.0",
+  "VersionName": "0.13.0",
   "FriendlyName": "Prompt-to-Scene",
   "Description": "Import AI-authored models and game images with native materials, UI brushes and verified results.",
   "Category": "Editor",

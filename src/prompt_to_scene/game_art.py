@@ -115,6 +115,8 @@ def plan(
     if context.get("detail", "auto") != "auto":
         detail = context["detail"]
     reference = core.read_optional_json(root(project) / "art-brief.json") or {}
+    from . import art_samples
+
     result = {
         "schema_version": 1,
         "asset_id": asset_id,
@@ -125,6 +127,7 @@ def plan(
         "method": "recipe" if recipe_kind else "custom_blender",
         "context": context,
         "style": styles.read(project),
+        "art_samples": art_samples.context(project, "model"),
         "decisions": decisions,
         "family": core.read_optional_json(root(project) / "design-family.json"),
         "visual_preferences": core.read_optional_json(root(project) / "visual-preferences.json")

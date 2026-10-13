@@ -1,4 +1,7 @@
 {
   "name": "PromptToScene.Runtime",
-  "rootNamespace": "PromptToScene"
+  "rootNamespace": "PromptToScene",
+  "references": [
+    "Unity.ugui"
+  ]
 }

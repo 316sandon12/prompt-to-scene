@@ -30,14 +30,16 @@ URI = "ui://prompt-to-scene/workbench.html"
 
 def page():
     source = Path(__file__).with_name("workbench.html").read_text(encoding="utf-8")
-    script = Path(__file__).with_name("workbench.js").read_text(encoding="utf-8")
     styles = Path(__file__).with_name("studio.css").read_text(encoding="utf-8")
     source = source.replace(
         '<link rel="stylesheet" href="/studio.css">', "<style>" + styles + "</style>"
     )
-    return source.replace(
-        '<script src="/workbench.js" defer></script>', "<script>" + script + "</script>"
-    )
+    for name in ("model_viewer.js", "workbench.js", "creations.js"):
+        script = Path(__file__).with_name(name).read_text(encoding="utf-8")
+        source = source.replace(
+            f'<script src="/{name}" defer></script>', "<script>" + script + "</script>"
+        )
+    return source
 
 
 def image(kind, request_id=None, asset_id=None, view="studio"):
@@ -50,6 +52,10 @@ def image(kind, request_id=None, asset_id=None, view="studio"):
         if view not in examples:
             raise ValueError("Choose the model or image example")
         path = registry.resources() / examples[view]
+    elif kind == "art_sample":
+        from . import art_samples
+
+        path = Path(art_samples.read(None, asset_id, request_id)["path"])
     elif kind == "reference":
         path = Path(quality.brief(None).get("image", ""))
         if path.parent != root / "references":

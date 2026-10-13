@@ -267,7 +267,20 @@ def task_status(project, request_id, wait_seconds=0):
 
 
 def routes():
+    from . import art_samples, creations, image_edits, visual_assets
+
     return {
+        "create_game_item": creations.create_item,
+        "game_item_example": creations.example,
+        "create_game_ui": creations.create_ui,
+        "creation_workspace": creations.workspace,
+        "view_model": visual_assets.submit,
+        "model_view_data": visual_assets.read,
+        "plan_image_edit": image_edits.plan,
+        "save_art_sample": art_samples.save,
+        "art_samples": art_samples.catalog,
+        "restore_art_sample": art_samples.restore,
+        "art_theme": art_samples.theme,
         "context": authoring.catalog,
         "plan_image": image_assets.plan,
         "import_image": image_assets.import_image,
@@ -297,6 +310,31 @@ def routes():
 
 
 EXAMPLES = {
+    "create_game_item": {
+        "item_id": "forest_potion",
+        "model_asset_id": "potion_model",
+        "name": "Forest potion",
+        "description": "Restores health.",
+    },
+    "create_game_ui": {
+        "screen_id": "inventory",
+        "kind": "inventory",
+        "item_ids": ["forest_potion"],
+        "title": "SATCHEL",
+    },
+    "plan_image_edit": {
+        "asset_id": "forest_potion_icon",
+        "revision": "from image_library",
+        "rectangle": [0.25, 0.25, 0.5, 0.5],
+        "prompt": "A golden leaf seal",
+    },
+    "save_art_sample": {
+        "name": "Forest glaze",
+        "category": "model",
+        "source": "/absolute/reference.png",
+        "notes": "Keep soft edges and jade ceramic",
+        "verdict": "accepted",
+    },
     "plan_image": {
         "asset_id": "healing_potion",
         "prompt": "A cozy herbalist healing potion icon",

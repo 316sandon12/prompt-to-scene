@@ -6,6 +6,7 @@ from . import core, design, game_art, kits, preparation, recipes, styles, workfl
 
 
 def catalog(project=None):
+    from . import art_samples
     from .image_assets import PRESETS
 
     root = game_art.root(project)
@@ -19,6 +20,7 @@ def catalog(project=None):
         },
         "project_style": deepcopy(family["style"]) if family else styles.read(project),
         "game_art": game_art.configure(project),
+        "art_samples": art_samples.catalog(project),
         "design_family": family,
         "visual_preferences": core.read_optional_json(root / "visual-preferences.json") or [],
         "style_reference": core.read_optional_json(root / "style-match.json"),

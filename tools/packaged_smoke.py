@@ -48,6 +48,8 @@ def main():
                     resource = await client.read_resource("ui://prompt-to-scene/workbench.html")
                     assert "ui/initialize" in resource.contents[0].text
                     assert "repairButton" in resource.contents[0].text
+                    assert "PTSModelViewer" in resource.contents[0].text
+                    assert 'id="creationGallery"' in resource.contents[0].text
                     assert (
                         '<link rel="stylesheet" href="/studio.css">'
                         not in resource.contents[0].text
@@ -90,6 +92,15 @@ def main():
                     assert (
                         project / "Packages/com.prompttoscene.bridge/Editor/AssetOrganization.cs"
                     ).is_file()
+                    for name in (
+                        "GameItem.cs",
+                        "GameItemPickup.cs",
+                        "GameUIScreen.cs",
+                        "ResponsiveItemGrid.cs",
+                    ):
+                        assert (
+                            project / "Packages/com.prompttoscene.bridge/Runtime" / name
+                        ).is_file()
                     organized = await client.call_tool(
                         "organize_project_assets", {"mode": "history"}
                     )
@@ -112,6 +123,21 @@ def main():
                         / "Plugins/PromptToScene/Content/Templates/BP_PTSInteraction.uasset"
                     ).stat().st_size > 1000
                     assert not (unreal_project / "Plugins/PromptToScene/Source").exists()
+                    for name in (
+                        "BP_PTSGameItem",
+                        "BP_PTSItemPickup",
+                        "WBP_PTS_inventory",
+                        "WBP_PTS_hud",
+                        "WBP_PTS_pause",
+                        "BP_PTSUIHost_inventory",
+                        "BP_PTSUIHost_hud",
+                        "BP_PTSUIHost_pause",
+                    ):
+                        assert (
+                            unreal_project
+                            / "Plugins/PromptToScene/Content/Templates"
+                            / (name + ".uasset")
+                        ).stat().st_size > 1000
                     assert (
                         unreal_project
                         / "Plugins/PromptToScene/Content/Templates/EUW_PTSWorkshop.uasset"
@@ -158,6 +184,11 @@ def main():
                     }
                     for action, operation in (
                         ("produce", "describe"),
+                        ("create_game_item", "describe"),
+                        ("game_item_example", "describe"),
+                        ("create_game_ui", "describe"),
+                        ("plan_image_edit", "describe"),
+                        ("art_samples", "execute"),
                         ("list_projects", "execute"),
                     ):
                         response = await client.call_tool(

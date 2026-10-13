@@ -1,6 +1,6 @@
 # Prompt-to-Scene
 
-**v0.12: a dark creative workspace built around real asset previews.** Grouped navigation, a larger preview canvas, focused creation controls, image thumbnails with retained revisions, and filterable tasks. The local workbench and optional embedded MCP App share the same design. [Workspace guide](docs/STUDIO.zh-CN.md) · [Image workflow](docs/IMAGES.zh-CN.md).
+**v0.13: linked game items and editable native UI.** One task connects a model, rendered transparent icon, pickup and item data. Native inventory/HUD/pause templates, real geometry orbit/part picking, masked image edits, versioned art samples and a unified creation workspace. [Workflow and limits](docs/CREATIONS.zh-CN.md).
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
@@ -8,11 +8,11 @@
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.12 supports styled props, game images/UI artwork, interactive assets, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
+> v0.13 supports styled props, linked game items, game images, three native UI templates, interaction, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
 
-![v0.12 creative workspace](docs/images/studio-workbench-v0.12.jpg)
+![Actual model orbit and part picking](docs/images/creations-workbench-v0.13.jpg)
 
-*Actual workbench screenshot with the bundled transparent icon. This disposable demo project has an offline editor and a queued import; sample previews are explicitly labeled.*
+*Actual retained Blender geometry in the workbench. The connected item includes a matching rendered icon, native data and pickup.*
 
 ## Install
 
@@ -29,6 +29,14 @@ Keep the editor open outside Play mode. Restart UE once after installing the bri
 Or open **进入创作工作台 → 模型创作**, describe your asset, and use **生成制作指令** to copy the brief into your AI chat. Ordinary requests can build directly without a mandatory selection step. **Generate example crate / 生成示例木箱** tests the complete pipeline without AI.
 
 Community binaries are unsigned on Windows and ad-hoc signed, not notarized, on macOS. First-launch guidance and client setup: [beginner guide](docs/QUICKSTART.zh-CN.md). Source users can run `uv sync --locked` and `uv run prompt-to-scene-app`. Other MCP clients can use [manual setup](docs/manual-setup.md).
+
+## v0.13: from assets to usable game pieces
+
+Open **我的作品 / Creations** to describe a new item or try the complete bundled herbalist potion without a paid API. `create_game_item` runs model → icon → native data/pickup; `create_game_ui` creates ordinary editable inventory, HUD or pause controls. Updates keep stable references and manual data/layout edits. Local image edits preserve every pixel outside the selected rectangle. Art samples retain accepted/avoid decisions and feed subsequent briefs.
+
+![Native Unity inventory at runtime](docs/images/native-inventory-v0.13.png)
+
+These are integration templates: Unity includes example pickup counts; UE exposes ItemData and OnInteracted for the project's inventory. Settings, persistence and arbitrary menu/ability systems remain game-specific. The 3D workbench approximates materials; use native rendering for final appearance. Host image generation remains capability-dependent.
 
 ## v0.9: a project workshop inside the engine
 

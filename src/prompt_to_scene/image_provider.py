@@ -101,6 +101,12 @@ def request(data, design):
         body.update(
             background="transparent" if settings["transparent"] else "opaque", output_format="png"
         )
+    frame = None
+    if design.get("region_edit"):
+        from . import image_edits
+
+        frame = image_edits.provider_frame(design, size)
+        size = frame["size"]
     body["size"] = size
     headers = {"User-Agent": "PromptToScene-Images", "Content-Type": "application/json"}
     key = key_for(data)
@@ -122,6 +128,8 @@ def request(data, design):
             if image_assets.digest(image) != reference["sha256"]:
                 raise ValueError("Reference image changed; create a new image plan")
             image_assets.decode(image)
+            if frame and index == 0:
+                image = frame["image"]
             chunks.extend(
                 [
                     (
@@ -129,6 +137,23 @@ def request(data, design):
                         f'filename="reference_{index}.png"\r\nContent-Type: image/png\r\n\r\n'
                     ).encode(),
                     image,
+                    b"\r\n",
+                ]
+            )
+        if design.get("region_edit"):
+            edit = design["region_edit"]
+            mask = Path(edit["mask_path"]).read_bytes()
+            if image_assets.digest(mask) != edit["mask_sha256"]:
+                raise ValueError("Edit mask changed; select the region again")
+            if frame:
+                mask = frame["mask"]
+            chunks.extend(
+                [
+                    (
+                        f'--{boundary}\r\nContent-Disposition: form-data; name="mask"; '
+                        'filename="mask.png"\r\nContent-Type: image/png\r\n\r\n'
+                    ).encode(),
+                    mask,
                     b"\r\n",
                 ]
             )
@@ -150,7 +175,8 @@ def request(data, design):
             raise ValueError(
                 "Image API must return data[0].b64_json; URL downloads are not supported"
             )
-        return base64.b64decode(encoded, validate=True)
+        decoded = base64.b64decode(encoded, validate=True)
+        return image_edits.provider_result(decoded, frame) if frame else decoded
     except urllib.error.HTTPError as error:
         raise RuntimeError(
             "Image API returned HTTP "

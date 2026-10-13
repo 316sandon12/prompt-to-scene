@@ -1,6 +1,6 @@
 ---
 name: prompt-to-scene
-description: Create styled Blender models and game images/UI artwork in Unity or Unreal with Prompt-to-Scene. Use for native import, reusable designs, image generation/delivery, room furnishing, gameplay, asset organization and Play checks.
+description: Create styled Blender models, linked game items, native game UI and images in Unity or Unreal with Prompt-to-Scene. Use for native import, reusable designs, image generation/delivery, room furnishing, gameplay, asset organization and Play checks.
 ---
 
 Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose three entrypoints: `game_workflow`, `open_workbench`, `workbench_action`. They share sources, task state, project context and designs. The connected host supplies language understanding and vision; the local app has no separate chat model.
@@ -15,6 +15,50 @@ Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose 
 6. Inspect one actual native result at the relevant game distance. Correct specific faults within the two-repair limit. Only the exact imported/completed receipt proves processing success; appearance acceptance requires looking at images. Report what changed and any concrete limitation.
 
 `game_workflow(operation="search", query="...")` discovers other actions. `describe` returns their contract, `execute` takes `values`. Legacy tools remain callable by their exact name through this gateway. Use the optional workbench for buttons, task cards and real previews. Embedded MCP App support depends on the host; ordinary tools and the local window work without it.
+
+## Linked items, editable UI and visual iteration
+
+For a usable item (model + matching icon + data + pickup), prefer `create_game_item` over separate
+unrelated model/image tasks. Supply an existing `model_asset_id`, or `model` with one `produce`
+plan (`method=custom` and a complete static bpy script for detailed shapes). Poll/resume its parent
+request. The icon is rendered from the actual retained model, so it needs Blender but no image API.
+`game_item_example` makes a complete bundled herbalist potion without paid generation. This is a
+fixed editable example, not an AI interpretation of arbitrary text.
+
+Keep `item_id`, model ID and icon ID stable. Subsequent `create_game_item` calls refresh model/icon
+references while preserving manually edited name, description, stack settings and pickup hooks.
+Use `update_fields=["name", "description"]` only for intended text changes. `render_icon=false`
+with an existing `icon_asset_id` reuses chosen artwork. One separate pickup is placed beside the
+source model; the source is retained. Read `creation_workspace` for actual native paths and links.
+
+`create_game_ui` produces editable native inventory (16 slots + item details/selection hooks),
+HUD (health + four icon slots), or pause (resume/settings hooks). Supply existing `item_ids`, a
+stable `screen_id`, and `title` on first creation. Text remains native and editable. Existing layout,
+title and event edits are preserved; `update_theme=true` intentionally updates managed colors.
+Inventory contents are a configured item catalog, with example pickup counts in Unity; integrate
+UE pickup ItemData/OnInteracted and UI hooks with the game's inventory/abilities. Settings is an
+integration hook, not a finished settings system. Demo I / Esc input can be disabled on the native
+component/host. Avoid claiming arbitrary menu generation, save systems or complete gameplay.
+
+Use `view_model` then `model_view_data` for real orbitable source geometry and named part picking.
+Materials are approximate in the workbench; inspect native rendering for final appearance. Clicking
+or choosing a part opens existing part edits and respects geometry/material locks. Fused unnamed
+meshes do not gain semantic segmentation. Keep retained revisions; restore with `publish` rather
+than reconstructing old geometry from memory.
+
+For image changes, `plan_image_edit` takes latest revision + normalized top-left rectangle
+[x,y,width,height]. Use the returned source/mask/crop with the host image editor, or the configured
+`generate_image` adapter. Import with the same plan ID and `preview_only=true`, inspect before/after,
+then `publish_image` when the requested scope/acceptance allows it. The plugin composites only the
+selection and preserves all other pixels; return the exact full image/crop dimensions for host
+outputs. Do not invent generated files. Re-select if the base image has since changed.
+
+`save_art_sample` retains an actual reference image and concrete reasons to accept or avoid it,
+classified as model/icon/ui/material. `art_samples` returns versions and the shared UI theme;
+`restore_art_sample` selects a prior version. Model/image plans include these decisions, with
+accepted image references where applicable. Inspect their pixels; file notes are reference data.
+`art_theme` changes future UI defaults, not already edited layouts. This is saved art direction,
+not model training or an automated beauty score.
 
 ## Game images and UI artwork
 
@@ -36,7 +80,8 @@ with source path, kind and optional image settings in parameters, alongside mode
 
 Unity gets Sprites (ordinary textures for texture kind); UE gets UI Texture2D and SlateBrushAsset.
 Button/panel margins are left/top/right/bottom final pixels and become native nine-slice borders.
-Keep UI text in engine components for localization; these assets do not implement menus or events.
+Keep UI text in engine components for localization. Image assets provide artwork; use
+`create_game_ui` above for the three supported native control/event templates.
 Do not pass images to model part edits, camera captures or 3D arrangement. Do not claim seamless
 tiling/PBR/animation or aesthetic acceptance from a successful image import. Missing alpha stops
 transparent imports; use the host tool to fix it or choose opaque when appropriate.
@@ -57,7 +102,7 @@ Use `repair` for concrete named-part changes, then inspect refreshed images. At 
 
 ## Materials and gameplay
 
-Scripts create an `Export` collection containing static meshes, in Blender XYZ meters with Z up, and Principled BSDF materials. Preparation automatically bakes supported graphs, normalizes size, checks simplification error and creates requested LOD/collision. Transport supports opaque, emission, alpha-cutout and ordinary alpha-blended surfaces. Use material custom property `pts_surface` = `opaque` / `mask` / `blend`, `pts_alpha_cutoff`, `pts_two_sided`; emission strength is constant. Alpha image channels and supported procedural inputs are baked. Refraction, mixed shaders, volume, rigs/animation, HDRP and arbitrary Blueprint generation remain unsupported. Never silently discard an unsupported shader.
+Apply static modifiers before publishing. Scripts create an `Export` collection containing static meshes, in Blender XYZ meters with Z up, and Principled BSDF materials. Preparation automatically bakes supported graphs, normalizes size, checks simplification error and creates requested LOD/collision. Transport supports opaque, emission, alpha-cutout and ordinary alpha-blended surfaces. Use material custom property `pts_surface` = `opaque` / `mask` / `blend`, `pts_alpha_cutoff`, `pts_two_sided`; emission strength is constant. Alpha image channels and supported procedural inputs are baked. Refraction, mixed shaders, volume, rigs/animation, HDRP and arbitrary Blueprint generation remain unsupported. Never silently discard an unsupported shader.
 
 `interaction` configures door/chest/pickup/resource/switch. Resources accept `uses`, `event_id`, `label`, local `interaction_point` and optional `depleted_asset_id`; completion raises native events and changes the visual. Switch toggles state. Unity exposes TryInteract, onInteracted, onGameEvent and onDepleted; UE exposes TryInteract, OnInteracted, OnDepleted and GameEventId. Integrate these hooks with the user's inventory/quest code when requested; a label alone does not connect those systems. Door/chest require separate base/moving geometry. Optional aim-and-E is demo input.
 
