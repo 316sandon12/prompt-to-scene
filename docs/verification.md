@@ -12,7 +12,14 @@ UI redesign on macOS Apple Silicon. [Workspace guide](STUDIO.zh-CN.md) · [Sanit
 | Embedded protocol fixture | Inline styles and real previews loaded; model handoff reached the fixture as `ui/message`. One MutationObserver error was observed in the fixture browser log, with no matching API use in repository code; its source is unresolved. This is not certification of every live MCP Apps host. |
 | Evidence | One final screenshot is retained in the workspace guide. It labels the bundled sample and offline editor truthfully. |
 
-Portable release validation is recorded below after the builds complete. This change does not modify native import algorithms or model generation. Earlier native Blender/Unity/UE evidence remains in the versioned records; those engines were not restarted for a visual redesign.
+Windows and macOS each passed 245 tests, portable builds and frozen style/sample/MCP/setup/service
+checks in [release CI](https://github.com/316sandon12/prompt-to-scene/actions/runs/38344056199).
+Both public ZIP checksums matched. The downloaded macOS app passed its ad-hoc signature and actual
+frozen runtime checks. [Download v0.12.0](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.12.0).
+Task UI processes were stopped; temporary fixtures, downloads and repository caches were removed.
+
+This change does not modify native import algorithms or model generation. Earlier native Blender/Unity/UE
+evidence remains in the versioned records; those engines were not restarted for a visual redesign.
 
 ## v0.11.0 — recorded on 2026-10-13
 

@@ -37,9 +37,48 @@
     "Previews are real image files and screenshots, not a new interactive 3D viewport"
   ],
   "release": {
-    "status": "pending"
+    "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.12.0",
+    "source_commit": "b992c3fa2ba9401ee1896f7d52e163ccc2562be9",
+    "ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38344056199",
+    "main_ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38344045973",
+    "ci_tests_per_os": 245,
+    "ci_platforms": [
+      "macOS arm64",
+      "Windows x64"
+    ],
+    "frozen_workbench_style_and_sample_mcp_setup_service": "passed on both platforms",
+    "downloads": {
+      "Prompt-to-Scene-windows-x64.zip": {
+        "sha256": "d9c3cf13d470de61444e995b2a6dcdcc4e37ec2a1c55aefe6a0757f7960e5a1b",
+        "bytes": 35778109,
+        "checksum_matched": true
+      },
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "sha256": "f2f472165e4f7c09a8e41f4c22bbfac1670d81b7540a034d2ad561ffd1cd8ebd",
+        "bytes": 24727739,
+        "checksum_matched": true
+      }
+    },
+    "downloaded_macos_signature": "passed",
+    "downloaded_macos_frozen_workbench_mcp_setup_service": "passed"
   },
   "cleanup": {
-    "status": "pending"
+    "removed": [
+      ".local/ui-upgrade",
+      ".local/release-v0.12",
+      ".ruff_cache",
+      "src/prompt_to_scene/__pycache__",
+      "tests/__pycache__",
+      "unreal/PromptToScene/Content/Python/prompt_to_scene_unreal/__pycache__"
+    ],
+    "freed_bytes": 92893184,
+    "task_ui_processes_stopped": true,
+    "preserved": [
+      "source and tests",
+      "documented final screenshot",
+      "concise verification record",
+      "development environment and installed engines",
+      "shared runtime configuration"
+    ]
   }
 }
