@@ -9,7 +9,7 @@ UE 5.7.2. [Usage](CREATIONS.zh-CN.md) · [Sanitized record](verification-v0.13.j
 | --- | --- |
 | Python and MCP | 258 full-suite tests passed; 13 affected creation tests passed after final adjustments. Full discovery remains 69 tools and installed discovery remains 3. Lint, formatting and all three workbench JavaScript files passed. |
 | Linked creations | Three actual Blender potion models rendered matching transparent icons, then produced native item data and pickup assets in both engines. Updates retained native references, manually edited name/description/stack limits and scene placement. |
-| Unity runtime | Inventory selection/details, pickup counts, health fill, skill icon, pause/resume/settings and cursor restoration passed. Custom persistent events and edited layout survived updates. |
+| Unity runtime | Inventory selection/details, pickup counts, health fill, skill icon, pause/resume/settings passed. Custom persistent events and edited layout survived updates. |
 | UE runtime | PIE exercised inventory details, pickup ItemData/Interact, health, skill icon and pause/resume/settings. Serialized square icon constraints and the actual rendered inventory were verified. The test project contained only the normal plugin, without the maintainer C++ builder. |
 | Visual editing | The browser displayed actual source geometry, orbit controls, named part selection and source revision choices. Rectangle selection produced a retained mask/crop and a local-file before/after review. Automated tests assert every outside-selection pixel remains identical and reject stale bases. |
 | Art direction | Accepted/avoid examples retain source pixels and revision history; model/image briefs receive relevant references and the shared UI theme. Editing sample notes created a new version in the actual browser. |
@@ -18,6 +18,16 @@ UE 5.7.2. [Usage](CREATIONS.zh-CN.md) · [Sanitized record](verification-v0.13.j
 Retained screenshots: [workbench](images/creations-workbench-v0.13.jpg),
 [Unity inventory](images/native-inventory-v0.13.png),
 [UE inventory](images/native-inventory-ue-v0.13.png).
+
+Windows and macOS each passed 258 tests, portable builds and frozen full/compact MCP,
+workbench, native bridge installation and setup/service checks in
+[release CI](https://github.com/316sandon12/prompt-to-scene/actions/runs/38439434810).
+Both public ZIP checksums matched. The downloaded macOS app passed signature and frozen
+runtime checks, then completed a detached Blender geometry task after its MCP parent exited.
+[Download v0.13.0](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.13.0).
+Task processes were stopped and disposable engine projects, build outputs, downloads, logs and
+repository caches were removed (about 1,004 MiB). Source, three final screenshots, concise evidence,
+the development environment and installed engines remain.
 
 Image API framing was tested with a local fixture; no paid image service was called. Templates
 provide editable controls and integration events, not project-specific inventory persistence,

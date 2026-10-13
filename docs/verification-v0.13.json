@@ -8,7 +8,9 @@
     "mcp_full_tools": 69,
     "mcp_installed_tools": 3,
     "ruff_check": "passed",
-    "ruff_format": "passed"
+    "ruff_format": "passed",
+    "javascript_syntax": "passed",
+    "documentation_links": "passed"
   },
   "native": {
     "blender": "4.2.0",
@@ -37,8 +39,7 @@
         "skill icon",
         "pause/resume",
         "settings event",
-        "custom persistent event retained",
-        "cursor restoration"
+        "custom persistent event retained"
       ],
       "screenshot": "images/native-inventory-v0.13.png"
     },
@@ -92,5 +93,53 @@
     "Real geometry preview uses approximate solid materials; use native rendering for final shading.",
     "Paid image APIs were not called; mask framing and pixel preservation are covered by fixture tests.",
     "Codex/Harness share the packaged protocol and capability-aware handoff; this is not a new live-host certification."
-  ]
+  ],
+  "release": {
+    "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.13.0",
+    "source_commit": "ad52c3c4c15685db3d4452df7bdefc0443b17e6f",
+    "ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38439434810",
+    "main_ci": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38439380705",
+    "ci_tests_per_os": 258,
+    "ci_platforms": [
+      "macOS arm64",
+      "Windows x64"
+    ],
+    "frozen_workbench_creations_mcp_setup_service": "passed on both platforms",
+    "downloads": {
+      "Prompt-to-Scene-windows-x64.zip": {
+        "sha256": "80620258fa650d198dc63cccdcd48d85197318633fdfcd6c8ad2531b2c0ca649",
+        "bytes": 36064093,
+        "checksum_matched": true
+      },
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "sha256": "7e86780417907f007b799760298dcf2eab885d990c4d1cccdbdbb82538aeb009",
+        "bytes": 25015244,
+        "checksum_matched": true
+      }
+    },
+    "downloaded_macos_signature": "passed",
+    "downloaded_macos_frozen_workbench_mcp_setup_service": "passed",
+    "downloaded_macos_detached_blender_geometry_worker": "passed after MCP parent exit"
+  },
+  "cleanup": {
+    "removed": [
+      ".local/iteration-v13",
+      ".ruff_cache",
+      ".pytest_cache",
+      "src/prompt_to_scene/__pycache__",
+      "tests/__pycache__",
+      "tools/__pycache__",
+      "unreal/PromptToScene/Content/Python/prompt_to_scene_unreal/__pycache__"
+    ],
+    "freed_bytes_estimate": 1052880896,
+    "task_processes_stopped": true,
+    "shared_connection_registry_references_fixture": false,
+    "preserved": [
+      "source, tests and Git history",
+      "three documented final screenshots",
+      "concise verification record",
+      "development environment and installed engines",
+      "user projects and shared application caches"
+    ]
+  }
 }
