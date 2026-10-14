@@ -267,9 +267,26 @@ def task_status(project, request_id, wait_seconds=0):
 
 
 def routes():
-    from . import art_samples, creations, image_edits, visual_assets
+    from . import (
+        art_kits,
+        art_samples,
+        asset_recommendations,
+        creations,
+        gameplay,
+        image_edits,
+        visual_assets,
+    )
 
     return {
+        "art_kits": art_kits.catalog,
+        "create_art_kit": art_kits.create,
+        "gameplay_flows": gameplay.catalog,
+        "configure_gameplay": gameplay.configure,
+        "project_adapters": gameplay.adapters,
+        "recommend_assets": asset_recommendations.start,
+        "recommendation_images": asset_recommendations.evidence,
+        "save_asset_matches": asset_recommendations.assess,
+        "reuse_recommendation": asset_recommendations.reuse,
         "create_game_item": creations.create_item,
         "game_item_example": creations.example,
         "create_game_ui": creations.create_ui,

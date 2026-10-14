@@ -108,16 +108,7 @@ def rank(entries, query, annotations=None, size=None, limit=20, requirements=Non
     return sorted(rows, key=lambda r: (-r["score"], r["path"]))[:limit]
 
 
-def search(project, query="", request_id=None, size=None, limit=20, requirements=None):
-    if (
-        not isinstance(query, str)
-        or len(query) > 300
-        or type(limit) is not int
-        or not 1 <= limit <= 100
-    ):
-        raise ValueError("Use a short query and limit between 1 and 100")
-    if size is not None:
-        size = development.number(size, "Desired longest dimension", 0.01, 1000)
+def validate_requirements(requirements):
     if requirements is not None:
         if not isinstance(requirements, dict) or requirements.keys() - {
             "style",
@@ -136,6 +127,19 @@ def search(project, query="", request_id=None, size=None, limit=20, requirements
                 and any(not isinstance(v, str) or len(v) > 120 for v in value)
             ):
                 raise ValueError("Use short style/material/use descriptions")
+
+
+def search(project, query="", request_id=None, size=None, limit=20, requirements=None):
+    if (
+        not isinstance(query, str)
+        or len(query) > 300
+        or type(limit) is not int
+        or not 1 <= limit <= 100
+    ):
+        raise ValueError("Use a short query and limit between 1 and 100")
+    if size is not None:
+        size = development.number(size, "Desired longest dimension", 0.01, 1000)
+    validate_requirements(requirements)
     if not request_id:
         return development.request(project, "library", mode="index")
     receipt = workflow.job_status(project, request_id)

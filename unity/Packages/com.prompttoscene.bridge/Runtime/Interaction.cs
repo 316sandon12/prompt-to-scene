@@ -30,6 +30,9 @@ namespace PromptToScene
         public bool TryInteract(Vector3 worldPosition)
         {
             if (Collected || Vector3.Distance(worldPosition, transform.TransformPoint(interactionPoint)) > interactionRange) return false;
+            if ((template == "door" || template == "chest") && !movingPivot) return false;
+            var gameplay = GetComponent<GameplayTrigger>();
+            if (gameplay && !gameplay.TryApply()) return false;
             if (template == "pickup") Collected = true;
             else if (template == "resource") Collected = InteractionCount + 1 >= Mathf.Max(1, usesRequired);
             else if (template == "switch") IsOpen = !IsOpen;
@@ -53,6 +56,20 @@ namespace PromptToScene
                 else gameObject.SetActive(false);
             }
             return true;
+        }
+
+        // Restore persisted presentation without charging a rule or firing gameplay events again.
+        public void RestoreCompleted()
+        {
+            if (template == "door" || template == "chest" || template == "switch")
+            { IsOpen = true; if (movingPivot) movingPivot.localRotation = closedRotation * Quaternion.Euler(openRotation); }
+            else
+            {
+                Collected = true;
+                if (template == "resource" && depletedVisual)
+                { var visual = transform.Find("Visual"); if (visual) visual.gameObject.SetActive(false); depletedVisual.SetActive(true); }
+                else gameObject.SetActive(false);
+            }
         }
 
         void Update()

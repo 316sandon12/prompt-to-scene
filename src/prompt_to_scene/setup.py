@@ -209,6 +209,7 @@ class Handler(BaseHTTPRequestHandler):
             "/workshop.js",
             "/workbench.js",
             "/creations.js",
+            "/gameplay.js",
             "/model_viewer.js",
             "/studio.css",
         } and self.headers.get("Host") == "127.0.0.1:" + str(self.server.server_port):

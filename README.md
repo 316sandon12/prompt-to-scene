@@ -1,6 +1,6 @@
 # Prompt-to-Scene
 
-**v0.13: linked game items and editable native UI.** One task connects a model, rendered transparent icon, pickup and item data. Native inventory/HUD/pause templates, real geometry orbit/part picking, masked image edits, versioned art samples and a unified creation workspace. [Workflow and limits](docs/CREATIONS.zh-CN.md).
+**v0.14: coherent art and playable game flows.** An original apothecary set, explicit existing-game adapters, collect/craft/use/save rules, dynamic native inventory and image-backed project asset reuse. [Workflow, examples and limits](docs/GAMEPLAY.zh-CN.md).
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
@@ -8,7 +8,7 @@
 
 Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your existing AI client interprets the request; Blender runs locally. The bridge prepares materials, imports native assets, places instances and verifies the result. Python is bundled in the download. No additional modeling subscription is required.
 
-> v0.13 supports styled props, linked game items, game images, three native UI templates, interaction, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
+> v0.14 supports styled props, linked game items, game images, three native UI templates, interaction, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
 
 ![Actual model orbit and part picking](docs/images/creations-workbench-v0.13.jpg)
 

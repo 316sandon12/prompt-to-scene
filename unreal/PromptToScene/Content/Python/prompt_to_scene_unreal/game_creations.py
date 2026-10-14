@@ -150,7 +150,7 @@ def create_item(s, previous, root):
     # Place one separate pickup; never convert or destroy developer actors.
     tag = "PTS.Item:" + name
     found = [a for a in actions.actors().get_all_level_actors() if tag in [str(t) for t in a.tags]]
-    if not found:
+    if not found and s.get("place_pickup", True):
         sources = actions.targets({"scope": "asset", "asset_id": model_id})
         location = sources[0].get_actor_location() if sources else unreal.Vector()
         # Keep the source model available but put the usable pickup beside it.
@@ -196,7 +196,7 @@ def create_screen(s, previous, root):
     name, kind = s["screen_id"], s["kind"]
     if kind not in {"inventory", "hud", "pause"} or previous and previous["kind"] != kind:
         raise ValueError("Choose a new screen ID for a different UI template")
-    if not isinstance(s["item_ids"], list) or len(s["item_ids"]) > (4 if kind == "hud" else 16):
+    if not isinstance(s["item_ids"], list) or len(s["item_ids"]) > (4 if kind == "hud" else 128):
         raise ValueError("Too many item slots for this template")
     theme = s["theme"]
     colors = {
@@ -228,6 +228,11 @@ def create_screen(s, previous, root):
     mark(host, name)
     unreal.BlueprintEditorLibrary.compile_blueprint(bp)
     defaults = unreal.get_default_object(generated(s["prefab_path"]))
+    try:
+        defaults.set_editor_property("Items", items)
+    except Exception:
+        if len(items) > 16:
+            raise ValueError("Create a new screen ID to use paginated v0.14 inventory")
     count = 16 if kind == "inventory" else 4 if kind == "hud" else 0
     for i in range(count):
         defaults.set_editor_property("Item" + str(i), items[i] if i < len(items) else None)

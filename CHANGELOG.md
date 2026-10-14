@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.0 — Playable art workflows — 2026-10-14
+
+- Create an original seven-model forest apothecary set with matching rendered icons, native item data and inventory/HUD/pause screens in one resumable task. Project lighting, controllers and existing style remain in place; adopting the kit theme is optional.
+- Connect collect/craft/use/heal rules, prerequisites and once-only interactions to native Unity components and engine-only UE Blueprints. Validate the whole transaction before changing inventory or health, and retain progress in project/flow-specific save slots.
+- Bind existing game inventory and health systems through persistent Unity component or UE Blueprint interfaces. Include an editable UE adapter example and handle rejected transactions without partial deductions.
+- Add a visual rule editor, dynamic inventory counts and pagination, use/crafting controls, failure feedback, native focus navigation and adaptive/safe-area layouts.
+- Recommend existing project assets with actual native thumbnails, purpose/style/size metadata and retained reuse/adapt/reject decisions. Changed source files or image evidence require a fresh comparison.
+- Validate with 276 automated tests, real Blender 4.2 builds, Unity 2022.3 Play mode and UE 5.7.2 PIE on macOS. See `docs/verification-v0.14.json` for coverage and limits. Existing UE v0.13 independent widget graphs require a new screen ID to use the new gameplay UI.
+
 ## 0.13.0 — Linked creations — 2026-10-14
 
 - Link model, rendered transparent icon, item data and pickup through one resumable task. Stable native references retain manual fields and event configuration.

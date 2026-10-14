@@ -50,6 +50,7 @@ def main():
                     assert "repairButton" in resource.contents[0].text
                     assert "PTSModelViewer" in resource.contents[0].text
                     assert 'id="creationGallery"' in resource.contents[0].text
+                    assert 'id="tab-flows"' in resource.contents[0].text
                     assert (
                         '<link rel="stylesheet" href="/studio.css">'
                         not in resource.contents[0].text
@@ -97,6 +98,10 @@ def main():
                         "GameItemPickup.cs",
                         "GameUIScreen.cs",
                         "ResponsiveItemGrid.cs",
+                        "GameFlow.cs",
+                        "GameSession.cs",
+                        "GameplayTrigger.cs",
+                        "GameUIResponsive.cs",
                     ):
                         assert (
                             project / "Packages/com.prompttoscene.bridge/Runtime" / name
@@ -132,12 +137,21 @@ def main():
                         "BP_PTSUIHost_inventory",
                         "BP_PTSUIHost_hud",
                         "BP_PTSUIHost_pause",
+                        "BP_PTSGameRule",
+                        "BP_PTSGameSave",
+                        "BPI_PTSProjectAdapter",
+                        "BP_PTSGameSession",
                     ):
                         assert (
                             unreal_project
                             / "Plugins/PromptToScene/Content/Templates"
                             / (name + ".uasset")
                         ).stat().st_size > 1000
+                    assert (
+                        unreal_project
+                        / "Plugins/PromptToScene/Content/Examples"
+                        / "BP_PTSProjectAdapterExample.uasset"
+                    ).stat().st_size > 1000
                     assert (
                         unreal_project
                         / "Plugins/PromptToScene/Content/Templates/EUW_PTSWorkshop.uasset"
@@ -188,6 +202,10 @@ def main():
                         ("game_item_example", "describe"),
                         ("create_game_ui", "describe"),
                         ("plan_image_edit", "describe"),
+                        ("create_art_kit", "describe"),
+                        ("configure_gameplay", "describe"),
+                        ("project_adapters", "describe"),
+                        ("recommend_assets", "describe"),
                         ("art_samples", "execute"),
                         ("list_projects", "execute"),
                     ):
@@ -306,6 +324,7 @@ def main():
             for route, marker in (
                 ("/workbench", b"qualityButton"),
                 ("/workbench.js", b"ui/initialize"),
+                ("/gameplay.js", b"recommendation_images"),
                 ("/studio.css", b"--accent:"),
             ):
                 with urllib.request.urlopen(origin + route) as response:
