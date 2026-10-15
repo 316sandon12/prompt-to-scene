@@ -27,3 +27,36 @@ stock engine classes and the existing interaction template. Validate with
 `tools/creations_smoke.py --engine unreal --editor <UnrealEditor>` in a separate
 normal-plugin fixture. It checks actual PIE events, native references and manual
 layout/data retention, including a real icon rendered from retained Blender source.
+
+## Gameplay rules and dynamic screens (v0.14)
+
+Build the current module in the disposable project, then run these scripts in order:
+
+1. `generate_gameplay.py`: rule DataAsset, SaveGame, project adapter interface and game session.
+2. `generate.py`: the interaction parent, now with rule guards and completed-state restoration.
+3. `generate_game_ui.py`: item/pickup assets, dynamic inventory/HUD/pause widgets and hosts.
+4. `generate_adapter_example.py`: the editable project adapter actor in `Content/Examples`.
+
+Copy the generated `.uasset` files from `Content/Templates` and `Content/Examples` back
+to the normal plugin. All runtime graphs use engine nodes; the normal project must
+contain only the installable PromptToScene plugin during validation.
+
+`tools/unreal_gameplay_driver.py` loads or creates `/Game/GameplayFixture`, writes
+`.prompt-to-scene/gameplay-ready`, and processes `gameplay-command.json` containing
+`{"operation":"play"}` or `{"operation":"stop"}`. Launch it with
+`-ExecutePythonScript=/absolute/path/to/tools/unreal_gameplay_driver.py`; connect the
+fixture and create the default `apothecary` art kit before requesting Play. The kit
+must finish before the command is written. Require `gameplay-play-passed`,
+`gameplay-command-done`, and no `gameplay-error.txt`. It checks actual PIE transactions,
+UI events, save restoration/protection, pagination, HUD, pause and adapter rejection.
+Use `PTS_SCREEN_PREFIX` only when deliberately testing fresh screens in a reused fixture.
+
+The Unity counterpart is `tools/UnityGameplay.cs`, installed in a disposable project's
+`Assets/Editor`, with `tools/FixtureProjectAdapter.cs` under `Assets`. Launch Unity with
+`-executeMethod UnityGameplay.Run`; connect the project, create the same default art
+kit, and use the same marker commands. Keep both fixtures under `.local/` and remove
+them after preserving the verification summary and final visual evidence.
+
+Existing project Widget Blueprints contain copied graphs. Updating the plugin does
+not replace those graphs or discard hand-authored UI; use new screen IDs to exercise
+the new templates. The committed assets were saved with UE 5.7.2.

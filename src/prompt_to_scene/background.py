@@ -23,6 +23,8 @@ def submit(project, kind, parameters, asset_id=None):
         "image_generation",
         "visual_asset",
         "game_item",
+        "art_kit",
+        "asset_recommendations",
     }:
         raise ValueError("Unknown workflow")
     target = registry.resolve(project)
@@ -118,7 +120,7 @@ def run(path):
     )
 
     job = Job(path)
-    from . import creations, visual_assets
+    from . import art_kits, asset_recommendations, creations, visual_assets
 
     try:
         job.check()
@@ -136,6 +138,8 @@ def run(path):
             "image_generation": image_assets.run,
             "visual_asset": visual_assets.run,
             "game_item": creations.run_item,
+            "art_kit": art_kits.run,
+            "asset_recommendations": asset_recommendations.run,
         }[job.spec["kind"]](job, **job.spec["parameters"])
         job.update(**result, status="completed", error=None, completed_utc=workflow.now())
     except Exception as error:

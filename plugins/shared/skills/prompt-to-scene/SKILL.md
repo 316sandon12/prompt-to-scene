@@ -31,7 +31,7 @@ Use `update_fields=["name", "description"]` only for intended text changes. `ren
 with an existing `icon_asset_id` reuses chosen artwork. One separate pickup is placed beside the
 source model; the source is retained. Read `creation_workspace` for actual native paths and links.
 
-`create_game_ui` produces editable native inventory (16 slots + item details/selection hooks),
+`create_game_ui` produces editable native inventory (128 items, 16 visible slots/page + details/use/crafting),
 HUD (health + four icon slots), or pause (resume/settings hooks). Supply existing `item_ids`, a
 stable `screen_id`, and `title` on first creation. Text remains native and editable. Existing layout,
 title and event edits are preserved; `update_theme=true` intentionally updates managed colors.
@@ -119,3 +119,11 @@ Preserve queued work when the editor is offline; opening the editor is the fix, 
 Repair actionable model errors at most twice. Do not install unrelated dependencies or alter host approvals. Paid generation requires existing authorization for provider/count; a configured API key is not spending authorization. Remote vision/reference uploads also require authorization. Reuse saved remote task IDs and never recreate a paid task merely to poll it.
 
 For organization, part replacements, protected updates, conventions/inbox, provider generation, variants or material adaptation, read [advanced workflows](references/advanced.md) only as needed. Gateway discovery provides exact current tool contracts. An explicit organization request authorizes applying its concrete plan within scope; do not add an unnecessary confirmation. Respect exclusions, skipped resource types and runtime string-path limitations.
+
+## Gameplay flows and coherent art sets (v0.14)
+
+- `art_kits` / `create_art_kit` make an original seven-piece forest apothecary set with three linked icons, inventory/HUD/pause and a collect → craft → use/heal → save loop. Preserve existing controllers and lighting. A fresh prefix creates a set; resume the parent task after interruption. The theme is opt-in. Review the actual game camera before accepting visual quality.
+- `gameplay_flows` / `configure_gameplay` connect existing items, screens and scene interactions. Each rule has a stable ID, trigger, costs/rewards, optional heal, prerequisites and once-only flag. Keep IDs and the save slot on updates; never silently clear player progress. Stock runtime assets run in the engine, without runtime Python.
+- `project_adapters` inspects explicit Unity `IGameProjectAdapter` components / UE `BPI_PTSProjectAdapter` actors. Bind only an inspected target. The external interface must commit all inventory/health changes atomically and keep its existing save system. Do not infer private fields or claim compatibility with an arbitrary game system.
+- New native UI supports dynamic inventory, pages, quantities, crafting, use, feedback, focus and safe-area/narrow layouts. Keep custom fields/events. Old UE v0.13 widgets retain their graph/layout; create a new screen ID to adopt new controls.
+- `recommend_assets` captures actual project candidates by purpose/style/size. Read `recommendation_images` as pixels, compare silhouettes, materials and use, then `save_asset_matches` with evidence-bound reuse/adapt/reject reasons. Never invent beauty scores. `reuse_recommendation` places the original reference after a reuse assessment and checks source freshness. The host's vision is used; no automatic paid model call.

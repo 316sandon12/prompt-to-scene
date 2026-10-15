@@ -1,4 +1,5 @@
 #include "PTSTemplateBuilder.h"
+#include "GameFlowGraph.h"
 #include "Modules/ModuleManager.h"
 #include "Engine/Blueprint.h"
 #include "Engine/StaticMeshActor.h"
@@ -108,6 +109,9 @@ UBlueprint* UPTSTemplateBuilder::BuildInteractiveTemplate(const FString& Package
     UEdGraph* Graph=BP->UbergraphPages.Num()?BP->UbergraphPages[0].Get():FBlueprintEditorUtils::CreateNewGraph(BP,TEXT("EventGraph"),UEdGraph::StaticClass(),UEdGraphSchema_K2::StaticClass());
     if(!BP->UbergraphPages.Contains(Graph)) FBlueprintEditorUtils::AddUbergraphPage(BP,Graph);
     FBuilder B{BP,Graph};
+    auto* SessionClass=LoadClass<AActor>(nullptr,TEXT("/PromptToScene/Templates/BP_PTSGameSession.BP_PTSGameSession_C"));check(SessionClass);
+    B.Var(TEXT("FlowSession"),UEdGraphSchema_K2::PC_Object,TEXT("None"),SessionClass);
+    B.Var(TEXT("FlowRuleId"),UEdGraphSchema_K2::PC_String,TEXT(""));
     B.Var(TEXT("Open"),UEdGraphSchema_K2::PC_Boolean,TEXT("false"));
     B.Var(TEXT("Collected"),UEdGraphSchema_K2::PC_Boolean,TEXT("false"));
     B.Var(TEXT("InteractionCount"),UEdGraphSchema_K2::PC_Int,TEXT("0"));
@@ -133,7 +137,11 @@ UBlueprint* UPTSTemplateBuilder::BuildInteractiveTemplate(const FString& Package
     auto* Add=B.Call(UKismetMathLibrary::StaticClass(),TEXT("Add_IntInt"));
     B.Link(B.Get(TEXT("InteractionCount")),B.Pin(Add,TEXT("A"))); B.Default(Add,TEXT("B"),TEXT("1"));
     auto* Count=B.Set(TEXT("InteractionCount")); B.Link(B.Out(Add),B.Pin(Count,TEXT("InteractionCount")));
-    auto* Next=B.Exec(Guard->GetThenPin(),Count);
+    auto* FlowValid=B.Call(UKismetSystemLibrary::StaticClass(),TEXT("IsValid"));B.Link(B.Get(TEXT("FlowSession")),B.Pin(FlowValid,TEXT("Object")));
+    auto* FlowGuard=B.Branch(Guard->GetThenPin(),B.Out(FlowValid));
+    auto* ApplyRule=B.Call(SessionClass,TEXT("TryRule"));B.Link(B.Get(TEXT("FlowSession")),B.Pin(ApplyRule,TEXT("self")));B.Link(B.Get(TEXT("FlowRuleId")),B.Pin(ApplyRule,TEXT("RuleId")));
+    auto* Applied=B.Branch(B.Exec(FlowGuard->GetThenPin(),ApplyRule),B.Pin(ApplyRule,TEXT("Success")));
+    auto* Next=B.Exec(FlowGuard->GetElsePin(),Count);B.Exec(Applied->GetThenPin(),Count);
     auto* Eq=B.Call(UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_IntInt"));
     B.Link(B.Get(TEXT("TemplateKind")),B.Pin(Eq,TEXT("A"))); B.Default(Eq,TEXT("B"),TEXT("2"));
     auto* Pickup=B.Branch(Next,B.Out(Eq));
@@ -191,6 +199,21 @@ UBlueprint* UPTSTemplateBuilder::BuildInteractiveTemplate(const FString& Package
     auto* Equal=B.Call(UKismetMathLibrary::StaticClass(),TEXT("EqualEqual_ObjectObject")); B.Link(B.Pin(Hit,TEXT("HitActor")),B.Pin(Equal,TEXT("A"))); B.Link(B.Pin(Self,TEXT("self")),B.Pin(Equal,TEXT("B")));
     auto* Aimed=B.Branch(B.Pin(Trace,TEXT("then")),B.Out(Equal));
     auto* TryCall=B.Call(BP->SkeletonGeneratedClass,TEXT("TryInteract")); B.Link(B.Out(CameraPos),B.Pin(TryCall,TEXT("WorldPosition"))); B.Exec(Aimed->GetThenPin(),TryCall);
+    // Restore completed once-only interactions without charging costs or firing game hooks.
+    {
+      PTSGraph::G R(BP,Graph);auto* Begin=R.Node<UK2Node_Event>();Begin->EventReference.SetExternalMember(TEXT("ReceiveBeginPlay"),AActor::StaticClass());Begin->bOverrideFunction=true;Begin->AllocateDefaultPins();
+      auto* Has=R.If(R.P(Begin,TEXT("then")),R.Valid(R.Get(TEXT("FlowSession"))));
+      auto* Initialize=R.Call(SessionClass,TEXT("Initialize"));R.L(R.Get(TEXT("FlowSession")),R.P(Initialize,TEXT("self")));
+      auto* RuleClass=LoadClass<UObject>(nullptr,TEXT("/PromptToScene/Templates/BP_PTSGameRule.BP_PTSGameRule_C"));check(RuleClass);
+      auto* Rule=R.Find(R.Field(SessionClass,R.Get(TEXT("FlowSession")),TEXT("Rules")),R.Get(TEXT("FlowRuleId")));
+      auto* Valid=R.If(R.Exec(Has->GetThenPin(),Initialize),R.Valid(Rule));
+      auto* Done=R.If(Valid->GetThenPin(),R.Math(TEXT("BooleanAND"),R.Field(RuleClass,Rule,TEXT("Once")),R.Contains(R.Field(SessionClass,R.Get(TEXT("FlowSession")),TEXT("Completed")),R.Get(TEXT("FlowRuleId")))));
+      auto* Pickup=R.If(Done->GetThenPin(),R.Math(TEXT("GreaterEqual_IntInt"),R.Get(TEXT("TemplateKind")),R.Num(2)));
+      auto* P=R.Assign(Pickup->GetThenPin(),TEXT("Collected"),TEXT("true"));
+      auto* HasMesh=R.If(P,R.Valid(R.Get(TEXT("DepletedMesh"))));auto* Mesh=R.Call(UStaticMeshComponent::StaticClass(),TEXT("SetStaticMesh"));R.L(R.Get(TEXT("StaticMeshComponent")),R.P(Mesh,TEXT("self")));R.L(R.Get(TEXT("DepletedMesh")),R.P(Mesh,TEXT("NewMesh")));R.Exec(HasMesh->GetThenPin(),Mesh);
+      auto* Hide=R.Call(AActor::StaticClass(),TEXT("SetActorHiddenInGame"));R.D(Hide,TEXT("bNewHidden"),TEXT("true"));P=R.Exec(HasMesh->GetElsePin(),Hide);auto* Collision=R.Call(AActor::StaticClass(),TEXT("SetActorEnableCollision"));R.D(Collision,TEXT("bNewActorEnableCollision"),TEXT("false"));R.Exec(P,Collision);
+      B.Rotation(Pickup->GetElsePin(),true);
+    }
     FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(BP); FKismetEditorUtilities::CompileBlueprint(BP);
     auto* Defaults=Cast<AStaticMeshActor>(BP->GeneratedClass->GetDefaultObject());
     Defaults->GetStaticMeshComponent()->SetMobility(EComponentMobility::Movable);

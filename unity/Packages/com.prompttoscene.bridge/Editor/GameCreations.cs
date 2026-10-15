@@ -19,6 +19,7 @@ namespace PromptToScene.Editor
         public string item_id,revision,expected_revision,model_asset_id,model_revision,icon_asset_id,icon_revision,name,description;
         public string[] update_fields;
         public string item_path,pickup_path;
+        public bool place_pickup=true;
     }
     [Serializable] public class UITheme
     { public string version,background,surface,accent,text,muted; public int font_size=22,spacing=12; }
@@ -89,7 +90,7 @@ namespace PromptToScene.Editor
                 item.pickup=PrefabUtility.SaveAsPrefabAsset(root,s.pickup_path);
             }
             finally{if(pickup)PrefabUtility.UnloadPrefabContents(root);else Object.DestroyImmediate(root);}
-            if(!DevelopmentActions.Loaded<GameItemPickup>().Any(x=>x.item==item))
+            if(s.place_pickup && !DevelopmentActions.Loaded<GameItemPickup>().Any(x=>x.item==item))
             {
                 var instance=(GameObject)PrefabUtility.InstantiatePrefab(item.pickup);
                 var source=DevelopmentActions.Loaded<AssetIdentity>().FirstOrDefault(x=>x.assetId==s.model_asset_id && !x.nestedPart);
@@ -105,7 +106,7 @@ namespace PromptToScene.Editor
         static DevelopmentResult Screen(ScreenSpec s)
         {
             Id(s.screen_id);Revision(s.revision);
-            if(s.schema_version!=1 || !new[]{"inventory","hud","pause"}.Contains(s.kind) || s.item_ids==null || s.item_ids.Length>16)throw new Exception("Invalid UI spec");
+            if(s.schema_version!=1 || !new[]{"inventory","hud","pause"}.Contains(s.kind) || s.item_ids==null || s.item_ids.Length>(s.kind=="hud"?4:128))throw new Exception("Invalid UI spec");
             var colors=new[]{s.theme.background,s.theme.surface,s.theme.accent,s.theme.text,s.theme.muted}.Select(ColorOf).ToArray();
             if(s.theme.font_size<14 || s.theme.font_size>40 || s.theme.spacing<4 || s.theme.spacing>32)throw new Exception("Invalid theme metrics");
             string record=Path.Combine(Root,"game-screens",s.screen_id+".json");var previous=Read<ScreenSpec>(record);
@@ -121,6 +122,7 @@ namespace PromptToScene.Editor
             {
                 var screen=root.GetComponent<GameUIScreen>();
                 if(!screen || screen.screenId!=s.screen_id)throw new Exception("UI ownership mismatch");
+                EnsureGameplayControls(root,s.theme);
                 screen.items=items;screen.Refresh();
                 if(s.update_theme && prefab)ApplyTheme(root,s.theme);
                 var title=screen.panel.transform.Find("Title");if(title && title.GetComponent<Text>())s.title=title.GetComponent<Text>().text;
@@ -172,7 +174,9 @@ namespace PromptToScene.Editor
             root.layer=5;root.GetComponent<Canvas>().renderMode=RenderMode.ScreenSpaceOverlay;
             var scaler=root.GetComponent<CanvasScaler>();scaler.uiScaleMode=CanvasScaler.ScaleMode.ScaleWithScreenSize;scaler.referenceResolution=new Vector2(1600,900);scaler.matchWidthOrHeight=.5f;
             var screen=root.GetComponent<GameUIScreen>();screen.screenId=s.screen_id;screen.kind=s.kind;
-            var background=Picture("Panel",root.transform,new Vector2(.12f,.12f),new Vector2(.88f,.88f),ColorOf(s.theme.background));screen.panel=background.gameObject;
+            var safe=Rect("SafeArea",root.transform,Vector2.zero,Vector2.one,Vector2.zero);
+            var responsive=root.AddComponent<GameUIResponsive>();responsive.safeArea=safe;responsive.screen=screen;
+            var background=Picture("Panel",safe,new Vector2(.08f,.08f),new Vector2(.92f,.92f),ColorOf(s.theme.background));screen.panel=background.gameObject;
             var p=background.transform;var theme=s.theme;
             Picture("Accent",p,new Vector2(0,.993f),Vector2.one,ColorOf(theme.accent));
             Label("Title",string.IsNullOrEmpty(s.title)?(s.kind=="inventory"?"SATCHEL":s.kind=="pause"?"PAUSED":"ADVENTURER"):s.title,p,new Vector2(.04f,.86f),new Vector2(.87f,.96f),theme.font_size+10,ColorOf(theme.text));
@@ -180,6 +184,7 @@ namespace PromptToScene.Editor
             if(s.kind=="inventory")
             {
                 var grid=Rect("ItemGrid",p,new Vector2(.04f,.09f),new Vector2(.59f,.83f),Vector2.zero);
+                responsive.grid=grid;
                 var layout=grid.gameObject.AddComponent<GridLayoutGroup>();layout.constraint=GridLayoutGroup.Constraint.FixedColumnCount;layout.constraintCount=4;layout.cellSize=new Vector2(145,104);layout.spacing=Vector2.one*theme.spacing;grid.gameObject.AddComponent<ResponsiveItemGrid>();
                 var slots=new List<Button>();var icons=new List<Image>();var counts=new List<Text>();
                 for(int i=0;i<16;i++)
@@ -207,7 +212,29 @@ namespace PromptToScene.Editor
                 var resume=Button("Resume","Resume",p,new Vector2(.25f,.37f),new Vector2(.75f,.51f),theme);UnityEventTools.AddPersistentListener(resume.onClick,screen.Resume);
                 var settings=Button("Settings","Settings",p,new Vector2(.25f,.18f),new Vector2(.75f,.32f),theme);UnityEventTools.AddPersistentListener(settings.onClick,screen.Settings);
             }
+            EnsureGameplayControls(root,theme);
             return root;
+        }
+        static void EnsureGameplayControls(GameObject root,UITheme theme)
+        {
+            var screen=root.GetComponent<GameUIScreen>();var p=screen.panel.transform;
+            if(!screen.feedbackLabel)screen.feedbackLabel=Label("GameplayFeedback","",p,new Vector2(.04f,.005f),new Vector2(.96f,.06f),Mathf.Max(14,theme.font_size-4),ColorOf(theme.accent));
+            if(screen.kind!="inventory" || screen.useButton)return;
+            screen.useButton=Button("UseItem","Use",p,new Vector2(.65f,.08f),new Vector2(.95f,.17f),theme);
+            screen.previousPageButton=Button("PreviousPage","‹",p,new Vector2(.04f,.06f),new Vector2(.12f,.13f),theme);
+            screen.nextPageButton=Button("NextPage","›",p,new Vector2(.51f,.06f),new Vector2(.59f,.13f),theme);
+            screen.pageLabel=Label("PageCount","1 / 1",p,new Vector2(.14f,.06f),new Vector2(.49f,.13f),theme.font_size,ColorOf(theme.muted));screen.pageLabel.alignment=TextAnchor.MiddleCenter;
+            screen.emptyLabel=Label("EmptyInventory","Your satchel is empty. Collect materials to begin.",p,new Vector2(.09f,.4f),new Vector2(.55f,.65f),theme.font_size,ColorOf(theme.muted));screen.emptyLabel.alignment=TextAnchor.MiddleCenter;
+            screen.craftToggle=Button("CraftTab","Craft",p,new Vector2(.72f,.87f),new Vector2(.89f,.96f),theme);
+            screen.itemGrid=p.Find("ItemGrid")?.gameObject;
+            var panel=Rect("CraftPanel",p,new Vector2(.04f,.14f),new Vector2(.59f,.83f),Vector2.zero);screen.craftPanel=panel.gameObject;
+            var viewport=Rect("Viewport",panel,Vector2.zero,Vector2.one,Vector2.zero);viewport.gameObject.AddComponent<RectMask2D>();
+            var scroll=panel.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.horizontal=false;
+            var content=Rect("Recipes",viewport,new Vector2(0,1),Vector2.one,Vector2.zero);content.pivot=new Vector2(.5f,1);screen.craftList=content;scroll.content=content;
+            var layout=content.gameObject.AddComponent<VerticalLayoutGroup>();layout.spacing=8;layout.childControlHeight=true;layout.childForceExpandHeight=false;
+            var fitter=content.gameObject.AddComponent<ContentSizeFitter>();fitter.verticalFit=ContentSizeFitter.FitMode.PreferredSize;
+            var template=Button("RecipeTemplate","Craft",content,Vector2.zero,Vector2.one,theme);template.gameObject.AddComponent<LayoutElement>().preferredHeight=64;template.gameObject.SetActive(false);screen.craftButtonTemplate=template;
+            panel.gameObject.SetActive(false);
         }
         static void ApplyTheme(GameObject root,UITheme theme)
         {

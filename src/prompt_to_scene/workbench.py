@@ -34,7 +34,7 @@ def page():
     source = source.replace(
         '<link rel="stylesheet" href="/studio.css">', "<style>" + styles + "</style>"
     )
-    for name in ("model_viewer.js", "workbench.js", "creations.js"):
+    for name in ("model_viewer.js", "workbench.js", "creations.js", "gameplay.js"):
         script = Path(__file__).with_name(name).read_text(encoding="utf-8")
         source = source.replace(
             f'<script src="/{name}" defer></script>', "<script>" + script + "</script>"
@@ -69,6 +69,10 @@ def image(kind, request_id=None, asset_id=None, view="studio"):
             raise ValueError("Wait for this capture to finish")
     elif kind == "game_image":
         path = Path(image_assets.preview(None, asset_id, request_id)["path"])
+    elif kind == "reuse_candidate":
+        from . import semantics
+
+        _, path = semantics.evidence(None, request_id)
     else:
         raise ValueError("Choose an engine, studio, reference, game_image or example preview")
     if not path.is_file() or path.stat().st_size > 10 * 1024**2:

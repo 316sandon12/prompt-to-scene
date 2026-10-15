@@ -70,6 +70,7 @@ namespace PromptToScene.Editor
             var result=new SceneResult{request_id=a.request_id,scene=Scene.path};
             switch(c.command)
             {
+                case "gameplay": result.development=GameplayFlows.Execute(c); break;
                 case "game_item": case "game_ui": result.development=GameCreations.Execute(c); break;
                 case "interaction": result.development=Configure(a.asset_id,c); break;
                 case "protection": result.development=SceneProtection.Edit(a.asset_id,c); break;

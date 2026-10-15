@@ -42,8 +42,19 @@ All other tool names mentioned below remain callable through game_workflow by th
 For linked items use create_game_item(model_asset_id or one custom model plan): it renders the
 actual model's transparent icon and creates stable native item data + pickup. Keep IDs on updates;
 manual name/description stay unless update_fields names them. creation_workspace lists the links.
-create_game_ui makes editable inventory/HUD/pause native controls and hooks, preserving layout on
-updates; settings/abilities/inventory persistence still need game-specific integration. Use
+create_art_kit builds an original seven-asset apothecary set, matching icons and native UI; choose
+a fresh prefix, reuse its task on interruption, and judge appearance in the real game camera.
+configure_gameplay connects linked items, scene interactions and screens with bounded rules:
+collect/craft/use, costs/rewards, healing, prerequisites, once-only flags and namespaced saves.
+Read gameplay_flows before updating; retain rule IDs and slot to keep progress. Never reset saves
+to change art. project_adapters inspects and binds explicit IGameProjectAdapter components or
+BPI_PTSProjectAdapter actors; do not guess private game fields. External adapters own atomic
+transactions and their game's persistence. create_game_ui makes native inventory/HUD/pause UI,
+including paging (128 items), counts, use/craft actions, responsive layout and navigation. Old UE
+v0.13 screen graphs keep their manual edits; use a new screen ID for the new gameplay controls.
+recommend_assets captures a small native shortlist. Read recommendation_images, actually inspect
+the returned pixels, then save_asset_matches with reuse/adapt/reject and concrete visual reasons.
+reuse_recommendation preserves the original native reference and rejects changed evidence. Use
 art_samples/save_art_sample/art_theme for versioned accepted/avoid references and shared theme.
 view_model/model_view_data provides real orbitable source geometry with approximate materials.
 plan_image_edit defines a normalized rectangle on the latest image; use its source and mask with
@@ -245,8 +256,12 @@ async def game_workflow(
                     word in (t.name + " " + t.description).lower() for word in query.lower().split()
                 )
             ]
-        if operation == "execute" and action in {"review_images", "image_preview"}:
-            images = result["images"] if action == "review_images" else [result]
+        if operation == "execute" and action in {
+            "review_images",
+            "image_preview",
+            "recommendation_images",
+        }:
+            images = [result] if action == "image_preview" else result["images"]
             return [
                 json.dumps(result, ensure_ascii=False),
                 *[Image(path=row["path"]) for row in images],

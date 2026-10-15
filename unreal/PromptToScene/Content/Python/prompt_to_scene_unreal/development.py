@@ -19,6 +19,10 @@ def vec(values, scale=100):
 def execute(request, root):
     c = json.loads(request.get("development_json", "{}"))
     command = c.get("command")
+    if command == "gameplay":
+        from . import gameplay
+
+        return gameplay.execute(request, c, root)
     if command in {"game_item", "game_ui"}:
         from . import game_creations
 

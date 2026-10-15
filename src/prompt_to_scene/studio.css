@@ -248,3 +248,8 @@ th { color: var(--muted); font-weight: 500; font-size: 11px; }
 .sample-card img{width:100%;max-height:180px;object-fit:contain;background:#101518;border-radius:8px;margin-bottom:12px}
 #creationGallery .empty{grid-column:1/-1}#regionEditor{border-top:1px solid #343d3c;margin-top:24px;padding-top:20px}
 @media(max-width:650px){.visual-canvas{height:330px}.theme-swatches{grid-template-columns:repeat(3,1fr)}}
+
+/* Rule authoring needs the full workspace; the original model preview remains in other tabs. */
+body.flow-workspace .workspace-grid { grid-template-columns: 1fr; }
+body.flow-workspace .controls-panel { grid-column: 1; max-height: none; }
+body.flow-workspace .preview-panel, body.flow-workspace .toolbar { display: none; }

@@ -36,6 +36,7 @@ def create_item(
     icon_asset_id=None,
     render_icon=True,
     update_fields=None,
+    place_pickup=True,
 ):
     """Make one linked item: model, transparent icon, native item data and pickup.
 
@@ -44,8 +45,8 @@ def create_item(
     Pass render_icon=False and an existing icon_asset_id to reuse artwork without Blender.
     """
     item_id = core.asset_id(item_id)
-    if type(render_icon) is not bool:
-        raise ValueError("render_icon must be a boolean")
+    if type(render_icon) is not bool or type(place_pickup) is not bool:
+        raise ValueError("render_icon and place_pickup must be booleans")
     fields = update_fields or []
     if not isinstance(fields, list) or set(fields) - {"name", "description"}:
         raise ValueError("update_fields can contain name and description")
@@ -86,6 +87,7 @@ def create_item(
             render_icon=render_icon,
             update_fields=fields,
             expected_revision=(current or {}).get("revision", ""),
+            place_pickup=place_pickup,
         ),
         item_id,
     )
@@ -115,6 +117,7 @@ def run_item(
     render_icon,
     update_fields,
     expected_revision,
+    place_pickup=True,
 ):
     if model is not None:
         job.update(stage="Making item model")
@@ -145,6 +148,7 @@ def run_item(
             name=name,
             description=description,
             update_fields=update_fields,
+            place_pickup=place_pickup,
         )
         job.update(item_payload=payload)
     job.update(stage="Linking native item and pickup")
@@ -163,7 +167,7 @@ def create_ui(
 ):
     """Create/update editable inventory, HUD or pause UI using native engine controls.
 
-    Inventory exposes 16 item slots, details and selection hooks; HUD health/skill setters;
+    Inventory exposes 128 items with 16 visible slots per page; HUD health/skill setters;
     pause UI exposes resume/settings hooks. Existing layout and event edits are retained.
     place adds one owned UI host to the scene. Native game logic can call the public hooks.
     """
@@ -172,8 +176,8 @@ def create_ui(
         raise ValueError("Choose inventory, hud or pause")
     if type(place) is not bool or type(update_theme) is not bool:
         raise ValueError("Screen flags must be booleans")
-    if not isinstance(item_ids or [], list) or len(item_ids or []) > (4 if kind == "hud" else 16):
-        raise ValueError("Choose at most 4 HUD items or 16 inventory items")
+    if not isinstance(item_ids or [], list) or len(item_ids or []) > (4 if kind == "hud" else 128):
+        raise ValueError("Choose at most 4 HUD items or 128 inventory items")
     items = []
     for item in item_ids or []:
         item = core.asset_id(item)

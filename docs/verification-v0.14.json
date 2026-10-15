@@ -1,0 +1,102 @@
+{
+  "version": "0.14.0",
+  "recorded_on": "2026-10-14",
+  "platform": "macOS Apple Silicon",
+  "automated": {
+    "full_suite_passed": 276,
+    "mcp_installed_tools": 3,
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "frozen_gameplay_actions_and_embedded_workbench": "passed",
+    "mcp_full_tools": 69,
+    "documentation_links": "passed"
+  },
+  "native": {
+    "blender": "4.2.0",
+    "unity": "2022.3.62f3c1 Built-in",
+    "unreal": "5.7.2",
+    "art_kit": {
+      "original_models": 7,
+      "rendered_icons": 3,
+      "linked_items": 3,
+      "screen_templates": [
+        "inventory",
+        "hud",
+        "pause"
+      ],
+      "engines": [
+        "unity",
+        "unreal"
+      ]
+    },
+    "both_engines": [
+      "bound pickup rewards",
+      "once-only rule rejection",
+      "atomic crafting and use",
+      "full-health rejection without consuming item",
+      "save and restore inventory, health and completed rules",
+      "invalid or foreign saves retained and overwrite blocked",
+      "20-item pagination",
+      "native use/craft controls",
+      "project adapter transactions and rejected-transaction preservation"
+    ],
+    "unity_checks": [
+      "native keyboard focus",
+      "landscape and portrait layouts",
+      "source geometry and positions checked in actual scene rendering"
+    ],
+    "unreal_checks": [
+      "native HUD health",
+      "pause/resume",
+      "adapter discovery, binding and unbinding",
+      "only installable plugin present; no C++ builder in runtime fixture"
+    ],
+    "drivers": [
+      "../tools/UnityGameplay.cs",
+      "../tools/FixtureProjectAdapter.cs",
+      "../tools/unreal_gameplay_driver.py"
+    ]
+  },
+  "browser": {
+    "rule_editor": "5 saved rules and 3 selected items restored",
+    "recommendation_thumbnails": "3 actual native images",
+    "responsive_widths": [
+      1440,
+      720
+    ],
+    "javascript_errors": 0
+  },
+  "screenshots": [
+    "images/apothecary-scene-v0.14.png",
+    "images/gameplay-workbench-v0.14.png",
+    "images/native-gameplay-unity-v0.14.png",
+    "images/native-gameplay-portrait-v0.14.png",
+    "images/native-gameplay-ue-v0.14.png"
+  ],
+  "local_package": {
+    "name": "Prompt-to-Scene-macos-arm64.zip",
+    "bytes": 26705881,
+    "sha256": "46aaeb724f5f94de1cc588d3d4c9591bba70ac2d4598c19b652cf95646545699",
+    "zip_integrity": "passed",
+    "frozen_mcp": "passed",
+    "embedded_art_source_and_adapter_example": "passed",
+    "frozen_setup_and_bridge_installation": "passed via tools/packaged_smoke.py"
+  },
+  "limitations": [
+    "Native engine checks ran on macOS, not Windows or packaged shipping games.",
+    "Unity render-pipeline verification for this change used Built-in; no new URP/HDRP certification.",
+    "UE templates are saved with 5.7.2; older asset compatibility is unverified.",
+    "Existing UE v0.13 independent widget graphs require a new screen ID; manual graphs are retained.",
+    "Runtime rules target single-player flows in the current scene. Multiplayer and cross-scene lifecycle belong to the game.",
+    "External inventory and health persistence, including consistency with rule completion, belongs to the game adapter.",
+    "The original art kit is a stylized editable example, not a guarantee of final visual quality in every project.",
+    "Asset reuse freshness checks the indexed source file and captured image; it does not track every transitive dependency.",
+    "No paid image service was called and no live Codex/Harness host recertification was performed."
+  ],
+  "cleanup": {
+    "removed": "owned Unity/UE/builder fixtures, temporary previews and logs, build intermediates and unpacked app copies, fixture player data",
+    "approx_bytes_released": 1298227200,
+    "ue_recent_project_entries_removed": 2,
+    "retained": "source, tests, development environment, five final documentation images, previous portfolio and new v0.14 ZIP/checksum"
+  }
+}

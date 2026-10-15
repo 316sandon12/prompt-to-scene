@@ -9,6 +9,16 @@ class PTSTEMPLATEBUILDER_API UPTSTemplateBuilder : public UBlueprintFunctionLibr
     GENERATED_BODY()
 public:
     UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildProjectAdapterExample(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildGameRuleTemplate(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildGameSaveTemplate(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildProjectAdapterInterface(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
+    static UBlueprint* BuildGameSessionTemplate(const FString& PackagePath);
+    UFUNCTION(BlueprintCallable, Category="PromptToScene")
     static UBlueprint* BuildInteractiveTemplate(const FString& PackagePath);
     UFUNCTION(BlueprintCallable, Category="PromptToScene")
     static UBlueprint* BuildWorkshopTemplate(const FString& PackagePath);
