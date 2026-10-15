@@ -28,18 +28,24 @@ def theme(project, settings=None):
     current = core.read_optional_json(path) or {"version": "default", **DEFAULT_THEME}
     if settings is None:
         return current
+    result = validate_theme(settings, current)
+    result.update(version=uuid.uuid4().hex, created_utc=workflow.now())
+    core.atomic_json(folder(project) / "themes" / (result["version"] + ".json"), result)
+    core.atomic_json(path, result)
+    return result
+
+
+def validate_theme(settings, base=None):
+    """Validate a local theme without changing the project default."""
     if not isinstance(settings, dict) or settings.keys() - DEFAULT_THEME.keys():
         raise ValueError("Choose theme colors, font_size and spacing")
-    result = {**current, **settings}
+    result = {**DEFAULT_THEME, **(base or {}), **settings}
     for key in ("background", "surface", "accent", "text", "muted"):
         if not isinstance(result[key], str) or not re.fullmatch(r"#[a-fA-F0-9]{6}", result[key]):
             raise ValueError("Theme colors must be #RRGGBB")
     for key, low, high in (("font_size", 14, 40), ("spacing", 4, 32)):
         if type(result[key]) is not int or not low <= result[key] <= high:
             raise ValueError(f"{key} must be an integer in {low}..{high}")
-    result.update(version=uuid.uuid4().hex, created_utc=workflow.now())
-    core.atomic_json(folder(project) / "themes" / (result["version"] + ".json"), result)
-    core.atomic_json(path, result)
     return result
 
 

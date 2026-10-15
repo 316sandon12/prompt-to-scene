@@ -1,6 +1,8 @@
 # Prompt-to-Scene
 
-**v0.14: coherent art and playable game flows.** An original apothecary set, explicit existing-game adapters, collect/craft/use/save rules, dynamic native inventory and image-backed project asset reuse. [Workflow, examples and limits](docs/GAMEPLAY.zh-CN.md).
+**v0.15 development: from a project request to a playable build.** Durable task plans, three structural art directions, linked updates/undo, native adapter setup, scene travel, save migration and player builds. [Workflow and limits](docs/CONTINUOUS-CREATION.zh-CN.md).
+
+[v0.14 is released](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.14.0); the stable download remains v0.14 until the next release.
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 

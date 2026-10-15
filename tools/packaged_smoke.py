@@ -51,6 +51,7 @@ def main():
                     assert "PTSModelViewer" in resource.contents[0].text
                     assert 'id="creationGallery"' in resource.contents[0].text
                     assert 'id="tab-flows"' in resource.contents[0].text
+                    assert 'id="tab-missions"' in resource.contents[0].text
                     assert (
                         '<link rel="stylesheet" href="/studio.css">'
                         not in resource.contents[0].text
@@ -325,6 +326,7 @@ def main():
                 ("/workbench", b"qualityButton"),
                 ("/workbench.js", b"ui/initialize"),
                 ("/gameplay.js", b"recommendation_images"),
+                ("/creative_tasks.js", b"save_creative_task"),
                 ("/studio.css", b"--accent:"),
             ):
                 with urllib.request.urlopen(origin + route) as response:

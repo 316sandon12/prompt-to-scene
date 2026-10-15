@@ -37,6 +37,43 @@ def execute(request, command, root):
     sessions = [a for a in actors if "PTS.Flow:" + name in map(str, a.tags)]
     if len(sessions) > 1:
         raise ValueError("Keep one session per gameplay flow in the current level")
+    if mode == "attach":
+        saved = read(root / "gameplay" / (name + ".json"))
+        if not saved or saved["revision"] != spec.get("expected_revision"):
+            raise ValueError("Flow changed; inspect it before attaching")
+        session = (
+            sessions[0]
+            if sessions
+            else actions.actors().spawn_actor_from_class(
+                generated(saved["definition_path"]), unreal.Vector()
+            )
+        )
+        session.modify()
+        session.tags = [unreal.Name("PTS.Flow:" + name)]
+        session.set_actor_label(saved["title"] + " · Gameplay")
+        for actor in actors:
+            for rule in saved["rules"]:
+                tags = set(map(str, actor.tags))
+                matches = rule.get("asset_id") and "PTS.Asset:" + rule["asset_id"] in tags
+                matches = (
+                    matches or rule.get("pickup_id") and "PTS.Item:" + rule["pickup_id"] in tags
+                )
+                if matches and prop(actor, "FlowRuleId") is not None:
+                    previous = prop(actor, "FlowSession")
+                    if previous and previous != session:
+                        raise ValueError("Interaction belongs to another flow")
+                    actor.modify()
+                    actor.set_editor_property("FlowSession", session)
+                    actor.set_editor_property("FlowRuleId", rule["rule_id"])
+            if any(
+                "PTS.Screen:" + screen in map(str, actor.tags) for screen in saved["screen_ids"]
+            ):
+                previous = prop(actor, "FlowId", "")
+                if previous and previous != name:
+                    raise ValueError("UI belongs to another flow")
+                actor.modify()
+                actor.set_editor_property("FlowId", name)
+        return result(saved, "Existing gameplay flow attached to this level")
     if mode != "configure":
         interface = generated(TEMPLATES + "BPI_PTSProjectAdapter")
         candidates = [
@@ -241,6 +278,10 @@ def execute(request, command, root):
         "CraftRules": [r["rule_id"] for r in rules if r["trigger"] == "craft"],
         "ItemIds": ids,
         "Autosave": spec["autosave"],
+        "PersistOnTravel": spec.get("persist_on_travel", True),
+        "SaveVersion": spec.get("save_version", 1),
+        "ItemAliases": {r["from_id"]: r["to_id"] for r in spec.get("item_aliases", [])},
+        "RuleAliases": {r["from_id"]: r["to_id"] for r in spec.get("rule_aliases", [])},
     }
     defaults = unreal.get_default_object(cls)
     for key, value in values.items():

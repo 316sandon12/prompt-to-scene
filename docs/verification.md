@@ -1,5 +1,9 @@
 # Verification
 
+## v0.15 development — recorded on 2026-10-15
+
+See [the machine-readable evidence](verification-v0.15.json) and [the complete workflow/limits](CONTINUOUS-CREATION.zh-CN.md). Native Unity/UE tests cover actual linked edits and undo, generated Unity adapter compilation/binding, UE interface binding, old-save migration and cross-scene play. Mac player builds are launched separately; this does not certify native Windows engines.
+
 ## v0.13.0 — recorded on 2026-10-14
 
 Environment: macOS Apple Silicon, Blender 4.2.0, Unity 2022.3.62f3c1 Built-in,

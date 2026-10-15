@@ -9,6 +9,7 @@
   let activeTab = "creations", taskFilter = "all", previewSequence = 0, previewIsExample = true;
   const previewCache = new Map();
   const tabs = {
+    missions: ["CREATE / CONTINUE", "开发任务", "从需求出发，把下一步做到游戏里。"],
     flows: ["BUILD / GAMEPLAY", "玩法与套件", "让美术、物品和游戏规则一起工作。"],
     creations: ["CREATE / WORKSPACE", "我的作品", "描述、查看、修改，让作品走进游戏。"],
     samples: ["REFINE / ART LIBRARY", "美术样本", "记住每一次选择，让新作品延续同一种风格。"],
@@ -322,7 +323,7 @@
   function selectTab(name) {
     if (!tabs[name]) return;
     activeTab = name;
-    document.body.classList.toggle("flow-workspace", name === "flows");
+    document.body.classList.toggle("flow-workspace", ["flows","missions"].includes(name));
     if(name === "pipeline" && snapshot.target && !$("profileDestination").value) call("profile").then(fillProfile).catch(e => notice(e.message,true));
     document.querySelectorAll("[data-tab]").forEach(tab => {
       const selected = tab.dataset.tab === name;
@@ -677,7 +678,7 @@
     document.querySelectorAll(".localOnly").forEach(node => {node.hidden=embedded;});
     document.querySelectorAll(".inlineOnly").forEach(node => {node.hidden=!embedded;});
     if (embedded) {
-      const initialized = await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.14.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
+      const initialized = await rpc("ui/initialize", {appInfo:{name:"Prompt-to-Scene",version:"0.15.0"},appCapabilities:{},protocolVersion:"2026-01-26"});
       hostCapabilities = initialized?.hostCapabilities || {};
       notify("ui/notifications/initialized", {});
       new ResizeObserver(() => notify("ui/notifications/size-changed",{height:Math.min(900,document.documentElement.scrollHeight)})).observe(document.body);

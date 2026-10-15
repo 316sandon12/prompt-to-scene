@@ -16,6 +16,7 @@ namespace PromptToScene
         public float heal;
         public bool once;
     }
+    [Serializable] public class SaveAlias { public string from_id, to_id; }
     [Serializable] public class GameFlowSpec
     {
         public int schema_version;
@@ -24,7 +25,9 @@ namespace PromptToScene
         public ItemQuantity[] initial_inventory = new ItemQuantity[0];
         public GameRule[] rules = new GameRule[0];
         public float max_health = 100, initial_health = 100;
-        public bool autosave = true;
+        public bool autosave = true, persist_on_travel = true;
+        public int save_version = 1;
+        public SaveAlias[] item_aliases = new SaveAlias[0], rule_aliases = new SaveAlias[0];
     }
 
     // Existing games implement this on one component. TryCommit must be all-or-nothing.
