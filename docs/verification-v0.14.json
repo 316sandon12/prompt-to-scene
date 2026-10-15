@@ -98,5 +98,28 @@
     "approx_bytes_released": 1298227200,
     "ue_recent_project_entries_removed": 2,
     "retained": "source, tests, development environment, five final documentation images, previous portfolio and new v0.14 ZIP/checksum"
+  },
+  "release": {
+    "url": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.14.0",
+    "source_commit": "d87a619",
+    "workflow": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38735331950",
+    "ci_platforms": [
+      "macOS arm64",
+      "Windows x64"
+    ],
+    "ci_tests_per_os": 276,
+    "frozen_setup_and_bridge_installation": "passed on both CI platforms",
+    "downloads": {
+      "Prompt-to-Scene-windows-x64.zip": {
+        "bytes": 36568832,
+        "sha256": "683b946cbe04e94b32e9f6e39732c6db6c02e179b63e8954d2c892226f4689ad",
+        "checksum_matched": true
+      },
+      "Prompt-to-Scene-macos-arm64.zip": {
+        "bytes": 25523501,
+        "sha256": "ed736d82b0d994f63a3bef75318d3a6f040ec912ab3238a61569a1330ddc26ea",
+        "checksum_matched": true
+      }
+    }
   }
 }
