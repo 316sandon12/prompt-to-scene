@@ -61,7 +61,11 @@ UE 使用 `BPI_PTSProjectAdapter` 的 `ReadQuantity`、`ReadHealth`、`CommitGam
 
 成功交付后移除本任务的暂存副本，保留运行文件、收据和必要日志；清理按钮可删除该任务的构建日志。源码、插件依赖、撤销数据和其他项目缓存不在清理范围内。
 
+Windows／macOS 开发版工具包已通过[构建与打包后启动检查](https://github.com/316sandon12/prompt-to-scene/actions/runs/38747786875)，可从该运行的 Artifacts 获取。
+
 验证范围与限制见 [v0.15 验证记录](verification-v0.15.json)。目前原生编辑器与运行包验证在 Mac 上完成；Windows 的工具包构建检查不能代替 Windows 原生引擎验证。UE 模板保存版本是 5.7.2；较旧版本、HDRP、联网存档和任意第三方系统的适配未在此版本中认证。
+
+本次 UE Mac 编辑器在功能验证完成、记录退出后，曾产生 Slate／ICU 析构崩溃报告。诊断摘要已保留，根因尚未确认；玩法与独立运行包启动通过，不等于编辑器退出完全无异常。
 
 ## 维护者复现
 

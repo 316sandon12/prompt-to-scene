@@ -95,6 +95,12 @@
           "engine_initialized": true,
           "runtime_errors": 0
         }
+      },
+      "editor_shutdown": {
+        "quit_requested_and_exit_logged": true,
+        "post_exit_crash_observed": true,
+        "stack": "macOS allocator abort through ubidi_close_64, FICUTextBiDi, FSlateTextLayout and FTSTicker destruction",
+        "scope": "Observed after all native checks and editor LogExit: Exiting. No plugin frame in the retained top stack; root cause not established."
       }
     },
     "drivers": [
@@ -126,6 +132,48 @@
     "UE persist_on_travel writes bridge progress on level transition even when per-rule autosave is disabled.",
     "Three art sets are editable authored examples, not a general text-to-3D model or guaranteed art quality.",
     "No paid image service call or new live Codex/DeepSeek Harness host certification was performed.",
-    "Packaged game sizes include engine data and are separate from the small plugin download."
-  ]
+    "Packaged game sizes include engine data and are separate from the small plugin download.",
+    "The UE Mac editor produced a Slate/ICU destruction crash report after logging normal exit; this iteration does not certify a clean editor shutdown. Native gameplay assertions and the standalone player startup passed before exit."
+  ],
+  "cleanup": {
+    "removed": "task-owned Unity/UE/builder projects, test player builds, temporary source copies, debug images/logs, duplicate v0.14 release downloads, task pytest fixtures, matching fixture save/analytics and its UE crash report",
+    "allocated_bytes_removed": 7840739328,
+    "observed_free_space_increase_bytes": 7551569920,
+    "recent_ue_project_entries_removed": 2,
+    "processes": "Unity test editor exited via its driver; UE already exited; both test UI servers stopped; no task-owned engine or player left running",
+    "retained": "source/tests, development dependencies, prior portfolio/release artifacts, one final v0.15 documentation image and compact evidence; shared engine caches untouched"
+  },
+  "ci": {
+    "source_commit": "b4acfebd50da7dcd41442ac5017189fcffd519fe",
+    "pull_request": "https://github.com/316sandon12/prompt-to-scene/pull/2",
+    "python_and_mcp": {
+      "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38747689375",
+      "status": "passed",
+      "tests": 286
+    },
+    "portable_apps": {
+      "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38747786875",
+      "status": "passed",
+      "platforms": [
+        "Windows x64",
+        "macOS arm64"
+      ],
+      "tests_per_platform": 286,
+      "frozen_mcp_and_embedded_workbench": "passed",
+      "frozen_setup_and_bridge_installation": "passed",
+      "published_release": false,
+      "artifacts": [
+        {
+          "name": "portable-Windows",
+          "id": 11979832724,
+          "ci_archive_bytes": 36673760
+        },
+        {
+          "name": "portable-macOS",
+          "id": 11979627644,
+          "ci_archive_bytes": 25606151
+        }
+      ]
+    }
+  }
 }
