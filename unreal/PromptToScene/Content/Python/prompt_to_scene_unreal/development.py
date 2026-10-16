@@ -19,6 +19,14 @@ def vec(values, scale=100):
 def execute(request, root):
     c = json.loads(request.get("development_json", "{}"))
     command = c.get("command")
+    if command == "adapter_wizard":
+        from . import project_adapters
+
+        return project_adapters.execute(request, c, root)
+    if command == "delivery":
+        from . import delivery
+
+        return delivery.execute(request, c, root)
     if command == "gameplay":
         from . import gameplay
 

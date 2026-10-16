@@ -1,0 +1,229 @@
+{
+  "version": "0.15.0-development",
+  "recorded_on": "2026-10-15",
+  "platform": "macOS Apple Silicon",
+  "stable_release": "https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.14.0",
+  "automated": {
+    "full_suite_passed": 286,
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "skill_validation": "passed",
+    "regressions": [
+      "task context freshness and idempotent resume",
+      "linked dependency conflicts and shared icons",
+      "adapter public-API selection",
+      "save alias validation",
+      "owned cleanup preserves player",
+      "Unity build receipt preserves native path",
+      "UE requires actual game executable and retained data",
+      "player launch rejects unowned paths"
+    ]
+  },
+  "native": {
+    "blender": "4.2.0",
+    "art": {
+      "actual_direction_previews": [
+        "forest_apothecary",
+        "wasteland_workshop",
+        "orbital_workshop"
+      ],
+      "views_per_direction": [
+        "studio",
+        "front",
+        "back"
+      ],
+      "full_sets": {
+        "unity": "orbital_workshop",
+        "unreal": "wasteland_workshop"
+      },
+      "models_per_set": 7,
+      "icons_per_set": 3,
+      "ui_templates": [
+        "inventory",
+        "hud",
+        "pause"
+      ],
+      "comparison": "Actual Blender geometry in a common studio frame; not a generated illustration or beauty score"
+    },
+    "unity": {
+      "version": "Unity 2022.3.62f3c1 Built-in",
+      "linked_update_and_single_update_undo": true,
+      "original_icon_restored": true,
+      "typed_adapter_compiled_and_bound": true,
+      "rejected_atomic_transaction_preserved_state": true,
+      "old_item_and_rule_id_migration": true,
+      "old_save_backup": true,
+      "actual_scene_travel_without_autosave": true,
+      "player": {
+        "platform": "StandaloneOSX",
+        "build_guid": "801009035c4e43b486448fec62ced123",
+        "bytes": 224741963,
+        "warnings": 1,
+        "scenes": [
+          "Assets/ContinuousA.unity",
+          "Assets/ContinuousB.unity"
+        ],
+        "built": true,
+        "startup": {
+          "passed": true,
+          "observed_seconds": 8,
+          "gameplay_verified_in_editor": true,
+          "exit_before_stop": null
+        }
+      }
+    },
+    "unreal": {
+      "version": "UE 5.7.2",
+      "normal_installable_plugin_only": true,
+      "legacy_native_gameplay_and_ui_regression": true,
+      "selected_interface_adapter_inspected_and_bound": true,
+      "old_item_and_rule_id_migration": true,
+      "before_version_save_backup": true,
+      "actual_level_travel": true,
+      "player": {
+        "platform": "Mac",
+        "bytes": 2367189685,
+        "maps": [
+          "/Game/GameplayFixture",
+          "/Game/ContinuousB"
+        ],
+        "built": true,
+        "actual_staged_executable_and_adjacent_data": true,
+        "startup": {
+          "passed": true,
+          "map": "/Game/GameplayFixture",
+          "engine_initialized": true,
+          "runtime_errors": 0
+        }
+      },
+      "editor_shutdown": {
+        "quit_requested_and_exit_logged": true,
+        "post_exit_crash_observed": true,
+        "stack": "macOS allocator abort through ubidi_close_64, FICUTextBiDi, FSlateTextLayout and FTSTicker destruction",
+        "scope": "Observed after all native checks and editor LogExit: Exiting. No plugin frame in the retained top stack; root cause not established."
+      }
+    },
+    "drivers": [
+      "../tools/UnityContinuous.cs",
+      "../tools/FixtureInventory.cs",
+      "../tools/continuous_smoke.py",
+      "../tools/unreal_continuous_driver.py",
+      "../tools/continuous_unreal_smoke.py"
+    ]
+  },
+  "browser": {
+    "viewports": [
+      390,
+      768,
+      1440
+    ],
+    "consoleErrors": [],
+    "directions": 3,
+    "linkedParts": true,
+    "real_direction_images_loaded": 3,
+    "screenshot": "images/continuous-workspace-v0.15.png"
+  },
+  "limitations": [
+    "Native engine and standalone player checks ran on macOS; Windows portable-tool checks do not certify Windows engines.",
+    "Gameplay/migration/travel were verified in editor play. Standalone Mac players were built and started; a complete packaged gameplay playthrough is not claimed.",
+    "UE templates are saved with 5.7.2. Earlier UE and Unity HDRP are unverified.",
+    "Unity adapter generation requires supported public typed atomic APIs. UE creates an editable BPI starter and binds implemented interfaces; it does not rewrite arbitrary Blueprint graphs.",
+    "External game inventory/health saves remain owned by the game. Networked persistence is not covered.",
+    "UE persist_on_travel writes bridge progress on level transition even when per-rule autosave is disabled.",
+    "Three art sets are editable authored examples, not a general text-to-3D model or guaranteed art quality.",
+    "No paid image service call or new live Codex/DeepSeek Harness host certification was performed.",
+    "Packaged game sizes include engine data and are separate from the small plugin download.",
+    "The UE Mac editor produced a Slate/ICU destruction crash report after logging normal exit; this iteration does not certify a clean editor shutdown. Native gameplay assertions and the standalone player startup passed before exit."
+  ],
+  "cleanup": {
+    "removed": "task-owned Unity/UE/builder projects, test player builds, temporary source copies, debug images/logs, duplicate v0.14 release downloads, task pytest fixtures, matching fixture save/analytics and its UE crash report",
+    "allocated_bytes_removed": 7840739328,
+    "observed_free_space_increase_bytes": 7551569920,
+    "recent_ue_project_entries_removed": 2,
+    "processes": "Unity test editor exited via its driver; UE already exited; both test UI servers stopped; no task-owned engine or player left running",
+    "retained": "source/tests, development dependencies, prior portfolio/release artifacts, one final v0.15 documentation image and compact evidence; shared engine caches untouched"
+  },
+  "ci": {
+    "source_commit": "b4acfebd50da7dcd41442ac5017189fcffd519fe",
+    "pull_request": "https://github.com/316sandon12/prompt-to-scene/pull/2",
+    "python_and_mcp": {
+      "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38747689375",
+      "status": "passed",
+      "tests": 286
+    },
+    "portable_apps": {
+      "url": "https://github.com/316sandon12/prompt-to-scene/actions/runs/38747786875",
+      "status": "passed",
+      "platforms": [
+        "Windows x64",
+        "macOS arm64"
+      ],
+      "tests_per_platform": 286,
+      "frozen_mcp_and_embedded_workbench": "passed",
+      "frozen_setup_and_bridge_installation": "passed",
+      "published_release": false,
+      "artifacts": [
+        {
+          "name": "portable-Windows",
+          "id": 11979832724,
+          "ci_archive_bytes": 36673760
+        },
+        {
+          "name": "portable-macOS",
+          "id": 11979627644,
+          "ci_archive_bytes": 25606151
+        }
+      ]
+    }
+  },
+  "studio_ui": {
+    "recorded_on": "2026-10-16",
+    "scope": "Gallery homepage, contextual creation canvas, shared setup/project/task styling and MCP App",
+    "browser_regression": "passed: node tools/ui_smoke.cjs",
+    "browser": "installed Chrome, Playwright headless on macOS",
+    "viewports": [
+      320,
+      390,
+      768,
+      1024,
+      1440
+    ],
+    "checks": [
+      "read-only gallery, search and category filters",
+      "existing artwork ID in modification handoff",
+      "explicit model geometry loading and part selection",
+      "image region coordinates and native UI configuration",
+      "all 15 tools under five primary areas",
+      "task status filters and error feedback",
+      "late project response cannot replace new project canvas",
+      "material adaptation preview keeps project controls visible",
+      "expanded canvas and keyboard navigation",
+      "standalone and self-contained MCP App scripts",
+      "setup page and connection hash retained"
+    ],
+    "python_affected_tests": 83,
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "images": [
+      "docs/images/gallery-v0.15.png",
+      "docs/images/canvas-v0.15.png"
+    ],
+    "image_provenance": "Product UI screenshots with simulated API records and existing repository artwork; not native engine execution evidence.",
+    "native_engines_rerun": false,
+    "portable_apps_rebuilt": false,
+    "note": "Earlier native and portable-app evidence above belongs to the recorded pre-UI revision, not a newly packaged UI build.",
+    "cleanup": {
+      "removed_bytes": 9274956,
+      "items": [
+        "temporary UI scripts and duplicate screenshots",
+        "owned Python test fixture directories"
+      ],
+      "retained": [
+        "two documentation screenshots",
+        "browser regression source",
+        "compact verification record"
+      ],
+      "processes": "browser and local fixture server closed"
+    }
+  }
+}

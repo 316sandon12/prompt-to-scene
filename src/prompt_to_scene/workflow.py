@@ -444,4 +444,13 @@ def restore(project, name, revision=None):
         collider=request.get("collider", True),
         recipe=metadata.get("recipe"),
         provenance=metadata.get("provenance"),
+        preparation={
+            **(metadata.get("preparation") or {}).get("settings", {}),
+            "ground": False,
+            "target_size": None,
+            "unit_scale": 1.0,
+            "up_axis": "auto",
+        }
+        if metadata.get("preparation")
+        else None,
     )

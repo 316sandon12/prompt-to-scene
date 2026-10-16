@@ -210,6 +210,7 @@ class Handler(BaseHTTPRequestHandler):
             "/workbench.js",
             "/creations.js",
             "/gameplay.js",
+            "/creative_tasks.js",
             "/model_viewer.js",
             "/studio.css",
         } and self.headers.get("Host") == "127.0.0.1:" + str(self.server.server_port):
@@ -343,7 +344,7 @@ def main():
 
     start_watcher()
     with Server() as server:
-        url = server.origin + "/#" + server.token
+        url = server.origin + "/workbench#" + server.token
         if os.environ.get("PTS_SETUP_URL_FILE"):
             Path(os.environ["PTS_SETUP_URL_FILE"]).write_text(url)
         if "--no-browser" not in sys.argv:

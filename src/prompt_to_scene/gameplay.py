@@ -41,6 +41,10 @@ def validate(settings):
         "autosave",
         "slot",
         "screen_ids",
+        "save_version",
+        "item_aliases",
+        "rule_aliases",
+        "persist_on_travel",
     }:
         raise ValueError("Unknown gameplay setting")
     settings = deepcopy(settings)
@@ -146,7 +150,29 @@ def validate(settings):
     autosave = settings.get("autosave", True)
     if type(autosave) is not bool:
         raise ValueError("autosave must be a boolean")
+    aliases = {}
+    for key, allowed in (("item_aliases", set(items)), ("rule_aliases", known)):
+        rows = settings.get(key, [])
+        if not isinstance(rows, list) or len(rows) > 128:
+            raise ValueError("Use at most 128 save aliases")
+        mapping = {}
+        for row in rows:
+            if not isinstance(row, dict) or row.keys() != {"from_id", "to_id"}:
+                raise ValueError("Save aliases need from_id and to_id")
+            old, new = core.asset_id(row["from_id"]), core.asset_id(row["to_id"])
+            if old in mapping or old == new or new not in allowed or old in allowed:
+                raise ValueError("Alias an obsolete ID to one current ID")
+            mapping[old] = new
+        if len(set(mapping.values())) != len(mapping):
+            raise ValueError("Use distinct alias destinations to avoid ambiguous save merges")
+        aliases[key] = [dict(from_id=k, to_id=v) for k, v in mapping.items()]
+    travel = settings.get("persist_on_travel", True)
+    if type(travel) is not bool:
+        raise ValueError("persist_on_travel must be a boolean")
     return dict(
+        save_version=_integer(settings.get("save_version", 1), "save_version", 1, 10000),
+        persist_on_travel=travel,
+        **aliases,
         title=game_art.text(settings.get("title", "Gameplay"), "title", 120),
         item_ids=items,
         initial_inventory=_counts(
@@ -184,6 +210,14 @@ def configure(project, flow_id, settings, expected_revision=None):
     previous = core.read_optional_json(root / "gameplay" / (flow_id + ".json")) or {}
     if expected_revision is not None and expected_revision != previous.get("revision", ""):
         raise ValueError("Gameplay changed; refresh the flow before updating")
+    if settings["save_version"] < previous.get("save_version", 1):
+        raise ValueError("Save version cannot go backwards")
+    if (
+        previous
+        and any(settings[k] != previous.get(k, []) for k in ("item_aliases", "rule_aliases"))
+        and settings["save_version"] <= previous.get("save_version", 1)
+    ):
+        raise ValueError("Increase save_version when changing migration aliases")
     for item in settings["item_ids"]:
         if not (root / "game-items" / (item + ".json")).is_file():
             raise ValueError("Create the linked game item first: " + item)
@@ -264,4 +298,23 @@ def evaluate(settings, state, rule_id, capacities=None):
             health=min(config["max_health"], health + rule["heal"]),
             completed=sorted(completed | {rule_id}),
         ),
+    )
+
+
+def attach(project, flow_id):
+    """Attach an existing flow to the active scene, binding only matching present objects/UI.
+
+    Keeps the definition, rule IDs and save namespace. Unity shares session state in memory;
+    UE persists during level travel when persist_on_travel is enabled. External adapters own
+    their inventory persistence and must be present/bound in each scene as needed.
+    """
+    name = core.asset_id(flow_id)
+    row = core.read_optional_json(game_art.root(project) / "gameplay" / (name + ".json"))
+    if not row:
+        raise ValueError("Create the gameplay flow first")
+    return development.request(
+        project,
+        "gameplay",
+        mode="attach",
+        content_json=json.dumps(dict(flow_id=name, expected_revision=row["revision"])),
     )

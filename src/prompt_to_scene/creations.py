@@ -163,7 +163,14 @@ def run_item(
 
 
 def create_ui(
-    project, screen_id, kind="inventory", item_ids=None, title="", place=True, update_theme=False
+    project,
+    screen_id,
+    kind="inventory",
+    item_ids=None,
+    title="",
+    place=True,
+    update_theme=False,
+    theme=None,
 ):
     """Create/update editable inventory, HUD or pause UI using native engine controls.
 
@@ -198,7 +205,7 @@ def create_ui(
         expected_revision=(current or {}).get("revision", ""),
         item_ids=items,
         title=game_art.text(title, "title", 120),
-        theme=art_samples.theme(project),
+        theme=art_samples.theme(project) if theme is None else art_samples.validate_theme(theme),
         place=place,
         update_theme=update_theme,
     )

@@ -3,13 +3,13 @@
   <meta charset="utf-8" /><meta
     name="viewport"
     content="width=device-width,initial-scale=1"
-  /><title>Prompt-to-Scene · Setup</title>
+  /><title>Prompt-to-Scene · 连接与设置</title>
   <script src="/workshop.js" defer></script>
   <link rel="stylesheet" href="/studio.css" />
   <body class="setup-app">
   <main>
     <header>
-<a id="workbenchLink" class="button-link primary" href="/workbench">进入创作工作台 →</a>
+<a id="workbenchLink" class="button-link primary" href="/workbench">返回作品展廊 →</a>
       <div>
         <div class="steps">CONNECT YOUR WORKSPACE</div>
         <h1>连接你的创作环境</h1>
@@ -24,12 +24,12 @@
         选择一次即可。工具会安装所需的引擎桥接组件，并保留旧版备份。
       </p>
       <div class="row">
-        <select id="projects" class="grow">
+        <select id="projects" class="grow" aria-label="选择游戏项目">
           <option value="">选择已发现的项目…</option></select
         ><button id="pickProject">浏览项目…</button>
       </div>
       <input
-        id="project"
+        id="project" aria-label="项目路径"
         placeholder="也可以粘贴 Unity 项目文件夹或 UE .uproject 路径"
         style="margin-top: 10px"
       />
@@ -38,7 +38,7 @@
         <summary>Blender 或其他高级设置</summary>
         <div class="row">
           <input
-            id="blender"
+            id="blender" aria-label="Blender 可执行文件"
             class="grow"
             placeholder="Blender 可执行文件（自动检测）"
           /><button id="pickBlender">选择 Blender…</button>
@@ -70,7 +70,7 @@
         <div>
           <h3>DeepSeek Harness</h3>
           <div class="row">
-            <select id="profile" class="grow"></select
+            <select id="profile" class="grow" aria-label="Harness 配置"></select
             ><button id="installHarness">安装 Harness 插件</button>
           </div>
         </div>
@@ -100,8 +100,8 @@
       </p>
     </section>
     <section>
-      <h2>3 · 先放一个木箱，再自由创作</h2>
-      <p>保持引擎打开，退出游戏运行状态。点击下方按钮即可验证整个流程。</p>
+      <h2>3 · 试一件作品（可选）</h2>
+      <p>保持引擎打开，退出游戏运行状态。需要体验导入时，可以制作一个示例木箱。</p>
       <div class="row">
         <button id="demo" class="primary">生成示例木箱</button
         ><button id="inspect">查看当前选中对象</button

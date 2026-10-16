@@ -471,7 +471,7 @@ wheels = [
 
 [[package]]
 name = "prompt-to-scene"
-version = "0.14.0"
+version = "0.15.0"
 source = { editable = "." }
 dependencies = [
     { name = "mcp" },

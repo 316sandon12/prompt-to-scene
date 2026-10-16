@@ -5,6 +5,21 @@ description: Create styled Blender models, linked game items, native game UI and
 
 Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose three entrypoints: `game_workflow`, `open_workbench`, `workbench_action`. They share sources, task state, project context and designs. The connected host supplies language understanding and vision; the local app has no separate chat model.
 
+## Project-level tasks and continuous iteration (v0.15)
+
+For a request spanning assets, UI and gameplay, use `task_context(request=..., inspect_scene=true)`.
+Wait for its native scene task and use the actual project context and saved visual samples. Save a
+concrete plan with `save_creative_task`: each step has a unique `id`, supported `action`, exact
+`values` from describe, and a short `reason`. Save only genuinely unresolved decisions in
+`questions`. A changed project invalidates the context token; refresh before revising the plan.
+When the user has asked to complete the work, execute the explained plan with `execute_creative_task`
+without adding a new approval per step. A discussion-only request stops at the plan. Resume the
+same parent after errors; completed native work and synchronous reuse results are retained.
+
+For the new directions, dependency edits, project-system wizard, scene travel, save migration or
+player delivery, read [continuous creation](references/continuous.md). Simple single-asset work
+can still use the direct actions below.
+
 ## One request to a usable game asset
 
 1. Inspect the connected project using `game_workflow(operation="execute", action="context")`. If unconfigured, describe and execute `list_projects` / `connect_project` through the same gateway. Do not switch projects just because another editor is open. Blender is required for model creation, not image/UI artwork; UE needs one restart after bridge installation.
@@ -35,10 +50,10 @@ source model; the source is retained. Read `creation_workspace` for actual nativ
 HUD (health + four icon slots), or pause (resume/settings hooks). Supply existing `item_ids`, a
 stable `screen_id`, and `title` on first creation. Text remains native and editable. Existing layout,
 title and event edits are preserved; `update_theme=true` intentionally updates managed colors.
-Inventory contents are a configured item catalog, with example pickup counts in Unity; integrate
-UE pickup ItemData/OnInteracted and UI hooks with the game's inventory/abilities. Settings is an
+Inventory contents are a configured item catalog; `configure_gameplay` provides dynamic
+counts/crafting/use, or bind the game's own inventory through the adapter wizard. Settings is an
 integration hook, not a finished settings system. Demo I / Esc input can be disabled on the native
-component/host. Avoid claiming arbitrary menu generation, save systems or complete gameplay.
+component/host. Avoid claiming arbitrary menu generation or complete game systems beyond these contracts.
 
 Use `view_model` then `model_view_data` for real orbitable source geometry and named part picking.
 Materials are approximate in the workbench; inspect native rendering for final appearance. Clicking

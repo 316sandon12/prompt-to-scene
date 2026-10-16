@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prompt-to-scene"
-version = "0.14.0"
+version = "0.15.0"
 description = "An MCP workflow for AI-authored models and game images in Unity and Unreal."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -38,6 +38,7 @@ packages = ["src/prompt_to_scene"]
 "plugins/shared" = "prompt_to_scene/resources/plugins/shared"
 "examples/herbalist_potion.py" = "prompt_to_scene/resources/examples/herbalist_potion.py"
 "examples/forest_apothecary.py" = "prompt_to_scene/resources/examples/forest_apothecary.py"
+"examples/industrial_workshop.py" = "prompt_to_scene/resources/examples/industrial_workshop.py"
 "examples/images" = "prompt_to_scene/resources/examples/images"
 "docs/images/authoring-chair.png" = "prompt_to_scene/resources/docs/images/authoring-chair.png"
 

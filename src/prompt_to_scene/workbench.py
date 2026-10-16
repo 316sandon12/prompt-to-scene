@@ -34,7 +34,13 @@ def page():
     source = source.replace(
         '<link rel="stylesheet" href="/studio.css">', "<style>" + styles + "</style>"
     )
-    for name in ("model_viewer.js", "workbench.js", "creations.js", "gameplay.js"):
+    for name in (
+        "model_viewer.js",
+        "workbench.js",
+        "creations.js",
+        "gameplay.js",
+        "creative_tasks.js",
+    ):
         script = Path(__file__).with_name(name).read_text(encoding="utf-8")
         source = source.replace(
             f'<script src="/{name}" defer></script>', "<script>" + script + "</script>"
