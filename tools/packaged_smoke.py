@@ -316,7 +316,12 @@ def main():
                 if child.poll() is not None or time.monotonic() > deadline:
                     raise RuntimeError("Packaged setup failed to launch")
                 time.sleep(0.1)
-            origin, token = (home / "url.txt").read_text().split("/#")
+            from urllib.parse import urlsplit
+
+            landing = urlsplit((home / "url.txt").read_text())
+            origin = landing.scheme + "://" + landing.netloc
+            token = landing.fragment
+            assert landing.path == "/workbench"
             with urllib.request.urlopen(origin) as response:
                 assert b"Prompt-to-Scene" in response.read()
             with urllib.request.urlopen(origin + "/workshop.js") as response:

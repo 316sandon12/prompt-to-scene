@@ -344,7 +344,7 @@ def main():
 
     start_watcher()
     with Server() as server:
-        url = server.origin + "/#" + server.token
+        url = server.origin + "/workbench#" + server.token
         if os.environ.get("PTS_SETUP_URL_FILE"):
             Path(os.environ["PTS_SETUP_URL_FILE"]).write_text(url)
         if "--no-browser" not in sys.argv:

@@ -7,6 +7,13 @@
   let organizationPlan = null;
   let hostCapabilities = {};
   let activeTab = "creations", taskFilter = "all", previewSequence = 0, previewIsExample = true;
+  let canvasContext = null, canvasEpoch = 0, noticeTimer;
+  const groups = {
+    create: ["creations", "generate", "images", "edit", "review", "performance"],
+    scene: ["compose", "level", "gameplay", "flows"],
+    tasks: ["missions"],
+    project: ["samples", "library", "organizer", "pipeline"]
+  };
   const previewCache = new Map();
   const tabs = {
     missions: ["CREATE / CONTINUE", "开发任务", "从需求出发，把下一步做到游戏里。"],
@@ -34,7 +41,15 @@
     return result;
   }
   async function ensureGameArt() { if ($("gameContext").dataset.dirty) await saveGameArt(); }
-  function notice(message, error = false) { $("notice").textContent = message; $("notice").classList.toggle("error", error); }
+  function notice(message, error = false) {
+    clearTimeout(noticeTimer);
+    $("notice").textContent = message;
+    $("notice").classList.toggle("error", error);
+    $("notice").setAttribute("role", error ? "alert" : "status");
+    $("noticeToast").hidden = !message;
+    if (!error) noticeTimer = setTimeout(() => { $("noticeToast").hidden = true; }, 9000);
+  }
+  $("dismissNotice").onclick = () => { clearTimeout(noticeTimer); $("noticeToast").hidden = true; };
   function rpc(method, params = {}) {
     return new Promise((resolve, reject) => {
       const id = ++seq;
@@ -124,6 +139,17 @@
     return previewCache.get(key);
   }
   async function showImage(values, caption, append = false) {
+    if (document.body.dataset.view === "project" && activeTab !== "organizer") document.body.classList.add("project-preview");
+    else if (!["create", "scene"].includes(document.body.dataset.view) || document.body.classList.contains("flow-workspace")) {
+      const kind = {game_image:"image", studio:"model"}[values.kind];
+      openCanvas(kind && values.asset_id ? {kind,id:values.asset_id,title:values.asset_id,revision:values.request_id} : null);
+      if (!kind || !values.asset_id) {
+        $("canvasTitle").textContent = "任务结果预览";
+        $("inspectorTitle").textContent = "结果预览";
+        $("inspectorDescription").textContent = "继续修改时，从作品展廊打开对应作品。";
+        for (const name of ["creationComposer", "creationAdvanced", "exampleDetails", "itemDetails", "screenDetails"]) $(name).hidden = true;
+      }
+    }
     const sequence = append ? previewSequence : ++previewSequence;
     const data = await cachedImage(values);
     if (sequence !== previewSequence) return;
@@ -138,8 +164,6 @@
     $("previewMeta").textContent = img.classList.contains("alphaPreview") ? "棋盘格表示透明" : values.kind === "engine" ? "当前引擎画面" : "原始渲染图";
   }
   async function showExample() {
-    const item=snapshot.creations?.["game-items"]?.[0];
-    if(activeTab==="creations" && item){await showImage({kind:"game_image",asset_id:item.icon_asset_id,request_id:item.icon_revision},item.name+" · 当前作品");return;}
     const isImage = activeTab === "images";
     await showImage({kind:"example", view:isImage ? "image" : "model"}, isImage ? "治疗药水 · AI 生成的透明图标示例" : "薄荷阅读椅 · Blender 实际渲染示例");
   }
@@ -162,9 +186,11 @@
     output(task); notice("已显示真实引擎对照。检查外观后，可继续具体的部件修复。");
   }
   async function loadAsset() {
-    const name = $("asset").value; selectionAvailability();
+    const name = $("asset").value, project = snapshot.active; selectionAvailability();
     if (!name) { currentAsset = null; $("part").replaceChildren(option("", "先选择资产")); return; }
-    currentAsset = await call("inspect_asset", {asset_id:name});
+    const inspected = await call("inspect_asset", {asset_id:name});
+    if (name !== $("asset").value || project !== snapshot.active) return;
+    currentAsset = inspected;
     const parts = Object.keys(currentAsset.metadata?.report?.parts || {}), selected = $("part").value;
     $("part").replaceChildren(...parts.map(name => option(name, name)));
     if (parts.includes(selected)) $("part").value = selected;
@@ -179,6 +205,7 @@
   function render(state) {
     if (snapshot.active && snapshot.active !== state.active) { organizationPlan=null; $("organizationRows").replaceChildren(); $("organizationSummary").textContent="项目已切换，请重新扫描。"; $("organizationPage").textContent="尚未扫描"; for(const id of ["applyOrganization","undoOrganization","organizationPrevious","organizationNext"])$(id).disabled=true; $("organizationHistoryList").replaceChildren(); }
     if (snapshot.active && snapshot.active !== state.active) {
+      canvasContext = null; ++canvasEpoch; showGallery();
       previewCache.clear(); ++previewSequence; previewIsExample = true;
       $("previews").replaceChildren(); $("previewEmpty").hidden = false;
       $("previewCaption").textContent = "项目已切换，请选择作品";
@@ -194,6 +221,8 @@
     $("imageCount").textContent = (state.images || []).length;
     const children = new Set((state.tasks || []).flatMap(task => task.children || []));
     $("runningCount").textContent = (state.tasks || []).filter(task => !children.has(task.request_id) && ["building", "queued"].includes(task.status)).length;
+    $("navTaskCount").textContent = $("runningCount").textContent;
+    $("navTaskCount").hidden = $("runningCount").textContent === "0";
     renderImageLibrary(state.images || []);
     $("version").textContent = "v" + state.version;
     $("connection").textContent = state.target ? `${state.target.engine || ""} · ${(state.active || "").split(/[/\\]/).filter(Boolean).pop()}` : (state.connection_message || "尚未连接项目，请先打开连接与设置。");
@@ -214,13 +243,13 @@
     $("gameArtSummary").textContent = state.game_art?.world || state.game_art?.gameplay ? "已记住游戏设定。制作时自动沿用，已有资产保留原设计。" : "尚未填写游戏设定。";
     if (state.style_match) $("gameArtSummary").textContent += " 已保存 AI 对参考画面的风格分析。";
     for (const node of $("provider").options) { const provider = (state.providers || []).find(p => p.provider === node.value); node.textContent = (node.value === "meshy" ? "Meshy" : "自托管服务") + (provider?.configured ? " · 已配置" : " · 未配置"); }
-    const signature = JSON.stringify([taskFilter, (state.tasks || []).map(t => [t.request_id,t.status,t.stage,t.updated_utc])]);
+    const signature = JSON.stringify([state.active, taskFilter, (state.tasks || []).map(t => [t.request_id,t.status,t.stage,t.updated_utc])]);
     if ($("tasks").dataset.signature === signature) return;
     $("tasks").dataset.signature = signature; $("tasks").replaceChildren();
     const childIds=new Set((state.tasks || []).flatMap(t=>t.children || []));
     const imageTasks = new Map((state.images || []).flatMap(asset => asset.revisions.filter(version => version.task).map(version => [version.task.request_id, {asset_id:asset.asset_id,revision:version.revision}])));
     const tasks = (state.tasks || []).filter(t => !childIds.has(t.request_id));
-    const filtered = tasks.filter(t => taskFilter === "all" || (taskFilter === "active" ? ["building","queued"].includes(t.status) : ["completed","imported"].includes(t.status)));
+    const filtered = tasks.filter(t => taskFilter === "all" || ({active:["building","queued"],done:["completed","imported"],attention:["error","cancelled"]}[taskFilter] || []).includes(t.status));
     $("taskCount").textContent = `${filtered.length} / ${tasks.length}`;
     for (const task of filtered) {
       const card = document.createElement("article"); card.className = "card task-card"; card.dataset.status = task.status;
@@ -264,7 +293,7 @@
     }
   }
   async function refresh() { if (refreshing) return; refreshing = true; try { render(await call("state")); } finally { refreshing = false; } }
-  async function submitted(actionName, values) { const task = await call(actionName, values); notice("任务已开始，可在下方查看进度。"); return task; }
+  async function submitted(actionName, values) { const task = await call(actionName, values); notice("任务已开始，可在左侧「任务」查看进度。"); return task; }
   let adaptationPlan = null, semanticIndex = null;
   const chosenPaths = () => $("semanticPaths").value.split(/\n/).map(x=>x.trim()).filter(Boolean);
   function fillProfile(profile) {
@@ -320,29 +349,104 @@
   bind("applyAdaptation",async()=>{const selected=[...document.querySelectorAll("[data-adaptation-row]:checked")].map(x=>x.dataset.adaptationRow);if(!selected.length)throw Error("请先勾选要应用的材质槽。");return submitted("adaptation",{mode:"apply",plan_id:adaptationPlan,selected});});
   bind("undoAdaptation",()=>submitted("adaptation",{mode:"undo",plan_id:adaptationPlan}));
 
+  function workspaceView(view) {
+    const previous = document.body.dataset.view;
+    if (previous !== view && !["create", "scene"].includes(view)) {
+      ++canvasEpoch; ++previewSequence;
+    }
+    document.body.dataset.view = view;
+    document.querySelectorAll("[data-view]").forEach(node => {
+      if (node.tagName !== "BUTTON") return;
+      if (node.dataset.view === view) node.setAttribute("aria-current", "page");
+      else node.removeAttribute("aria-current");
+    });
+    $("creationLibraryPanel").hidden = view !== "gallery";
+    $("workspaceGrid").hidden = view === "gallery";
+    $("taskTray").hidden = view !== "tasks";
+    $("contextBar").hidden = !["create", "scene"].includes(view);
+    $("creationComposer").hidden = view !== "create" || activeTab !== "creations";
+    document.querySelector(".context-nav").hidden = view === "gallery";
+    document.querySelectorAll("[data-tab]").forEach(tab => { tab.hidden = !(groups[view] || []).includes(tab.dataset.tab); });
+    $("resultDetails").open = false;
+    expandPreview(false);
+  }
+  function showGallery() {
+    workspaceView("gallery");
+    document.body.classList.remove("flow-workspace", "project-workspace");
+    document.querySelector(".toolbar").hidden = true;
+    $("imageLibraryPanel").hidden = true;
+    [$("sectionLabel").textContent, $("pageTitle").textContent, $("pageSubtitle").textContent] = ["YOUR COLLECTION", "作品展廊", "从想法到游戏，让每件作品继续生长。"];
+    window.dispatchEvent(new CustomEvent("pts:gallery"));
+  }
   function selectTab(name) {
     if (!tabs[name]) return;
     activeTab = name;
-    document.body.classList.toggle("flow-workspace", ["flows","missions"].includes(name));
+    const view = Object.keys(groups).find(key => groups[key].includes(name));
+    workspaceView(view);
+    document.body.classList.remove("project-preview");
+    document.body.classList.toggle("flow-workspace", ["flows", "missions"].includes(name));
+    document.body.classList.toggle("project-workspace", view === "project" && name !== "organizer");
     if(name === "pipeline" && snapshot.target && !$("profileDestination").value) call("profile").then(fillProfile).catch(e => notice(e.message,true));
     document.querySelectorAll("[data-tab]").forEach(tab => {
       const selected = tab.dataset.tab === name;
       tab.setAttribute("aria-selected", String(selected)); tab.tabIndex = selected ? 0 : -1;
     });
     document.querySelectorAll(".pane").forEach(p => {p.hidden = p.id !== name;});
-    $("scenePreview").hidden = name === "organizer"; $("organizationPreview").hidden = name !== "organizer";
-    document.querySelector(".toolbar").hidden = name === "images";
-    $("objectDetails").hidden = name === "images";
+    $("scenePreview").hidden = name === "organizer";
+    $("organizationPreview").hidden = name !== "organizer";
+    document.querySelector(".toolbar").hidden = !["edit", "review", "performance", "compose", "level", "gameplay"].includes(name);
+    $("objectDetails").hidden = ["images", "creations"].includes(name);
     $("imageLibraryPanel").hidden = name !== "images";
-    $("creationLibraryPanel").hidden = name !== "creations";
-    window.dispatchEvent(new CustomEvent("pts:tab",{detail:name}));
     [$("sectionLabel").textContent, $("pageTitle").textContent, $("pageSubtitle").textContent] = tabs[name];
+    if (view === "scene") { $("canvasTitle").textContent = tabs[name][1]; $("canvasType").textContent = "场景工具"; }
+    else if (view === "create") { $("canvasTitle").textContent = canvasContext?.title || "新的作品"; $("canvasType").textContent = canvasContext ? "创作画布" : "新建"; }
     $("scenePreview").querySelector("h2").textContent = name === "images" ? "图片与 UI 预览" : "作品预览";
-    expandPreview(false);
-    try { sessionStorage.setItem("pts-studio-tab", name); } catch (_) { /* Sandboxed hosts may deny storage. */ }
-    if (snapshot.version && previewIsExample && name !== "organizer") showExample().catch(error => notice(error.message,true));
+    window.dispatchEvent(new CustomEvent("pts:tab",{detail:name}));
     if (name === "images") loadImageThumbnails();
   }
+  function openCanvas(context = null) {
+    canvasContext = context; ++canvasEpoch; ++previewSequence;
+    window.PTS?.clearVisual?.();
+    $("previews").replaceChildren(); $("previewEmpty").hidden = false;
+    $("showExample").hidden = !!context;
+    $("previewCaption").textContent = context ? "正在打开作品…" : "等待你的第一个想法";
+    $("previewMeta").textContent = "模型 / 图片 / 游戏 UI";
+    $("creationFocus").hidden = true; $("regionEditor").hidden = true; $("creationHandoffBox").hidden = true;
+    $("creationPrompt").value = "";
+    for (const name of ["itemId", "itemName", "itemDescription", "screenId", "screenTitle", "creationReference"]) $(name).value = "";
+    $("screenTheme").checked = false;
+    $("creationId").value = context?.id || ""; $("creationId").readOnly = !!context;
+    $("creationKind").value = context?.kind || "item"; $("creationKind").disabled = !!context;
+    $("creationBrief").textContent = context ? "准备修改 ↗" : "准备创作 ↗";
+    $("composerLabel").textContent = context ? "描述想调整的地方" : "描述你的下一件作品";
+    $("creationPrompt").placeholder = context ? "例如：保留轮廓，把材质改得温暖一些，沿用现有玩法与布局…" : "例如：为森林药剂师制作一瓶恢复药水，配套背包图标与拾取效果…";
+    $("inspectorTitle").textContent = context?.title || "作品设置";
+    $("inspectorDescription").textContent = context?.description || (context ? "选择要调整的部分，已有资源与关联继续沿用。" : "从下方描述开始。模型、图标与游戏界面会沿用项目风格。");
+    $("exampleDetails").hidden = !!context;
+    $("creationAdvanced").hidden = false;
+    $("itemDetails").hidden = !!context && !["item", "model"].includes(context.kind);
+    $("screenDetails").hidden = !!context && !["item", "ui"].includes(context.kind);
+    for (const name of ["creationAdvanced", "itemDetails", "screenDetails"]) $(name).open = false;
+    $("asset").value = context?.model || (context?.kind === "model" ? context.id : "");
+    loadAsset().catch(error => notice(error.message,true));
+    selectTab("creations");
+    return {epoch:canvasEpoch, project:snapshot.active};
+  }
+  function canvasCurrent(ticket) { return ticket.epoch === canvasEpoch && ticket.project === snapshot.active; }
+  $("backGallery").onclick = showGallery;
+  $("newCreation").onclick = () => { openCanvas(); $("creationPrompt").focus(); };
+  $("refreshGallery").onclick = event => action(event.currentTarget, refresh);
+  document.querySelectorAll(".studio-nav [data-view]").forEach(button => {
+    button.onclick = () => {
+      const view = button.dataset.view;
+      if (view === "gallery") showGallery();
+      else if (view === "create") { openCanvas(); $("creationPrompt").focus(); }
+      else selectTab({scene:"compose",tasks:"missions",project:"pipeline"}[view]);
+    };
+  });
+  $("creationPrompt").onkeydown = event => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); $("creationBrief").click(); }
+  };
   const imageDefaults={icon:[256,256,true],button:[512,256,true],panel:[512,512,true],portrait:[768,1024,true],background:[1920,1080,false],texture:[1024,1024,false]};
   function imageDefaultsChanged() {
     const kind=$("imageKind").value,[width,height,alpha]=imageDefaults[kind];
@@ -395,7 +499,7 @@
   });
   bind("generateGameImage",async()=>{
     const plan=await imagePlan();const task=await workflowAction("generate_image",{plan_id:plan.plan_id,allow_remote:$("imageRemote").checked,preview_only:$("imageReviewFirst").checked});
-    notice("图片任务已开始，可在下方查看进度。");return task;
+    notice("图片任务已开始，可在「任务」查看进度。");return task;
   });
   function renderImageLibrary(rows) {
     const signature=JSON.stringify(rows);
@@ -441,16 +545,14 @@
     });
   }
   const navigation = [...document.querySelectorAll("[data-tab]")];
-  const navLayout = matchMedia("(max-width: 930px)");
-  const navOrientation = () => document.querySelector(".studio-nav").setAttribute("aria-orientation", navLayout.matches ? "horizontal" : "vertical");
-  navLayout.addEventListener("change", navOrientation); navOrientation();
   for (const tab of navigation) {
     tab.onclick = () => selectTab(tab.dataset.tab);
     tab.onkeydown = event => {
-      const index = navigation.indexOf(tab);
-      const next = {ArrowDown:(index+1)%navigation.length, ArrowRight:(index+1)%navigation.length, ArrowUp:(index-1+navigation.length)%navigation.length, ArrowLeft:(index-1+navigation.length)%navigation.length, Home:0, End:navigation.length-1}[event.key];
+      const visible = navigation.filter(node => !node.hidden);
+      const index = visible.indexOf(tab);
+      const next = {ArrowDown:(index+1)%visible.length, ArrowRight:(index+1)%visible.length, ArrowUp:(index-1+visible.length)%visible.length, ArrowLeft:(index-1+visible.length)%visible.length, Home:0, End:visible.length-1}[event.key];
       if(next == null) return;
-      event.preventDefault(); navigation[next].focus(); selectTab(navigation[next].dataset.tab);
+      event.preventDefault(); visible[next].focus(); selectTab(visible[next].dataset.tab);
     };
   }
   for (const node of document.querySelectorAll("[data-task-filter]")) node.onclick = () => {
@@ -685,16 +787,14 @@
     }
     await refresh();
     if (!embedded) $("askAI").textContent = "生成制作指令";
-    let saved = "creations";
-    try { saved = sessionStorage.getItem("pts-studio-tab") || saved; } catch (_) { /* Optional UI preference. */ }
-    selectTab(tabs[saved] ? saved : "creations");
-    notice(!snapshot.target ? "先连接 Unity 或 Unreal 项目。你也可以先浏览内置示例。" : snapshot.target.editor_responding ? "编辑器在线，可以开始创作。项目设定会沿用到新的作品。" : "项目已连接，编辑器暂未在线。可以准备图片与制作指令，导入任务会等待编辑器。");
+    showGallery();
     setInterval(() => { if (!document.hidden) refresh().catch(error => notice(error.message,true)); }, 5000);
   }
   window.PTS={$,call,workflowAction,action,bind,button,textNode,option,notice,showImage,waitAction,refresh,selectTab,output,
-    state:()=>snapshot,local,embedded,beginVisual(){previewIsExample=false;++previewSequence;},
+    state:()=>snapshot,cachedImage,local,embedded,canvasTicket:()=>({epoch:canvasEpoch,project:snapshot.active}),showGallery,openCanvas,canvasCurrent,context:()=>canvasContext,beginVisual(){previewIsExample=false;++previewSequence;},
     async choosePart(asset,part){$("asset").value=asset;await loadAsset();if(part){$("part").value=part;partInfo();}selectTab("edit");},
     async handoff(message){if(!embedded || !hostCapabilities.message)return false;try{await rpc("ui/message",{role:"user",content:[{type:"text",text:message}]});return true;}catch(_){return false;}}
   };
+  showGallery();
   start().catch(error => notice(error.message,true));
 })();

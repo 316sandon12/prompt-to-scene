@@ -175,5 +175,55 @@
         }
       ]
     }
+  },
+  "studio_ui": {
+    "recorded_on": "2026-10-16",
+    "scope": "Gallery homepage, contextual creation canvas, shared setup/project/task styling and MCP App",
+    "browser_regression": "passed: node tools/ui_smoke.cjs",
+    "browser": "installed Chrome, Playwright headless on macOS",
+    "viewports": [
+      320,
+      390,
+      768,
+      1024,
+      1440
+    ],
+    "checks": [
+      "read-only gallery, search and category filters",
+      "existing artwork ID in modification handoff",
+      "explicit model geometry loading and part selection",
+      "image region coordinates and native UI configuration",
+      "all 15 tools under five primary areas",
+      "task status filters and error feedback",
+      "late project response cannot replace new project canvas",
+      "material adaptation preview keeps project controls visible",
+      "expanded canvas and keyboard navigation",
+      "standalone and self-contained MCP App scripts",
+      "setup page and connection hash retained"
+    ],
+    "python_affected_tests": 83,
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "images": [
+      "docs/images/gallery-v0.15.png",
+      "docs/images/canvas-v0.15.png"
+    ],
+    "image_provenance": "Product UI screenshots with simulated API records and existing repository artwork; not native engine execution evidence.",
+    "native_engines_rerun": false,
+    "portable_apps_rebuilt": false,
+    "note": "Earlier native and portable-app evidence above belongs to the recorded pre-UI revision, not a newly packaged UI build.",
+    "cleanup": {
+      "removed_bytes": 9274956,
+      "items": [
+        "temporary UI scripts and duplicate screenshots",
+        "owned Python test fixture directories"
+      ],
+      "retained": [
+        "two documentation screenshots",
+        "browser regression source",
+        "compact verification record"
+      ],
+      "processes": "browser and local fixture server closed"
+    }
   }
 }
