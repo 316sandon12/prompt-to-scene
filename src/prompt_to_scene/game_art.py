@@ -115,7 +115,7 @@ def plan(
     if context.get("detail", "auto") != "auto":
         detail = context["detail"]
     reference = core.read_optional_json(root(project) / "art-brief.json") or {}
-    from . import art_samples
+    from . import art_samples, scene_context
 
     result = {
         "schema_version": 1,
@@ -128,6 +128,7 @@ def plan(
         "context": context,
         "style": styles.read(project),
         "art_samples": art_samples.context(project, "model"),
+        "scene_context": scene_context.brief(project),
         "decisions": decisions,
         "family": core.read_optional_json(root(project) / "design-family.json"),
         "visual_preferences": core.read_optional_json(root(project) / "visual-preferences.json")
@@ -165,6 +166,11 @@ def plan(
             "source_token": matched["source_token"],
             "analysis": matched["analysis"],
         }
+    if result["scene_context"]:
+        result["modeling_guidance"].append(scene_context.guidance(result["scene_context"]))
+        result["review_focus"].append(
+            "Run check_scene_fit with a fresh native inspection, then view the actual game frame."
+        )
     if role == "interactable":
         result["modeling_guidance"].append(
             "Make the interaction point readable, preserve moving-part clearance and pivots. "
@@ -184,7 +190,8 @@ def for_recipe(project, asset_id, kind):
             )
         return saved
     if not any(
-        (root(project) / name).is_file() for name in ("game-art.json", "design-family.json")
+        (root(project) / name).is_file()
+        for name in ("game-art.json", "design-family.json", "scene-context.json")
     ):
         return None  # Preserve legacy recipes until the project opts into game art direction.
     return plan(project, asset_id, kind, recipe_kind=kind)
@@ -195,7 +202,23 @@ def provider_prompt(prompt, design, limit=800):
     if not design:
         return prompt, []
     context = design["context"]
+    scene = design.get("scene_context")
+    scene_fields = []
+    omitted = []
+    if scene:
+        if scene.get("max_size_m"):
+            # Never truncate a numerical limit into a different/ambiguous dimension.
+            constraint = f"\nMax world XYZ metres ({scene['engine']}): {scene['max_size_m']}"
+            if len(prompt) + len(constraint) <= limit:
+                prompt += constraint
+            else:
+                omitted.append("Max world XYZ metres")
+        scene_fields += [
+            ("Use", scene["settings"]["usage"]),
+            ("Scene avoid", scene["settings"]["avoid"]),
+        ]
     fields = [
+        *scene_fields,
         ("World", context["world"]),
         ("Gameplay", context["gameplay"]),
         ("Style", context["style_notes"]),
@@ -213,8 +236,8 @@ def provider_prompt(prompt, design, limit=800):
     remaining = limit - len(prompt)
     allowance = (remaining - sum(len(k) + 4 for k, _ in fields)) // max(1, len(fields))
     if allowance < 8:
-        return prompt, [k for k, _ in fields]
-    additions, shortened = [], []
+        return prompt, omitted + [k for k, _ in fields]
+    additions, shortened = [], omitted
     for key, value in fields:
         if len(value) > allowance:
             shortened.append(key)

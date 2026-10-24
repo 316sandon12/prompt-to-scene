@@ -12,6 +12,21 @@
 <div class="row toolbar" hidden><label>当前资产<select id="asset"><option value="">选择已导入的资产</option></select></label><button id="scene" class="compact">读取编辑器选择</button><button id="preview" class="compact">预览所选资产</button><button id="refresh" class="compact">刷新</button></div>
 <section id="taskTray" class="panel task-tray" hidden aria-label="创作任务"><div class="task-tray-heading"><h2>创作任务<span id="taskCount" class="task-count">0</span></h2><div class="task-filters" role="group" aria-label="筛选任务"><button data-task-filter="all" aria-pressed="true">全部</button><button data-task-filter="active" aria-pressed="false">进行中</button><button data-task-filter="done" aria-pressed="false">已完成</button><button data-task-filter="attention" aria-pressed="false">需处理</button></div></div><div id="tasks" class="cards"></div></section>
 <div id="workspaceGrid" class="workspace-grid" hidden><section class="panel controls-panel" aria-label="创作参数">
+<details id="sceneBriefPanel" class="scene-brief"><summary>场景适配 <span id="sceneBriefBadge" class="pill">未设置</span></summary>
+<p id="sceneContextStatus" class="muted">先选中引擎里的目标或占位物，再读取场景。</p>
+<button id="captureSceneContext">读取当前场景</button>
+<label class="check"><input id="sceneEnabled" type="checkbox" checked>后续创作沿用这些设定</label>
+<div class="row"><label>目标对象<select id="sceneTarget"><option value="">不指定对象</option></select></label><label>用途<select id="sceneFitMode"><option value="reference">参考外观与环境</option><option value="fit">以目标作为尺寸上限</option></select></label></div>
+<label>实际用途<textarea id="sceneUse" rows="2" placeholder="柜台旁的可交互药箱；俯视时把手与药草标识要清楚"></textarea></label>
+<details id="scenePrecision"><summary>尺寸、参考图与图片显示设置</summary><label>玩家相机<select id="sceneCamera"><option value="">不指定相机</option></select></label>
+<label>最大尺寸 X, Y, Z（米，可留空）<input id="sceneSize" placeholder="留空时读取目标范围"></label><small id="sceneUnitHint" class="muted">Unity：X / Y / Z（Y 为高度），全部使用米。</small>
+<label>避免的内容<input id="sceneAvoid" placeholder="不要霓虹发光，不要影响通道，不要过密装饰"></label>
+<label>场景参考图路径（可选）<input id="sceneReference" placeholder="当前游戏画面或已认可的场景图片"></label>
+<div class="row"><label>图片显示尺寸（像素）<input id="sceneDisplay" placeholder="64, 64"></label><label>图标边缘留白（%）<input id="sceneMargin" type="number" min="0" max="40" value="8"></label></div>
+</details>
+<div class="row"><button id="saveSceneContext" class="primary">保存场景设定</button><button id="checkSceneFit">检查当前模型适配</button></div>
+<div id="sceneFitResults" class="scene-fit-results" aria-live="polite"></div>
+</details>
 <div id="creations" class="pane" role="tabpanel" aria-labelledby="tab-creations" hidden>
 <div id="canvasOverview"><span class="eyebrow">WORK DETAILS</span><h2 id="inspectorTitle">作品设置</h2><p id="inspectorDescription" class="muted">从下方描述开始。模型、图标与游戏界面会沿用项目风格。</p></div>
 <div id="creationFocus" class="creation-focus" hidden></div>
@@ -126,4 +141,4 @@
 <section id="imageLibraryPanel" class="panel image-library" aria-label="项目图片库" hidden><div class="task-tray-heading"><div><span class="eyebrow">YOUR ASSETS</span><h2>项目图片库</h2></div><span class="muted">实际预览 · 保留版本 · 继续制作</span></div><div id="imageAssets" class="cards"></div></section>
 
 <details id="resultDetails"><summary>操作详情</summary><pre id="result">尚未执行操作</pre></details><footer class="studio-footer"><span>你的创作资产，留在你的项目里。</span><a href="https://github.com/316sandon12/prompt-to-scene" target="_blank" rel="noreferrer">Prompt-to-Scene · 开源游戏创作工具</a></footer>
-</main></div><script src="/model_viewer.js" defer></script><script src="/workbench.js" defer></script><script src="/creations.js" defer></script><script src="/gameplay.js" defer></script><script src="/creative_tasks.js" defer></script></body></html>
+</main></div><script src="/model_viewer.js" defer></script><script src="/workbench.js" defer></script><script src="/scene_context.js" defer></script><script src="/creations.js" defer></script><script src="/gameplay.js" defer></script><script src="/creative_tasks.js" defer></script></body></html>

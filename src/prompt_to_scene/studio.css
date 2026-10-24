@@ -407,3 +407,13 @@ body.project-workspace .pane > label { max-width: 800px; }
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* One reusable scene brief sits above each creation tool. */
+.scene-brief {border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:16px 0;background:var(--panel);}
+.scene-brief summary {display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;}
+.scene-brief .pill {font-size:10px;flex-shrink:0;}
+.scene-brief small {display:block;line-height:1.6;}
+.scene-fit-results {font-size:12px;line-height:1.7;overflow-wrap:anywhere;}
+.scene-brief .row>label {min-width:0;}
+.scene-brief select {max-width:100%;}
+body[data-view="tasks"] .scene-brief,body[data-view="project"] .scene-brief {display:none;}

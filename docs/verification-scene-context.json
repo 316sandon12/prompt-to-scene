@@ -1,0 +1,164 @@
+{
+  "date": "2026-10-24",
+  "feature": "Shared scene evidence and precision constraints for models and game images",
+  "branch": "codex/continuous-creation-v015",
+  "python": {
+    "full_suite": {
+      "passed": 316,
+      "seconds": 5.19
+    },
+    "after_final_scene_validation_changes": {
+      "passed": 35,
+      "scope": "tests/test_scene_context.py"
+    },
+    "after_scene_reference_style_integration": {
+      "passed": 52,
+      "scope": "tests/test_scene_context.py + tests/test_game_art.py"
+    }
+  },
+  "format_lint": "ruff check and format --check passed",
+  "browser": {
+    "status": "passed",
+    "runner": "tools/ui_smoke.cjs, installed Chrome, simulated API",
+    "coverage": [
+      "scene capture/save, automatic save on handoff, fit results",
+      "cross-project scene settings isolation",
+      "gallery/canvas, task and retained preview regressions",
+      "320/390/768/1024/1440 widths and inline MCP"
+    ],
+    "screenshot": "docs/images/scene-context-v0.15.png",
+    "screenshot_data": "simulated scene/fit records with existing Blender artwork; not new native generation"
+  },
+  "native": {
+    "unity": {
+      "version": "2022.3.62f3c1",
+      "process_exit_code": 0,
+      "status": "passed",
+      "scope": "native bounds, MainCamera, standard perspective, orthographic height; retained brief and projection"
+    },
+    "unreal": {
+      "version": "5.7.2",
+      "process_exit_code": 1,
+      "native_assertions": "passed",
+      "python_script_completed": true,
+      "engine_shutdown_log": "Exiting; log closed",
+      "startup_errors": [
+        "LogAutomationTest: Error: Condition failed",
+        "LogAutomationTest: Error: Condition failed"
+      ],
+      "scope": "native bounds in metres; CameraActor position, horizontal-to-vertical FOV, orthographic width-to-height conversion; retained brief and projection",
+      "whole_process_status": "not a clean pass; cause of startup automation errors not established"
+    },
+    "first_ue_attempt": "NullRHI fixture crashed in EditorActorSubsystem.SpawnActorFromClass/GetHitProxy before inspection; RenderOffscreen retry completed native assertions.",
+    "measurements": {
+      "unity": {
+        "engine": "unity",
+        "bounds_min_m": [
+          -1.0,
+          -0.5,
+          -0.25
+        ],
+        "bounds_max_m": [
+          1.0,
+          0.5,
+          0.25
+        ],
+        "camera": {
+          "id": "GlobalObjectId_V1-2-50e917320a9344faab4b3b5736485e4c-76771439-0",
+          "name": "Player camera",
+          "position": [
+            0.0,
+            1.0,
+            -10.0
+          ],
+          "right": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "up": [
+            0.0,
+            1.0,
+            0.0
+          ],
+          "forward": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "aspect": 2.0,
+          "vertical_fov": 60.0,
+          "ortho_height_m": 10.0,
+          "near_m": 0.30000001192092896,
+          "primary": true,
+          "orthographic": false,
+          "projection_supported": true
+        }
+      },
+      "unreal": {
+        "engine": "unreal",
+        "bounds_min_m": [
+          -1.0,
+          -0.5,
+          0.25
+        ],
+        "bounds_max_m": [
+          1.0,
+          0.5,
+          0.75
+        ],
+        "camera": {
+          "id": "2F101502E64C4143D5155C81EB9A1A6C",
+          "name": "CameraActor",
+          "primary": true,
+          "position": [
+            -10.0,
+            0.0,
+            1.0
+          ],
+          "right": [
+            0.0,
+            1.0,
+            -0.0
+          ],
+          "up": [
+            -0.0,
+            0.0,
+            1.0
+          ],
+          "forward": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "aspect": 2.0,
+          "vertical_fov": 53.13010235415598,
+          "orthographic": false,
+          "ortho_height_m": 7.68,
+          "projection_supported": true
+        }
+      }
+    }
+  },
+  "limits": [
+    "No new AI model/image generation or aesthetic quality certification in this check",
+    "Bounds projection is conservative; no occlusion, runtime camera, collision or walkway certification",
+    "Windows native engines and Unity custom projection/SRP rendering were not exercised",
+    "No new portable installer or release; stable downloads remain v0.14"
+  ],
+  "cleanup": {
+    "status": "completed",
+    "approx_removed_bytes": 544431512,
+    "removed": [
+      ".local/scene-context: disposable Unity/UE projects, test homes, logs, native dumps, duplicate UI screenshots and pytest fixtures",
+      "src/prompt_to_scene/__pycache__/scene_context.cpython-311.pyc",
+      "tests/__pycache__/test_scene_context.cpython-311-pytest-8.4.2.pyc"
+    ],
+    "kept": [
+      "production source and test runners",
+      "docs/images/scene-context-v0.15.png",
+      "this compact validation record"
+    ],
+    "task_processes": "Unity/UE and browser processes exited; one task-owned UE studio service from the failed fixture was stopped; no task-owned process remains"
+  }
+}

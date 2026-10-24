@@ -56,6 +56,39 @@ def scene():
     return level.get_outer().get_path_name() if level else ""
 
 
+def cameras():
+    """Read scene CameraActors without spawning cameras or changing the viewport."""
+    level = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()
+    result = []
+    for actor in actors().get_all_level_actors():
+        if not isinstance(actor, unreal.CameraActor) or actor.get_level() != level:
+            continue
+        component = actor.camera_component
+        rotation = component.get_world_rotation()
+        aspect = float(component.aspect_ratio)
+        horizontal_fov = float(component.field_of_view)
+        result.append(
+            {
+                "id": guid(actor),
+                "name": actor.get_actor_label(),
+                "primary": "PTS.GameCamera" in map(str, actor.tags),
+                "position": [v / 100 for v in vector(component.get_world_location())],
+                "right": vector(unreal.MathLibrary.get_right_vector(rotation)),
+                "up": vector(unreal.MathLibrary.get_up_vector(rotation)),
+                "forward": vector(unreal.MathLibrary.get_forward_vector(rotation)),
+                "aspect": aspect,
+                "vertical_fov": math.degrees(
+                    2 * math.atan(math.tan(math.radians(horizontal_fov) / 2) / max(aspect, 0.001))
+                ),
+                "orthographic": component.projection_mode
+                == unreal.CameraProjectionMode.ORTHOGRAPHIC,
+                "ortho_height_m": float(component.ortho_width) / max(aspect, 0.001) / 100,
+                "projection_supported": aspect > 0 and 0 < horizontal_fov < 180,
+            }
+        )
+    return result
+
+
 def targets(request):
     candidates = (
         actors().get_selected_level_actors()
@@ -169,6 +202,7 @@ def execute(request, root):
             "scene": scene(),
             "selected": [describe(a) for a in targets({"scope": "selected"})],
             "assets": [describe(a) for a in targets({"scope": "asset"})],
+            "cameras": cameras(),
         }
     if operation == "select":
         from .layout import context

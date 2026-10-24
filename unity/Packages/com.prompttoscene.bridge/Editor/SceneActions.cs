@@ -35,6 +35,13 @@ namespace PromptToScene.Editor
         public bool orthographic;
     }
     [Serializable] public class RendererState { public string path; public string[] materials; }
+    [Serializable] public class SceneCamera
+    {
+        public string id, name;
+        public float[] position, right, up, forward;
+        public float aspect, vertical_fov, ortho_height_m, near_m;
+        public bool primary, orthographic, projection_supported;
+    }
     [Serializable] public class SceneObject
     {
         public string id, name, asset_id;
@@ -50,6 +57,7 @@ namespace PromptToScene.Editor
         public string[] created_ids;
         public int changed;
         public AssetMetrics[] metrics;
+        public SceneCamera[] cameras;
         public DevelopmentResult development;
         public ImageAssetResult image;
     }
@@ -156,12 +164,33 @@ namespace PromptToScene.Editor
             if (a.color != null && a.color.Any(v => v < 0 || v > 1)) throw new Exception("Invalid color");
         }
 
+        static SceneCamera[] Cameras()
+        {
+            return Resources.FindObjectsOfTypeAll<Camera>().Where(c => !EditorUtility.IsPersistent(c)
+                && c.gameObject.scene == Scene && c.gameObject.activeInHierarchy && c.enabled).Select(c =>
+            {
+                var expected = c.orthographic
+                    ? Matrix4x4.Ortho(-c.orthographicSize*c.aspect, c.orthographicSize*c.aspect,
+                        -c.orthographicSize, c.orthographicSize, c.nearClipPlane, c.farClipPlane)
+                    : Matrix4x4.Perspective(c.fieldOfView, c.aspect, c.nearClipPlane, c.farClipPlane);
+                return new SceneCamera {
+                    id = SceneLayout.Id(c.gameObject), name = c.name, primary = c == Camera.main,
+                    position = Vec(c.transform.position), right = Vec(c.transform.right),
+                    up = Vec(c.transform.up), forward = Vec(c.transform.forward), aspect = c.aspect,
+                    vertical_fov = c.fieldOfView, orthographic = c.orthographic,
+                    ortho_height_m = c.orthographicSize*2, near_m = c.nearClipPlane,
+                    projection_supported = !c.stereoEnabled && c.rect == new Rect(0,0,1,1)
+                        && Enumerable.Range(0,16).All(i => Mathf.Abs(c.projectionMatrix[i]-expected[i]) < .0001f)
+                };
+            }).ToArray();
+        }
+
         static SceneResult Execute(SceneAction a)
         {
             var result = new SceneResult { request_id = a.request_id, scene = SceneKey };
             if (a.operation == "image") return ImageAssets.Execute(a);
             if (a.operation == "develop") return DevelopmentActions.Execute(a);
-            if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); return result; }
+            if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); result.cameras = Cameras(); return result; }
             if (a.operation == "arrange") return SceneLayout.Arrange(a, SceneKey);
             if (a.operation == "select")
             { var obj = SceneLayout.Find(a.object_id); if (obj == null) throw new Exception("Object is no longer loaded");

@@ -99,9 +99,10 @@ def state():
         result["style_match"] = core.read_optional_json(game_art.root(None) / "style-match.json")
         result["layouts"] = compositions.templates(None)
         result["images"] = image_assets.catalog(None)["assets"]
-        from . import creations
+        from . import creations, scene_context
 
         result["creations"] = creations.catalog(None)
+        result["scene_context"] = scene_context.read(None)
         root = core.state_root(target.root)
         jobs = sorted(
             (root / "jobs").glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True
@@ -211,6 +212,7 @@ class Handler(BaseHTTPRequestHandler):
             "/creations.js",
             "/gameplay.js",
             "/creative_tasks.js",
+            "/scene_context.js",
             "/model_viewer.js",
             "/studio.css",
         } and self.headers.get("Host") == "127.0.0.1:" + str(self.server.server_port):

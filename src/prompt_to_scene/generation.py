@@ -212,7 +212,9 @@ def submit(
     from . import game_art, project_profiles
 
     design = game_art.saved_plan(project, asset_id)
-    if not design and (game_art.root(project) / "game-art.json").is_file():
+    if not design and any(
+        (game_art.root(project) / p).is_file() for p in ("game-art.json", "scene-context.json")
+    ):
         design = game_art.plan(project, asset_id, prompt)
     if design:
         design["method"] = "provider_generation"

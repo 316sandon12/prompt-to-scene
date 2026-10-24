@@ -105,6 +105,14 @@ reuses an engine camera frame so the user can compare actual engine results.
 New props inherit get_project_style. set_project_style remembers concrete art direction; reference
 images can inform palette/shape through the client's own vision, not hidden image-to-3D claims.
 Read game_art_direction before modeling. Save the user's gameplay, world and look once.
+For scene-specific assets, capture_scene_context then save_scene_context once with the measured
+target/camera, intended use and optional scene reference. Subsequent model designs and image
+plans inherit this retained brief. With a scene reference, match_game_style(use_scene=true)
+returns real pixels for host vision; separate observed style from measured size. design_asset
+must precede custom modeling so its scene constraints survive in the built revision. After
+import, check_scene_fit with a fresh capture reports bounds, placement and estimated framing;
+image import reports display aspect and alpha margins. These are not aesthetic/occlusion tests.
+Refresh context when scene/target/camera changes; do not silently scale existing manual assets.
 Existing-project style matching starts with real images: capture representative native assets
 with describe_project_assets or use a saved reference, then call match_game_style to see them.
 When no art direction has been established, use available project/reference images before the
@@ -199,11 +207,13 @@ def match_game_style(
     use_reference: bool = False,
     source_token: str | None = None,
     analysis: dict | None = None,
+    use_scene: bool = False,
 ):
     """Recognize this project's look using actual images and the current AI host's vision.
 
     First pass evidence IDs from describe_project_assets, or use_reference for set_art_brief's
-    saved image. Returns the images and a source_token. Inspect them; then call again with that
+    saved image, or use_scene for the retained scene reference. Returns images and a source_token.
+    Inspect them; then call again with that
     token and analysis using the returned schema. Applies inferred palette, material roughness,
     shape parameters, detail density and art notes to future designs. Confidence below 0.6 keeps
     current defaults. No external vision service is invoked and existing assets are not changed.
@@ -215,7 +225,7 @@ def match_game_style(
 
     if analysis is not None:
         return style_matching.apply(None, source_token, analysis)
-    result = style_matching.inspect(None, evidence_ids, use_reference)
+    result = style_matching.inspect(None, evidence_ids, use_reference, use_scene)
     return [
         json.dumps(result, ensure_ascii=False),
         *[Image(path=row["path"]) for row in result.get("sources", [])],

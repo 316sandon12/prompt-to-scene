@@ -279,10 +279,14 @@ def routes():
         image_edits,
         linked_updates,
         project_adapters,
+        scene_context,
         visual_assets,
     )
 
     return {
+        "capture_scene_context": scene_context.capture,
+        "save_scene_context": scene_context.save,
+        "check_scene_fit": scene_context.check_model,
         "task_context": creative_tasks.context,
         "save_creative_task": creative_tasks.save,
         "creative_tasks": creative_tasks.catalog,
@@ -354,6 +358,14 @@ def routes():
 
 
 EXAMPLES = {
+    "save_scene_context": {
+        "inspection_id": "<completed capture_scene_context request_id>",
+        "settings": {"fit": "fit", "usage": "Readable herb chest beside the shop counter"},
+    },
+    "check_scene_fit": {
+        "asset_id": "herb_chest",
+        "inspection_id": "<fresh capture_scene_context request_id>",
+    },
     "create_game_item": {
         "item_id": "forest_potion",
         "model_asset_id": "potion_model",

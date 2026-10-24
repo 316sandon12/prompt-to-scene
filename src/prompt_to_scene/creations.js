@@ -8,9 +8,10 @@
   const done=task=>["completed","imported"].includes(task.status);
   const values=id=>$(id).value.split(/[,，\s]+/).filter(Boolean).map(Number);
   const kinds={item:"物品套件",model:"3D 模型",image:"图片素材",ui:"游戏界面"};
-  async function handoff(text){$("creationHandoffBox").hidden=false;$("creationHandoff").value=text;notice(await P.handoff(text)?"任务已交给当前 AI，可在任务页查看进度。":"制作指令已准备。复制给 Codex / Harness，完成后会回到当前项目。");}
+  async function handoff(text){text+=P.sceneHandoff();$("creationHandoffBox").hidden=false;$("creationHandoff").value=text;notice(await P.handoff(text)?"任务已交给当前 AI，可在任务页查看进度。":"制作指令已准备。复制给 Codex / Harness，完成后会回到当前项目。");}
   bind("copyCreationBrief",async()=>{try{await navigator.clipboard.writeText($("creationHandoff").value);notice("已复制制作指令。");}catch(_){$("creationHandoff").focus();$("creationHandoff").select();notice("请复制已选中的指令。");}});
   bind("creationBrief",async()=>{
+    await P.ensureSceneContext();
     const prompt=$("creationPrompt").value.trim(); if(!prompt)throw Error("先描述作品的用途与外观，或要调整的地方。");
     const context=P.context(), id=nextId($("creationId").value,"creation"); $("creationId").value=id;
     const kind=$("creationKind").value,reference=$("creationReference").value.trim();

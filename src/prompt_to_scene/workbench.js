@@ -40,7 +40,7 @@
     notice("已保存游戏设定，后续新资产会沿用。");
     return result;
   }
-  async function ensureGameArt() { if ($("gameContext").dataset.dirty) await saveGameArt(); }
+  async function ensureGameArt() { await window.PTS.ensureSceneContext(); if ($("gameContext").dataset.dirty) await saveGameArt(); }
   function notice(message, error = false) {
     clearTimeout(noticeTimer);
     $("notice").textContent = message;
@@ -99,6 +99,11 @@
   document.querySelector(".skip-link").onclick = event => { event.preventDefault(); $("workspaceContent").focus(); };
   function selectionAvailability() {
     const online = !!snapshot.target?.editor_responding && !snapshot.target?.editor?.playing;
+    for (const id of ["captureSceneContext", "checkSceneFit"]) {
+      const control=$(id);
+      control.disabled=!online || control.getAttribute("aria-busy")==="true" || (id==="checkSceneFit"&&!$("asset").value);
+      control.title=online?"":"请保持目标编辑器打开并退出 Play 模式。";
+    }
     $("scene").disabled = !online;
     $("preview").disabled = !online || !$("asset").value;
     $("scene").title = online ? "读取当前编辑器中的对象" : "编辑器在线且退出 Play 后可用";
@@ -601,7 +606,7 @@
   bind("askAI", async () => {
     const prompt = $("prompt").value.trim(); if(!prompt) throw Error("请先写下希望制作或修改的内容。");
     await ensureGameArt();
-    const message = prompt + "\n请通过 Prompt-to-Scene 的 game_workflow 读取当前项目的游戏方向，使用 produce 统一制作、导入；结合玩法与背景设计具体造型，并从游戏摄像机检查实际效果。资产用途：" + $("assetRole").selectedOptions[0].textContent + ($("asset").value ? "\n当前选中的资产：" + $("asset").value : "");
+    const message = prompt + "\n请通过 Prompt-to-Scene 的 game_workflow 读取当前项目的游戏方向，使用 produce 统一制作、导入；结合玩法与背景设计具体造型，并从游戏摄像机检查实际效果。资产用途：" + $("assetRole").selectedOptions[0].textContent + ($("asset").value ? "\n当前选中的资产：" + $("asset").value : "") + window.PTS.sceneHandoff();
     if (embedded) {
       await rpc("ui/message", {role:"user",content:[{type:"text",text:message}]});
       notice("已把描述和当前资产发给本次聊天的 AI。");

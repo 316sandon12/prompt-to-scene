@@ -4,6 +4,8 @@
 
 **New studio UI: gallery → creation canvas.** Five primary areas, searchable artwork, a large preview, contextual edit briefs and shared styling across setup and MCP Apps. [Studio guide](docs/STUDIO.zh-CN.md).
 
+**Scene-aware creation:** model and image briefs share measured target bounds, camera settings, intended use and retained scene references. Check imported model dimensions/placement/framing and image aspect/alpha margins against that brief. [Usage and limits](docs/SCENE-CONTEXT.zh-CN.md).
+
 [v0.14 is released](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.14.0); the stable download remains v0.14 until the next release.
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**

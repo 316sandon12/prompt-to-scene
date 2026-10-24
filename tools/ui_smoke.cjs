@@ -54,13 +54,20 @@ async function api(action, values={}) {
       case 'adapter_plans':return {adapters:[]};
       case 'game_deliveries':return {deliveries:[]};
       case 'art_samples':return {theme:{},samples:[]};
+      case 'capture_scene_context':return {status:'completed',request_id:rev,scene:'Assets/Forest.unity',engine:'unity',selected_context:[{id:'blockout'}]};
+      case 'save_scene_context':{
+        const object={id:'blockout',name:'药箱占位物',position:[0,0,0],bounds_min:[0,0,0],bounds_max:[1,.8,.6]};
+        state.scene_context={revision:rev,settings:{target_id:'blockout',camera_id:'player',...state.scene_context?.settings,...v.settings},snapshot:{scene:'Assets/Forest.unity',engine:'unity',context:[object],selected_context:[object],cameras:[{id:'player',name:'玩家相机'}],captured_utc:'2026-10-24T04:00:00Z'}};
+        return structuredClone(state.scene_context);
+      }
+      case 'check_scene_fit':return {max_size_m:[1,.8,.6],stale:[],instances:[{size_m:[1.2,.8,.6],oversized_axes:['X'],outside_target_axes:['X'],uniform_scale_to_fit:.8333,framing:{status:'estimated',outside_frame:true}}]};
       default:throw Error('Unexpected workflow (must explicitly test mutations): '+values.action+' '+JSON.stringify(v));
     }
   }
   throw Error('Unexpected action: '+action);
 }
 let embeddedHtml=fs.readFileSync(path.join(source,'workbench.html'),'utf8').replace('<link rel="stylesheet" href="/studio.css">','<style>'+fs.readFileSync(path.join(source,'studio.css'),'utf8')+'</style>');
-for(const name of ['model_viewer.js','workbench.js','creations.js','gameplay.js','creative_tasks.js'])embeddedHtml=embeddedHtml.replace(`<script src="/${name}" defer></script>`,()=>'<script>'+fs.readFileSync(path.join(source,name),'utf8')+'</script>');
+for(const name of ['model_viewer.js','workbench.js','scene_context.js','creations.js','gameplay.js','creative_tasks.js'])embeddedHtml=embeddedHtml.replace(`<script src="/${name}" defer></script>`,()=>'<script>'+fs.readFileSync(path.join(source,name),'utf8')+'</script>');
 const server=http.createServer(async(req,res)=>{
   try{
     if(req.url==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...state,projects:[],blender:'/fixture/Blender',clients:{codex:'/fixture/codex',harness:'/fixture/dsh',harness_profiles:['web']},reviews:[]}));return;}
@@ -114,6 +121,23 @@ async function shot(page,name){if(screenshots)await page.screenshot({path:path.j
     await page.keyboard.press('Escape');await visible(page,'.controls-panel');
     await page.locator('#creationPrompt').press('Control+Enter');await visible(page,'#creationHandoffBox');
     const brief=await page.locator('#creationHandoff').inputValue();assert(brief.includes('mint_reading_chair')&&brief.includes('保持已有 ID'));
+    // The scene brief saves once, follows generation, and reports actual constraint failures.
+    await page.locator('#sceneBriefPanel > summary').click();
+    await page.locator('#captureSceneContext').click();
+    await page.waitForFunction(()=>document.getElementById('sceneContextStatus').textContent.includes('药箱占位物'));
+    await page.locator('#sceneFitMode').selectOption('fit');
+    await page.locator('#sceneUse').fill('药草商店的可交互药箱');
+    await page.locator('#scenePrecision summary').click();
+    await page.locator('#sceneSize').fill('1, 0.8, 0.6');
+    await page.locator('#sceneDisplay').fill('64, 64');
+    await page.locator('#creationBrief').click();
+    await page.waitForFunction(()=>document.getElementById('creationHandoff').value.includes('check_scene_fit'));
+    assert.equal(state.scene_context.settings.usage,'药草商店的可交互药箱');
+    await page.locator('#checkSceneFit').click();await page.waitForFunction(()=>document.getElementById('sceneFitResults').textContent.includes('超出范围'));
+    await page.locator('#scenePrecision summary').click();
+    await page.evaluate(()=>{document.getElementById('creationHandoffBox').hidden=true;document.querySelector('.controls-panel').scrollTop=0;window.scrollTo(0,0);});
+    await shot(page,'scene-context');
+    await page.locator('#sceneBriefPanel > summary').click();
     await page.getByRole('button',{name:'旋转模型 / 点选部件',exact:true}).click();
     await page.waitForSelector('canvas.visual-canvas');
     await page.locator('[aria-label="预览部件"]').selectOption('body');
@@ -154,6 +178,7 @@ async function shot(page,name){if(screenshots)await page.screenshot({path:path.j
     await page.waitForFunction(()=>document.body.dataset.view==='gallery');
     assert.equal(await page.locator('#creationFocus').isVisible(),false);
     assert.equal(await page.locator('#previews img').count(),0);
+    assert.equal(await page.locator('#sceneSize').inputValue(),'','Scene dimensions must not leak to another project');
     await visible(page,'.gallery-empty');
     state=fixture();await page.evaluate(()=>window.PTS.refresh());
     for(const width of [1024,768,390,320]){

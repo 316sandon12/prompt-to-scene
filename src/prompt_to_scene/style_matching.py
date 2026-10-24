@@ -8,14 +8,25 @@ from pathlib import Path
 from . import core, game_art, semantics, styles
 
 
-def inspect(project, evidence_ids=None, use_reference=False):
+def inspect(project, evidence_ids=None, use_reference=False, use_scene=False):
     if (
         not isinstance(evidence_ids or [], list)
         or len(evidence_ids or []) > 3
         or type(use_reference) is not bool
+        or type(use_scene) is not bool
     ):
         raise ValueError("Choose up to three native evidence IDs and/or the saved reference")
     records = []
+    if use_scene:
+        from . import scene_context
+
+        context = scene_context.brief(project)
+        reference = (context or {}).get("reference")
+        if not reference:
+            raise ValueError("Save an enabled scene context with a reference image first")
+        records.append(
+            {"kind": "scene_reference", "path": reference["path"], "sha256": reference["sha256"]}
+        )
     for evidence_id in dict.fromkeys(evidence_ids or []):
         proof, path = semantics.evidence(project, evidence_id)
         records.append(
@@ -41,7 +52,7 @@ def inspect(project, evidence_ids=None, use_reference=False):
     if not records:
         return {
             "status": "needs_images",
-            "next": "Use the saved art reference, or capture 1–3 representative "
+            "next": "Use the saved art/scene reference, or capture 1–3 representative "
             "project assets with describe_project_assets, then pass their evidence IDs. "
             "Do not infer the visual style from filenames or force a preset.",
         }

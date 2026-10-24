@@ -37,6 +37,7 @@ def page():
     for name in (
         "model_viewer.js",
         "workbench.js",
+        "scene_context.js",
         "creations.js",
         "gameplay.js",
         "creative_tasks.js",

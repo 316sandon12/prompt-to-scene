@@ -33,6 +33,19 @@ can still use the direct actions below.
 
 ## Linked items, editable UI and visual iteration
 
+For scene-specific requests, use `capture_scene_context`, wait for the task, then
+`save_scene_context(inspection_id=..., settings=...)`. Save only needed constraints: intended
+use, explicit world-XYZ metre limits, or `fit="fit"` to use the selected blockout's bounds.
+Default reference mode borrows context without copying the target's dimensions. Multiple
+selections/cameras need an explicit choice. With a scene reference, `match_game_style(use_scene=true)`
+returns real pixels for your vision; do not invent visual observations from names/material paths.
+Read `context.scene_context` and call `design_asset` before custom modeling; `produce` and
+`plan_image` retain the same evidence. After importing, `check_scene_fit` with a fresh native
+inspection reports dimensions, placement and approximate camera framing. Image import includes
+display-aspect and transparent-icon-margin checks. Neither result certifies beauty, occlusion or
+gameplay clearance. Keep the original model revision's brief when reviewing it; refresh changed
+scene/target/camera evidence before redesign. Do not stretch or move existing assets silently.
+
 For a usable item (model + matching icon + data + pickup), prefer `create_game_item` over separate
 unrelated model/image tasks. Supply an existing `model_asset_id`, or `model` with one `produce`
 plan (`method=custom` and a complete static bpy script for detailed shapes). Poll/resume its parent
