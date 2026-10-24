@@ -45,7 +45,21 @@
     return row;
   }
   P.ensureSceneContext=async()=>{if(dirty)await save();};
-  P.sceneHandoff=()=>current.settings?.enabled===false||!current.revision?"":`\n沿用当前场景制作依据（版本 ${current.revision}）：用 context 读取 scene_context。模型先 design_asset 保存本次场景约束再建模；严格核对引擎 XYZ 米制尺寸和相机，保留接触面与交互空间。有场景参考时调用 match_game_style(use_scene=true)，实际查看返回图像后保存可信的风格分析；场景参考不能直接当作图生 3D 的主体。图片由 plan_image 继承场景参考与显示要求。导入模型后 capture_scene_context 并 check_scene_fit；图片检查导入报告的 scene_fit 与实际预览。场景已变化时刷新依据，不凭文件名推断风格。`;
+  P.captureSceneReference=async()=>{
+    const origin=ticket(),version=edits;
+    const state=await waitAction(await run("reference_scene",{camera_id:$("sceneCamera").value}));
+    if(!same(origin)||state.status!=="completed")return state;
+    if(version!==edits)throw Error("读取过程中场景设定有变化，请重新读取。");
+    const settings={enabled:$("sceneEnabled").checked,usage:$("sceneUse").value,avoid:$("sceneAvoid").value,
+      fit:$("sceneFitMode").value,size_m:parse("sceneSize"),display_size_px:parse("sceneDisplay"),image_margin:Number($("sceneMargin").value)/100};
+    if($("sceneCamera").value)settings.camera_id=$("sceneCamera").value;
+    if(settings.fit==="fit"&&!settings.size_m&&(state.selected_context||[]).length!==1)settings.fit="reference";
+    const row=await run("save_scene_context",{inspection_id:state.request_id,settings});
+    if(same(origin)&&version===edits){draw(row,true);notice("已保存游戏镜头、目标尺寸和材质参考，可以开始描述作品。");}
+    return row;
+  };
+  bind("referenceScene",async()=>{const t=P.canvasTicket(),row=await P.captureSceneReference();if(P.canvasCurrent(t)&&row?.reference)await P.showImage({kind:"scene_reference"},"制作参考 · 游戏镜头截图");return row;});
+  P.sceneHandoff=()=>current.settings?.enabled===false||!current.revision?"":`\n沿用当前场景制作依据（版本 ${current.revision}）：用 context 读取 scene_context。模型先 design_asset 保存本次场景约束再建模；严格核对引擎 XYZ 米制尺寸和相机，保留接触面与交互空间。有场景参考时调用 match_game_style(use_scene=true)，实际查看返回图像后保存可信的风格分析；场景参考不能直接当作图生 3D 的主体。图片由 plan_image 继承场景参考与显示要求。导入模型后 capture_scene_context 并 check_scene_fit；图片检查导入报告的 scene_fit 与实际预览。场景已变化时刷新依据，不凭文件名推断风格。需要试放时使用 preview_scene_model；图片使用 preview_scene_image，然后查看 scene_preview_images 的真实图像再 scene_preview_action 采用或撤销。读取当前资产的 asset_requirements 与区域 scene_profile；只修改具体问题，保留尺寸下限、挂点及已锁定特征。采用成功后 remember_scene_example 保存到当前区域。`;
   bind("saveSceneContext",save);
   bind("captureSceneContext",async()=>{
     const origin=ticket();
@@ -78,6 +92,7 @@
       items.push(node("p",text));
     }
     items.push(node("p","尺寸和构图估算不代表外观、遮挡或碰撞检查通过，请对照真实游戏画面。"));
+    const fix=P.button("调整尺寸并试放",()=>P.previewInScene(true));items.push(fix);
     $("sceneFitResults").replaceChildren(...items);return report;
   });
   window.addEventListener("pts:state",event=>{

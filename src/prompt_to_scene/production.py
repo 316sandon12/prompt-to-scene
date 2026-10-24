@@ -272,6 +272,7 @@ def routes():
         art_kits,
         art_samples,
         asset_recommendations,
+        asset_requirements,
         creations,
         creative_tasks,
         delivery,
@@ -280,6 +281,8 @@ def routes():
         linked_updates,
         project_adapters,
         scene_context,
+        scene_profiles,
+        scene_studio,
         visual_assets,
     )
 
@@ -287,6 +290,21 @@ def routes():
         "capture_scene_context": scene_context.capture,
         "save_scene_context": scene_context.save,
         "check_scene_fit": scene_context.check_model,
+        "reference_scene": scene_studio.reference,
+        "preview_scene_model": scene_studio.preview_model,
+        "preview_scene_image": scene_studio.preview_image,
+        "scene_preview_images": scene_studio.evidence,
+        "scene_previews": scene_studio.catalog,
+        "scene_preview_action": scene_studio.act,
+        "repair_image_padding": scene_studio.pad_image,
+        "repair_scene_part": scene_studio.repair_part,
+        "restore_scene_part": scene_studio.restore_part,
+        "remember_scene_example": scene_studio.remember,
+        "asset_requirements": asset_requirements.save,
+        "apply_asset_requirements": asset_requirements.apply,
+        "scene_profiles": scene_profiles.catalog,
+        "save_scene_profile": scene_profiles.save,
+        "activate_scene_profile": scene_profiles.activate,
         "task_context": creative_tasks.context,
         "save_creative_task": creative_tasks.save,
         "creative_tasks": creative_tasks.catalog,
@@ -358,6 +376,27 @@ def routes():
 
 
 EXAMPLES = {
+    "reference_scene": {},
+    "preview_scene_model": {
+        "asset_id": "herb_chest",
+        "inspection_id": "<fresh capture_scene_context request_id>",
+        "placement": "surface",
+    },
+    "preview_scene_image": {
+        "asset_id": "herb_icon",
+        "revision": "<retained image revision>",
+        "display_size_px": [64, 64],
+        "position": [0.1, 0.1],
+    },
+    "scene_preview_action": {"plan_id": "<preview plan_id>", "mode": "adopt"},
+    "asset_requirements": {
+        "asset_id": "herb_chest",
+        "settings": {"kind": "chest", "lock_scale": True},
+    },
+    "save_scene_profile": {
+        "name": "Herbalist shop",
+        "locks": {"palette": "Warm wood and muted green"},
+    },
     "save_scene_context": {
         "inspection_id": "<completed capture_scene_context request_id>",
         "settings": {"fit": "fit", "usage": "Readable herb chest beside the shop counter"},

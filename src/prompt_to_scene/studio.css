@@ -417,3 +417,10 @@ body.project-workspace .pane > label { max-width: 800px; }
 .scene-brief .row>label {min-width:0;}
 .scene-brief select {max-width:100%;}
 body[data-view="tasks"] .scene-brief,body[data-view="project"] .scene-brief {display:none;}
+
+.pixel-scene-preview {overflow:auto; max-width:100%; background:var(--bg);}
+.pixel-scene-preview img {width:auto!important; max-width:none!important; max-height:none!important; display:block;}
+#sceneTrialPanel .row, #usagePanel .row, #sceneArtPanel .row {flex-wrap:wrap;}
+#sceneTrialPanel input, #usagePanel input, #sceneArtPanel input {min-width:0;}
+
+#sceneTrialPanel .row > button, #usagePanel .row > button, #sceneArtPanel .row > button {flex:1 1 auto; white-space:nowrap;}

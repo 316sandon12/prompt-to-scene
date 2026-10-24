@@ -47,6 +47,7 @@ namespace PromptToScene.Editor
                 bounds_min = Vec(bounds.min), bounds_max = Vec(bounds.max),
                 renderers = renderers.Select(r => new RendererState { path = AnimationUtility.CalculateTransformPath(r.transform, obj.transform),
                     materials = r.sharedMaterials.Select(m => m == null ? "" : AssetDatabase.GetAssetPath(m)).ToArray() }).ToArray() };
+            result.has_collision = obj.GetComponentsInChildren<Collider>().Any(c=>c.enabled && !c.isTrigger);
             SceneDiagnostics.Oriented(obj,result);
             return result;
         }
@@ -100,7 +101,7 @@ namespace PromptToScene.Editor
                 if (!p.duplicate && placements.Take(i).Any(r => !r.duplicate && r.source_id == p.source_id)) throw new Exception("Duplicate target in layout");
             }
             var moved = new HashSet<string>(placements.Where(p => !p.duplicate).Select(p => p.source_id));
-            foreach (var obstacle in Objects().Select(Describe).Where(o => o.id != request.anchor.id && !moved.Contains(o.id)))
+            foreach (var obstacle in Objects().Select(Describe).Where(o => o.id != request.anchor.id && !moved.Contains(o.id) && (!request.ignore_noncolliding || o.has_collision)))
                 if (placements.Any(p => Overlap(p.bounds_min,p.bounds_max,p.footprint,obstacle))) throw new Exception("Layout overlaps " + obstacle.name + "; plan again");
             var existing = sources.Where((o,i) => !placements[i].duplicate).Distinct().ToArray();
             var before = new SceneResult { scene = sceneKey, objects = existing.Select(Describe).ToArray(), created_ids = new string[0] };

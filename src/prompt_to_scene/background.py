@@ -30,6 +30,7 @@ def submit(project, kind, parameters, asset_id=None):
         "linked_update",
         "project_adapter",
         "game_delivery",
+        "scene_trial",
     }:
         raise ValueError("Unknown workflow")
     target = registry.resolve(project)
@@ -134,6 +135,7 @@ def run(path):
         delivery,
         linked_updates,
         project_adapters,
+        scene_studio,
         visual_assets,
     )
 
@@ -160,6 +162,7 @@ def run(path):
             "project_adapter": project_adapters.run,
             "game_delivery": delivery.run,
             "asset_recommendations": asset_recommendations.run,
+            "scene_trial": scene_studio.run,
         }[job.spec["kind"]](job, **job.spec["parameters"])
         job.update(**result, status="completed", error=None, completed_utc=workflow.now())
     except Exception as error:

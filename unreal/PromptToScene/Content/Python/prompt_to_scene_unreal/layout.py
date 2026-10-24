@@ -105,6 +105,8 @@ def arrange(request, root):
                 raise ValueError("Duplicate target in layout")
             moved.add(row["source_id"])
     for key, actor in objects.items():
+        if request.get("ignore_noncolliding") and not actions.describe(actor)["has_collision"]:
+            continue
         if key not in moved | {actions.guid(anchor)} and any(
             overlap(row, actions.describe(actor)) for row in placements
         ):

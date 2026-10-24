@@ -33,7 +33,10 @@ can still use the direct actions below.
 
 ## Linked items, editable UI and visual iteration
 
-For scene-specific requests, use `capture_scene_context`, wait for the task, then
+For scene-specific requests, prefer `reference_scene` to capture the selection, measured space,
+nearby material parameters and real game-camera screenshot together. Wait, then
+`save_scene_context(inspection_id=...)` automatically retains the image. Use `capture_scene_context`
+when only fresh parameters are needed. Reuse the saved reference until the scene changes. Then
 `save_scene_context(inspection_id=..., settings=...)`. Save only needed constraints: intended
 use, explicit world-XYZ metre limits, or `fit="fit"` to use the selected blockout's bounds.
 Default reference mode borrows context without copying the target's dimensions. Multiple
@@ -45,6 +48,23 @@ inspection reports dimensions, placement and approximate camera framing. Image i
 display-aspect and transparent-icon-margin checks. Neither result certifies beauty, occlusion or
 gameplay clearance. Keep the original model revision's brief when reviewing it; refresh changed
 scene/target/camera evidence before redesign. Do not stretch or move existing assets silently.
+
+Use `preview_scene_model(asset_id, inspection_id)` to try a static model on a surface or in a
+placeholder; it makes temporary geometry and restores the source after capturing. Read both
+actual images with `scene_preview_images(plan_id)`, then `scene_preview_action` with adopt, undo
+or discard. It checks current versions, poses, gameplay minimum dimensions and reserved space.
+`preview_scene_image` shows a retained image over the scene at its intended pixel size, size
+comparisons and nine-slice/text safety. This is a flat layout preview, not native UI rendering.
+`repair_image_padding` makes a new draft; `repair_scene_part` changes only a named unlocked part;
+`restore_scene_part` refuses unrelated later edits. Do not unlock features merely to pass a check.
+
+Save `asset_requirements` before design: use, minimum size, reserved space, movement and attachment
+points or UI safe area/states. `apply_asset_requirements` configures existing native interaction
+or sockets once dependencies exist. Separate door/lid meshes are required; run the actual game
+to judge motion and input. `save_scene_profile`/`activate_scene_profile` retain each region's
+style/reference and concrete feature locks, clearing old target/camera positions on activation.
+Model/image plans freeze those versions. After successful adoption, `remember_scene_example`
+saves the viewed result with reasons into that region; failed work is never recorded as accepted.
 
 For a usable item (model + matching icon + data + pickup), prefer `create_game_item` over separate
 unrelated model/image tasks. Supply an existing `model_asset_id`, or `model` with one `produce`

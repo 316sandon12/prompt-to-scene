@@ -115,7 +115,7 @@ def plan(
     if context.get("detail", "auto") != "auto":
         detail = context["detail"]
     reference = core.read_optional_json(root(project) / "art-brief.json") or {}
-    from . import art_samples, scene_context
+    from . import art_samples, asset_requirements, scene_context, scene_profiles
 
     result = {
         "schema_version": 1,
@@ -129,10 +129,11 @@ def plan(
         "style": styles.read(project),
         "art_samples": art_samples.context(project, "model"),
         "scene_context": scene_context.brief(project),
+        "scene_profile": scene_profiles.brief(project),
+        "usage_requirements": asset_requirements.save(project, asset_id),
         "decisions": decisions,
         "family": core.read_optional_json(root(project) / "design-family.json"),
-        "visual_preferences": core.read_optional_json(root(project) / "visual-preferences.json")
-        or [],
+        "visual_preferences": scene_profiles.preferences(project),
         "reference": {k: reference[k] for k in ("notes", "image", "sha256") if k in reference},
         "treatment": {
             "construction": context["construction"],
@@ -176,6 +177,17 @@ def plan(
             "Make the interaction point readable, preserve moving-part clearance and pivots. "
             "Decorative handles do not implement gameplay; configure interaction separately."
         )
+    if result["scene_profile"]:
+        import json
+
+        result["modeling_guidance"].append(
+            "Preserve this region's art decisions: "
+            + json.dumps(result["scene_profile"], ensure_ascii=False)
+        )
+    if result["usage_requirements"]["revision"]:
+        result["modeling_guidance"].append(
+            asset_requirements.guidance(result["usage_requirements"])
+        )
     core.atomic_json(root(project) / "designs" / (asset_id + ".json"), result)
     return result
 
@@ -205,6 +217,23 @@ def provider_prompt(prompt, design, limit=800):
     scene = design.get("scene_context")
     scene_fields = []
     omitted = []
+    usage = design.get("usage_requirements")
+    if usage and usage.get("revision"):
+        c = usage["settings"]
+        constraint = (
+            f"\nUse {c['kind']}; minimum world XYZ metres: {c['min_size_m']}; "
+            f"keep scale: {c['lock_scale']}"
+        )
+        if len(prompt) + len(constraint) <= limit:
+            prompt += constraint
+        else:
+            omitted.append("Gameplay minimum size and scale lock")
+    profile = design.get("scene_profile")
+    if profile:
+        scene_fields += [
+            ("Region", profile["notes"]),
+            *[("Keep " + k, v) for k, v in profile["locks"].items()],
+        ]
     if scene:
         if scene.get("max_size_m"):
             # Never truncate a numerical limit into a different/ambiguous dimension.

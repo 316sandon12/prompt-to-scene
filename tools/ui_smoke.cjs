@@ -38,7 +38,7 @@ async function api(action, values={}) {
   if(action==='state') { if(failState)throw Error('UI test: connection unavailable'); return structuredClone(state); }
   if(action==='inspect_asset')return {asset_id:values.asset_id,current:{request_id:rev},history:[],metadata:{report:{parts:{body:{objects:['body']}}},recipe:{}}};
   if(action==='profile')return profile;
-  if(action==='image')return {url: values.kind==='studio' ? (values.asset_id==='oak_barrel'?art.barrel:art.chair) : values.asset_id==='forest_reference'?art.forest:art.potion};
+  if(action==='image')return {url: values.kind==='scene_trial'&&values.view!=='scene' ? art.chair : values.kind==='studio' ? (values.asset_id==='oak_barrel'?art.barrel:art.chair) : values.asset_id==='forest_reference'?art.forest:art.potion};
   if(action==='workflow'){
     const v=values.values||{};
     switch(values.action){
@@ -54,12 +54,40 @@ async function api(action, values={}) {
       case 'adapter_plans':return {adapters:[]};
       case 'game_deliveries':return {deliveries:[]};
       case 'art_samples':return {theme:{},samples:[]};
+      case 'reference_scene':
       case 'capture_scene_context':return {status:'completed',request_id:rev,scene:'Assets/Forest.unity',engine:'unity',selected_context:[{id:'blockout'}]};
       case 'save_scene_context':{
         const object={id:'blockout',name:'药箱占位物',position:[0,0,0],bounds_min:[0,0,0],bounds_max:[1,.8,.6]};
         state.scene_context={revision:rev,settings:{target_id:'blockout',camera_id:'player',...state.scene_context?.settings,...v.settings},snapshot:{scene:'Assets/Forest.unity',engine:'unity',context:[object],selected_context:[object],cameras:[{id:'player',name:'玩家相机'}],captured_utc:'2026-10-24T04:00:00Z'}};
         return structuredClone(state.scene_context);
       }
+      case 'scene_previews':return {previews:state.scene_previews||[]};
+      case 'preview_scene_model':{
+        const row={plan_id:'b'.repeat(32),kind:'model',asset_id:v.asset_id,model_revision:rev,scale_factor:v.resize?.8333:1,created_utc:'2026-10-24T06:00:00Z'};
+        state.scene_previews=[row];return {status:'completed',plan_id:row.plan_id,request_id:'c'.repeat(32)};
+      }
+      case 'preview_scene_image':{
+        const row={plan_id:'e'.repeat(32),kind:'image',asset_id:v.asset_id,image_revision:v.revision,previous_revision:rev,display_size_px:v.display_size_px||[64,64],created_utc:'2026-10-24T06:02:00Z',report:{states:{normal:true,hover:false}}};
+        state.scene_previews=[...(state.scene_previews||[]).filter(r=>r.plan_id!==row.plan_id),row];return row;
+      }
+      case 'scene_preview_action':{
+        const row=state.scene_previews.find(r=>r.plan_id===v.plan_id);assert(row);
+        if(v.mode==='discard'){row.discarded=true;return row;}
+        row[v.mode]={request_id:'d'.repeat(32),status:'completed'};return row[v.mode];
+      }
+      case 'repair_image_padding':return {revision:'f'.repeat(32),asset_id:v.asset_id,status:'prepared'};
+      case 'remember_scene_example':return {sample_id:'scene_sample',verdict:v.verdict};
+      case 'asset_requirements':{
+        const row={asset_id:v.asset_id,revision:rev,settings:v.settings||{kind:'prop'}};
+        state.usage_requirements=[...(state.usage_requirements||[]).filter(r=>r.asset_id!==v.asset_id),row];return row;
+      }
+      case 'apply_asset_requirements':return {status:'completed',request_id:'d'.repeat(32)};
+      case 'save_scene_profile':{
+        state.scene_profiles??={profiles:[],active:{}};
+        const row={...v,profile_id:v.profile_id||'herb_shop',revision:rev};state.scene_profiles.profiles=[row];return row;
+      }
+      case 'activate_scene_profile':state.scene_profiles.active={profile_id:v.profile_id};return state.scene_profiles.active;
+      case 'repair_scene_part':return {status:'completed',request_id:'d'.repeat(32)};
       case 'check_scene_fit':return {max_size_m:[1,.8,.6],stale:[],instances:[{size_m:[1.2,.8,.6],oversized_axes:['X'],outside_target_axes:['X'],uniform_scale_to_fit:.8333,framing:{status:'estimated',outside_frame:true}}]};
       default:throw Error('Unexpected workflow (must explicitly test mutations): '+values.action+' '+JSON.stringify(v));
     }
@@ -67,7 +95,7 @@ async function api(action, values={}) {
   throw Error('Unexpected action: '+action);
 }
 let embeddedHtml=fs.readFileSync(path.join(source,'workbench.html'),'utf8').replace('<link rel="stylesheet" href="/studio.css">','<style>'+fs.readFileSync(path.join(source,'studio.css'),'utf8')+'</style>');
-for(const name of ['model_viewer.js','workbench.js','scene_context.js','creations.js','gameplay.js','creative_tasks.js'])embeddedHtml=embeddedHtml.replace(`<script src="/${name}" defer></script>`,()=>'<script>'+fs.readFileSync(path.join(source,name),'utf8')+'</script>');
+for(const name of ['model_viewer.js','workbench.js','scene_context.js','creations.js','gameplay.js','creative_tasks.js','scene_studio.js'])embeddedHtml=embeddedHtml.replace(`<script src="/${name}" defer></script>`,()=>'<script>'+fs.readFileSync(path.join(source,name),'utf8')+'</script>');
 const server=http.createServer(async(req,res)=>{
   try{
     if(req.url==='/api/state'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify({...state,projects:[],blender:'/fixture/Blender',clients:{codex:'/fixture/codex',harness:'/fixture/dsh',harness_profiles:['web']},reviews:[]}));return;}
@@ -138,6 +166,42 @@ async function shot(page,name){if(screenshots)await page.screenshot({path:path.j
     await page.evaluate(()=>{document.getElementById('creationHandoffBox').hidden=true;document.querySelector('.controls-panel').scrollTop=0;window.scrollTo(0,0);});
     await shot(page,'scene-context');
     await page.locator('#sceneBriefPanel > summary').click();
+    // Native reference, placement preview and direct corrective actions are in the canvas.
+    await page.locator('#sceneBriefPanel > summary').click();
+    await page.locator('#referenceScene').click();
+    await page.waitForFunction(()=>!document.getElementById('referenceScene').hasAttribute('aria-busy'));
+    assert(requests.some(r=>r.values.action==='reference_scene'));
+    await page.locator('#sceneBriefPanel > summary').click();
+    await page.locator('#sceneTrialPanel > summary').click();
+    await page.locator('#fitSceneModel').click();
+    await page.waitForSelector('#previews figure:nth-child(2)');
+    assert(requests.some(r=>r.values.action==='preview_scene_model'&&r.values.values.resize));
+    await page.locator('#sceneExampleNotes').evaluate(e=>e.closest('details').open=true);
+    await page.locator('#sceneExampleNotes').fill('保留低对比木纹');
+    await page.locator('#rememberSceneAccepted').click();
+    await page.locator('#adoptSceneTrial').click();
+    await page.waitForFunction(()=>!document.getElementById('undoSceneTrial').disabled);
+    await page.locator('#undoSceneTrial').click();
+    await page.waitForFunction(()=>document.getElementById('sceneTrialStatus').textContent==='已撤销采用。'&&!document.getElementById('undoSceneTrial').hasAttribute('aria-busy'));
+    await page.evaluate(()=>{document.querySelector('.controls-panel').scrollTop=0;window.scrollTo(0,0);});
+    await shot(page,'scene-studio');
+    await page.locator('#sceneTrialPanel > summary').click();
+    await page.locator('#usagePanel > summary').click();
+    await page.locator('#usageKind').selectOption('door');
+    await page.locator('#usageMinimum').fill('0.8, 1.8, 0');
+    await page.locator('#saveAssetUsage').click();
+    await page.waitForFunction(()=>document.getElementById('usageStatus').textContent.includes('已保存'));
+    assert.deepEqual(state.usage_requirements[0].settings.min_size_m,[.8,1.8,0]);
+    await page.locator('#usagePanel > summary').click();
+    await page.locator('#sceneArtPanel > summary').click();
+    await page.locator('#sceneProfileName').fill('森林药草店');
+    await page.locator('#sceneProfileNotes').fill('保留浅木色');
+    await page.locator('#saveSceneProfile').click();
+    await page.waitForFunction(()=>document.getElementById('sceneProfileChoice').value==='herb_shop');
+    await page.locator('#activateSceneProfile').click();
+    await page.waitForFunction(()=>!document.getElementById('activateSceneProfile').hasAttribute('aria-busy'));
+    assert.equal(state.scene_profiles.active.profile_id,'herb_shop');
+    await page.locator('#sceneArtPanel > summary').click();
     await page.getByRole('button',{name:'旋转模型 / 点选部件',exact:true}).click();
     await page.waitForSelector('canvas.visual-canvas');
     await page.locator('[aria-label="预览部件"]').selectOption('body');
@@ -148,6 +212,17 @@ async function shot(page,name){if(screenshots)await page.screenshot({path:path.j
     await page.locator('#backGallery').click();await page.getByRole('button',{name:'打开作品：林间 · 恢复药剂',exact:true}).click();
     await page.waitForSelector('#creationFocus button');await visible(page,'#previews img');
     await page.getByRole('button',{name:'局部修改图标',exact:true}).click();await visible(page,'#regionEditor');
+    await page.locator('#sceneTrialPanel > summary').click();
+    await page.locator('#previewSceneAsset').click();
+    await page.waitForSelector('#previews figure:nth-child(3)');
+    assert((await page.locator('#sceneTrialStatus').textContent()).includes('hover'));
+    await page.locator('#padSceneImage').click();
+    await page.waitForFunction(()=>!document.getElementById('padSceneImage').hasAttribute('aria-busy'));
+    assert(requests.some(r=>r.values.action==='preview_scene_image'&&r.values.values.revision==='f'.repeat(32)));
+    await page.locator('#sceneTrialPanel > summary').click();
+    await page.getByRole('button',{name:'框选修改此版图片',exact:true}).click();
+    await visible(page,'#regionEditor');
+
     await page.locator('#regionRect').fill('0.1, 0.2, 0.3, 0.4');await page.locator('#setRegion').click();
     assert.equal(await page.locator('#regionRect').inputValue(),'0.1, 0.2, 0.3, 0.4');
     await page.locator('#backGallery').click();await page.getByRole('button',{name:'打开作品：药剂师的行囊',exact:true}).click();
@@ -156,7 +231,7 @@ async function shot(page,name){if(screenshots)await page.screenshot({path:path.j
       await page.locator(`.studio-nav [data-view=${view}]`).click();
       for(const tab of tabs){await page.locator('#tab-'+tab).click();await visible(page,'#'+tab);await noOverflow(page,tab);}
     }
-    assert.equal(await page.locator('#notice.error').count(),0,'Unexpected tool error');
+    assert.equal(await page.locator('#notice.error').count(),0,'Unexpected tool error: '+await page.locator('#notice').textContent());
     await page.evaluate(()=>window.PTS.showImage({kind:'engine',request_id:'fixture'},'材质适配预览'));
     await visible(page,'#pipeline');await visible(page,'#previews img');
     assert.equal(await page.locator('body').getAttribute('data-view'),'project');
@@ -205,6 +280,6 @@ async function shot(page,name){if(screenshots)await page.screenshot({path:path.j
     await page.setViewportSize({width:390,height:900});await noOverflow(page,'setup mobile');
     assert((await page.locator('#workbenchLink').getAttribute('href')).endsWith('#ui-test'));
     assert.deepEqual(errors,[],'Uncaught browser errors');
-    console.log('PASS: gallery/search/filter; retained previews; contextual commands; 3D parts; image regions; UI config; all 15 tools; queue/errors; project-switch race; 320–1440px; inline MCP App.');
+    console.log('PASS: scene reference/trial/adopt/undo; image size/padding; usage requirements; regional profiles; gallery/search/filter; retained previews; contextual commands; 3D parts; image regions; UI config; all 15 tools; queue/errors; project-switch race; 320–1440px; inline MCP App.');
   }finally{await context.close();await browser.close();await new Promise(r=>server.close(r));}
 })().catch(error=>{console.error(error);server.close();process.exitCode=1;});

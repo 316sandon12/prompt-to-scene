@@ -105,14 +105,27 @@ reuses an engine camera frame so the user can compare actual engine results.
 New props inherit get_project_style. set_project_style remembers concrete art direction; reference
 images can inform palette/shape through the client's own vision, not hidden image-to-3D claims.
 Read game_art_direction before modeling. Save the user's gameplay, world and look once.
-For scene-specific assets, capture_scene_context then save_scene_context once with the measured
-target/camera, intended use and optional scene reference. Subsequent model designs and image
+For scene-specific assets, reference_scene captures native selection, dimensions, material
+parameters and actual camera pixels in one task. Wait, then save_scene_context(inspection_id)
+retains the image automatically. Use capture_scene_context for a lightweight parameter read.
+Subsequent model designs and image
 plans inherit this retained brief. With a scene reference, match_game_style(use_scene=true)
 returns real pixels for host vision; separate observed style from measured size. design_asset
 must precede custom modeling so its scene constraints survive in the built revision. After
 import, check_scene_fit with a fresh capture reports bounds, placement and estimated framing;
 image import reports display aspect and alpha margins. These are not aesthetic/occlusion tests.
 Refresh context when scene/target/camera changes; do not silently scale existing manual assets.
+Use preview_scene_model with a fresh inspection for temporary surface/volume placement; read
+scene_preview_images, then scene_preview_action(adopt/undo/discard). It preserves static source
+geometry, checks gameplay minimum size/clearance and refuses changed poses. preview_scene_image
+shows actual pixel sizes, scene overlay and nine-slice/text safe areas; it is a flat layout
+preview, not native UI rendering. repair_image_padding prepares a new revision, not an import.
+repair_scene_part changes only a named unlocked part; restore_scene_part rejects later edits.
+asset_requirements retains intended use, sizes, movement, sockets and UI states in both briefs.
+apply_asset_requirements uses existing native interaction/socket support, not decorative guesses.
+save_scene_profile/activate_scene_profile keep regional directions and named feature locks;
+activation clears old spatial targets. After successful adoption, remember_scene_example saves
+actual pixels and concrete reasons in that region. Never save failed or unviewed work as accepted.
 Existing-project style matching starts with real images: capture representative native assets
 with describe_project_assets or use a saved reference, then call match_game_style to see them.
 When no art direction has been established, use available project/reference images before the
@@ -270,6 +283,7 @@ async def game_workflow(
             "review_images",
             "image_preview",
             "recommendation_images",
+            "scene_preview_images",
         }:
             images = [result] if action == "image_preview" else result["images"]
             return [

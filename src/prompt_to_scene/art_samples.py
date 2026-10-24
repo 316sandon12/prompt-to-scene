@@ -77,6 +77,14 @@ def save(project, name, category, source, notes, verdict="accepted", sample_id=N
         path=str(directory / "image.png"),
         sha256=image_assets.digest((directory / "image.png").read_bytes()),
     )
+    from . import scene_profiles
+
+    previous = core.read_optional_json(folder(project) / sample_id / "current.json")
+    result["profile_id"] = (
+        read(project, sample_id).get("profile_id")
+        if previous
+        else scene_profiles.active(project).get("profile_id")
+    )
     core.atomic_json(directory / "sample.json", result)
     core.atomic_json(folder(project) / sample_id / "current.json", {"revision": revision})
     return result
@@ -119,7 +127,14 @@ def restore(project, sample_id, revision):
 
 
 def context(project, category):
-    rows = [r for r in catalog(project)["samples"] if r["category"] in {category, "material"}][-12:]
+    from . import scene_profiles
+
+    scope = scene_profiles.active(project).get("profile_id")
+    rows = [
+        r
+        for r in catalog(project)["samples"]
+        if r["category"] in {category, "material"} and r.get("profile_id") in {None, scope}
+    ][-12:]
     return {
         "theme": theme(project),
         "samples": [

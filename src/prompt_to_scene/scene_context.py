@@ -98,7 +98,7 @@ def save(project, inspection_id=None, settings=None, reference_path=None):
         state = inspection(project, inspection_id)
         snapshot = {
             k: deepcopy(state.get(k) or [])
-            for k in ("context", "selected_context", "assets", "cameras")
+            for k in ("context", "selected_context", "assets", "cameras", "materials")
         }
         snapshot.update(
             scene=state["scene"],
@@ -118,7 +118,9 @@ def save(project, inspection_id=None, settings=None, reference_path=None):
         preferred = [c for c in cameras if c.get("primary")]
         choices = preferred or cameras
         values["target_id"] = selected[0]["id"] if len(selected) == 1 else ""
-        values["camera_id"] = choices[0]["id"] if len(choices) == 1 else ""
+        values["camera_id"] = state.get("reference_camera_id") or (
+            choices[0]["id"] if len(choices) == 1 else ""
+        )
         values.update(
             {k: settings[k] for k in ("target_id", "camera_id") if settings and k in settings}
         )
@@ -141,6 +143,12 @@ def save(project, inspection_id=None, settings=None, reference_path=None):
             "Target volume (or supply explicit size_m)",
         )
     reference = deepcopy(old.get("reference"))
+    native_reference = inspection_id is not None and reference_path is None and state.get("preview")
+    if native_reference:
+        expected = "previews/" + workflow.identifier(inspection_id) + ".png"
+        if state["preview"] != expected:
+            raise ValueError("Scene capture returned an unexpected image path")
+        reference_path = str(game_art.root(project) / expected)
     if reference_path is not None:
         reference = None
         if reference_path:
@@ -171,6 +179,13 @@ def save(project, inspection_id=None, settings=None, reference_path=None):
         reference=reference,
         updated_utc=workflow.now(),
     )
+    if native_reference and reference:
+        result["reference"] = {
+            **reference,
+            "kind": "native_scene_reference",
+            "inspection_id": inspection_id,
+            "camera_id": values["camera_id"],
+        }
     core.atomic_json(game_art.root(project) / "scene-context.json", result)
     return result
 
@@ -213,6 +228,11 @@ def brief(project):
             camera=camera,
             max_size_m=size,
             neighbors=near[:12],
+            materials=[
+                m
+                for m in snapshot.get("materials", [])
+                if m.get("object_id") in {o["id"] for o in near[:12]}
+            ],
             reference=reference,
             evidence="Native bounds/cameras are measurements at capture time; appearance "
             "requires host vision. Material names are identifiers, not color observations.",

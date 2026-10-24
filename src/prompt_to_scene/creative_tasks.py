@@ -38,7 +38,7 @@ def context(project, request="", inspect_scene=False):
     Set inspect_scene to request current native selection/camera/bounds, then wait for scene_task.
     Ask only for missing decisions, save a typed plan, and execute that one task.
     """
-    from . import art_samples, gameplay, project_profiles, scene_context, styles
+    from . import art_samples, gameplay, project_profiles, scene_context, scene_profiles, styles
 
     target = registry.resolve(project)
     request = game_art.text(request, "request", 4000)
@@ -47,6 +47,11 @@ def context(project, request="", inspect_scene=False):
         "engine": target.engine,
         "game": game_art.configure(project),
         "scene_context": scene_context.brief(project),
+        "scene_profile": scene_profiles.brief(project),
+        "usage_requirements": [
+            core.read_optional_json(p)
+            for p in sorted((game_art.root(project) / "usage-requirements").glob("*.json"))
+        ],
         "style": styles.read(project),
         "samples": art_samples.context(project, "model"),
         "creations": creations.catalog(project),

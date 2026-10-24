@@ -44,6 +44,8 @@ def describe(actor):
         "position": [v / 100 for v in vector(actor.get_actor_location())],
         "rotation": [rotation.roll, rotation.pitch, rotation.yaw],
         "scale": vector(actor.get_actor_scale3d()),
+        "has_collision": actor.get_actor_enable_collision()
+        and component.get_collision_enabled() != unreal.CollisionEnabled.NO_COLLISION,
         "materials": [
             component.get_material(i).get_path_name() if component.get_material(i) else ""
             for i in range(component.get_num_materials())
@@ -181,6 +183,10 @@ def validate(request, filename):
 def execute(request, root):
     operation = request["operation"]
     revision = request["request_id"]
+    if operation == "scene_stage":
+        from . import scene_staging
+
+        return scene_staging.execute(request, root)
     if operation == "image":
         from .image_assets import execute as import_image
 
@@ -259,7 +265,7 @@ def execute(request, root):
             if created_id in objects:
                 actors().destroy_actor(objects[created_id])
         return {"restored_edit": undo_id, "objects": snapshot["objects"]}
-    if not selected:
+    if not selected and not request.get("scene_capture"):
         raise ValueError("Select a Prompt-to-Scene prop in this level, or choose an asset scope")
     if operation == "focus":
         focus(selected)
@@ -273,7 +279,12 @@ def execute(request, root):
         game_camera = None
         if view == "game":
             candidates = [
-                a for a in actors().get_all_level_actors() if isinstance(a, unreal.CameraActor)
+                a
+                for a in actors().get_all_level_actors()
+                if isinstance(a, unreal.CameraActor)
+                and (not request.get("camera_id") or guid(a) == request["camera_id"])
+                and a.get_level()
+                == unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).get_current_level()
             ]
             tagged = [a for a in candidates if "PTS.GameCamera" in map(str, a.tags)]
             candidates = tagged or candidates
@@ -335,8 +346,9 @@ def execute(request, root):
         if game_camera:
             capture_camera = actors().spawn_actor_from_class(
                 unreal.CameraActor,
-                game_camera.get_actor_location(),
-                game_camera.get_actor_rotation(),
+                game_camera.camera_component.get_world_location(),
+                game_camera.camera_component.get_world_rotation(),
+                transient=True,
             )
             source, target = game_camera.camera_component, capture_camera.camera_component
             for key in (
@@ -362,8 +374,13 @@ def execute(request, root):
                 )
             _game_cameras[revision] = capture_camera
         try:
+            aspect = (
+                float(capture_camera.camera_component.aspect_ratio) if capture_camera else 4 / 3
+            )
+            width = 1024 if aspect >= 1 else max(1, round(1024 * aspect))
+            height = max(1, round(1024 / aspect)) if aspect >= 1 else 1024
             task = unreal.AutomationLibrary.take_high_res_screenshot(
-                1024, 768, str(path), camera=capture_camera, delay=0.3
+                width, height, str(path), camera=capture_camera, delay=0.3
             )
         except Exception:
             if capture_camera:
@@ -458,39 +475,59 @@ def execute(request, root):
 
 
 _game_cameras = {}
+_capture_results = {}
+_capture_cleanup = {}
+_processing = False
 
 
 def process(root):
+    global _processing
+    if _processing:
+        return
+    _processing = True
+    try:
+        _process(root)
+    finally:
+        _processing = False
+
+
+def _process(root):
     for revision, (path, started, task, old_camera) in list(_captures.items()):
         if path.is_file() and path.stat().st_size > 8:
-            write_json(
-                root / "action-receipts" / (revision + ".json"),
-                {
-                    "status": "completed",
-                    "request_id": revision,
-                    "preview": "previews/" + path.name,
-                    "engine": "unreal",
-                },
-            )
-            unreal.get_editor_subsystem(
-                unreal.UnrealEditorSubsystem
-            ).set_level_viewport_camera_info(*old_camera)
-            del _captures[revision]
+            receipt = {
+                "status": "completed",
+                "request_id": revision,
+                "preview": "previews/" + path.name,
+                "engine": "unreal",
+                **_capture_results.get(revision, {}),
+            }
         elif time.monotonic() - started > 30:
-            write_json(
-                root / "action-receipts" / (revision + ".json"),
-                {
-                    "status": "error",
-                    "request_id": revision,
-                    "error": "Screenshot timed out; open a visible level viewport and retry",
-                },
-            )
-            unreal.get_editor_subsystem(
-                unreal.UnrealEditorSubsystem
-            ).set_level_viewport_camera_info(*old_camera)
-            del _captures[revision]
-        if revision not in _captures and revision in _game_cameras:
-            actors().destroy_actor(_game_cameras.pop(revision))
+            receipt = {
+                "status": "error",
+                "request_id": revision,
+                "error": "Screenshot timed out; open a visible level viewport and retry",
+            }
+        else:
+            continue
+        del _captures[revision]
+        _capture_results.pop(revision, None)
+        cleanup = _capture_cleanup.pop(revision, None)
+        try:
+            try:
+                unreal.get_editor_subsystem(
+                    unreal.UnrealEditorSubsystem
+                ).set_level_viewport_camera_info(*old_camera)
+            finally:
+                try:
+                    if revision in _game_cameras:
+                        actors().destroy_actor(_game_cameras.pop(revision))
+                finally:
+                    if cleanup:
+                        cleanup()
+        except Exception as error:
+            receipt.update(status="error", error="Preview cleanup failed: " + str(error))
+        # UI callbacks can run during restoration; publish completion only after it finishes.
+        write_json(root / "action-receipts" / (revision + ".json"), receipt)
     for path in sorted((root / "actions").glob("*.json")):
         from . import organization, playchecks
 

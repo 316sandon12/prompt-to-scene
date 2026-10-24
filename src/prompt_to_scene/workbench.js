@@ -93,7 +93,7 @@
     button.disabled = true; button.setAttribute("aria-busy", "true");
     try { const result = await fn(); if (result) output(result); await refresh(); }
     catch (error) { notice(error.message, true); }
-    finally { button.disabled = false; button.removeAttribute("aria-busy"); selectionAvailability(); if(organizationPlan)organizationButtons(); }
+    finally { button.disabled = false; button.removeAttribute("aria-busy"); selectionAvailability(); if(organizationPlan)organizationButtons(); window.dispatchEvent(new CustomEvent("pts:idle")); }
   }
   function bind(id, fn) { $(id).onclick = event => action(event.currentTarget, fn); }
   document.querySelector(".skip-link").onclick = event => { event.preventDefault(); $("workspaceContent").focus(); };
@@ -463,6 +463,7 @@
   async function imagePlan() {
     await ensureGameArt();
     $("imageName").value=id($("imageName").value,$("imageKind").value);
+    await window.PTS.ensureAssetUsage($("imageName").value);
     const border=$("imageBorder").value.split(/[,，\s]+/).filter(Boolean).map(Number);
     const values={asset_id:$("imageName").value,prompt:$("imagePrompt").value.trim()||$("imageName").value,
       kind:$("imageKind").value,width:Number($("imageWidth").value),height:Number($("imageHeight").value),

@@ -14,7 +14,7 @@
 <div id="workspaceGrid" class="workspace-grid" hidden><section class="panel controls-panel" aria-label="创作参数">
 <details id="sceneBriefPanel" class="scene-brief"><summary>场景适配 <span id="sceneBriefBadge" class="pill">未设置</span></summary>
 <p id="sceneContextStatus" class="muted">先选中引擎里的目标或占位物，再读取场景。</p>
-<button id="captureSceneContext">读取当前场景</button>
+<div class="row"><button id="referenceScene" class="primary">参考这里制作</button><button id="captureSceneContext">仅读取参数</button></div>
 <label class="check"><input id="sceneEnabled" type="checkbox" checked>后续创作沿用这些设定</label>
 <div class="row"><label>目标对象<select id="sceneTarget"><option value="">不指定对象</option></select></label><label>用途<select id="sceneFitMode"><option value="reference">参考外观与环境</option><option value="fit">以目标作为尺寸上限</option></select></label></div>
 <label>实际用途<textarea id="sceneUse" rows="2" placeholder="柜台旁的可交互药箱；俯视时把手与药草标识要清楚"></textarea></label>
@@ -26,6 +26,35 @@
 </details>
 <div class="row"><button id="saveSceneContext" class="primary">保存场景设定</button><button id="checkSceneFit">检查当前模型适配</button></div>
 <div id="sceneFitResults" class="scene-fit-results" aria-live="polite"></div>
+</details>
+<details id="sceneTrialPanel" class="scene-brief"><summary>放进游戏里看看 <span id="sceneTrialBadge" class="pill">先预览</span></summary>
+<p class="muted">模型用实际游戏镜头试放；图片按显示尺寸叠到场景参考中。采用后才修改项目。</p>
+<div class="row"><label>模型位置<select id="trialPlacement"><option value="surface">放在目标表面</option><option value="volume">放进占位范围</option></select></label><label class="check"><input id="trialResize" type="checkbox">允许等比缩小</label></div>
+<label class="check"><input id="trialReplace" type="checkbox">替换占位物，保留撤销</label>
+<details><summary>图片显示位置与文字</summary><label>左上角位置 X, Y（0–1）<input id="trialImagePosition" value="0.5, 0.5"></label><label>预览文字<input id="trialImageText" value="Sample text"></label></details>
+<button id="previewSceneAsset" class="primary">预览当前作品</button>
+<label>保留的预览<select id="sceneTrialHistory"><option value="">尚无预览</option></select></label>
+<p id="sceneTrialStatus" class="muted" aria-live="polite"></p>
+<div class="row"><button id="adoptSceneTrial" disabled>采用</button><button id="discardSceneTrial" disabled>放弃</button><button id="undoSceneTrial" disabled>撤销</button></div>
+<div class="row"><button id="fitSceneModel">缩小试放</button><button id="padSceneImage">修正图标留白</button></div>
+<details><summary>只改一个部件的材质</summary><label>部件<select id="sceneRepairPart"></select></label><div class="row"><label>颜色<input id="sceneRepairColor" type="color" value="#9e8d68"></label><label>粗糙度<input id="sceneRepairRoughness" type="number" min="0" max="1" step="0.05" value="0.6"></label></div><label class="check"><input id="sceneRepairUseColor" type="checkbox">修改颜色</label><label class="check"><input id="sceneRepairUseRoughness" type="checkbox" checked>修改粗糙度</label><button id="repairScenePart">保存部件修改</button><button id="restoreSceneModel">恢复修改前版本</button><p class="muted">保留造型和其他部件，遵守已有锁定。修改后重新预览。</p></details>
+<details><summary>记住这次美术选择</summary><label>保留或避免什么<textarea id="sceneExampleNotes" placeholder="例如：保留大块浅木色、圆角和低对比纹理"></textarea></label><div class="row"><button id="rememberSceneAccepted">作为采用样本</button><button id="rememberSceneAvoid">作为避免样本</button></div></details>
+</details>
+<details id="usagePanel" class="scene-brief"><summary>这件资产怎么用</summary>
+<label>资产 ID<input id="usageAsset" placeholder="打开作品后自动填写；新作品可先命名"></label>
+<label>用途<select id="usageKind"><option value="prop">场景道具</option><option value="door">门</option><option value="chest">宝箱</option><option value="weapon">持握物品</option><option value="ui">游戏界面</option></select></label>
+<div class="row"><label>最小尺寸 X, Y, Z（米）<input id="usageMinimum" value="0, 0, 0"></label><label>各方向预留空间（米）<input id="usageClearance" value="0, 0, 0"></label></div>
+<label class="check"><input id="usageLockScale" type="checkbox">保持尺寸，不自动缩放</label>
+<label>使用要求<textarea id="usageNotes" placeholder="打开时不碰墙，俯视镜头能看清把手"></textarea></label>
+<details><summary>活动部件与挂点</summary><label>独立门板／箱盖的资产 ID<input id="usageMoving"></label><div class="row"><label>本地转轴位置（米）<input id="usagePivot" placeholder="0, 0, 0"></label><label>转动轴<input id="usageAxis" placeholder="按用途自动填写"></label><label>开启角度<input id="usageAngle" type="number" min="-170" max="170" value="90"></label></div><label>挂点名称<input id="usageSocket" placeholder="grip"></label><div class="row"><label>挂点本地位置（米）<input id="usageSocketPosition" value="0, 0, 0"></label><label>挂点本地旋转（度）<input id="usageSocketRotation" value="0, 0, 0"></label></div></details>
+<details><summary>界面安全区与状态</summary><label>文字安全区 X, Y, 宽, 高（0–1）<input id="usageSafeArea" value="0.1, 0.1, 0.8, 0.8"></label><label>需要的状态（逗号分隔）<input id="usageStates" value="normal" placeholder="normal, hover, pressed, disabled"></label></details>
+<div class="row"><button id="saveAssetUsage">保存用途要求</button><button id="applyAssetUsage">安装交互／挂点</button></div><p id="usageStatus" class="muted">尺寸使用引擎坐标和米。保存后用于下一次制作；已有资产不会自动重做。</p>
+</details>
+<details id="sceneArtPanel" class="scene-brief"><summary>这个区域的美术要求</summary>
+<label>已保存的区域<select id="sceneProfileChoice"><option value="">选择区域</option></select></label><button id="activateSceneProfile">使用这组要求</button>
+<label>区域名称<input id="sceneProfileName" placeholder="森林药草店"></label><label>美术说明<textarea id="sceneProfileNotes" placeholder="浅木色、柔和边缘，远处保持轮廓清楚"></textarea></label>
+<details><summary>固定哪些特征</summary><label>轮廓<input id="sceneLockSilhouette" placeholder="圆角、宽底座"></label><label>配色<input id="sceneLockPalette" placeholder="浅木色和低饱和绿色"></label><label>比例<input id="sceneLockProportions" placeholder="沿用已采用的药瓶比例"></label><label>材质<input id="sceneLockMaterials" placeholder="哑光，不增加金属光泽"></label><label>细节<input id="sceneLockDetail" placeholder="只保留大块刻线"></label></details>
+<div class="row"><button id="saveSceneProfile">另存为新区域</button><button id="updateSceneProfile">更新选中区域</button></div><p class="muted">保存当前风格、场景参考和固定特征。切换区域后重新选位置；旧作品保留原来的制作依据。</p>
 </details>
 <div id="creations" class="pane" role="tabpanel" aria-labelledby="tab-creations" hidden>
 <div id="canvasOverview"><span class="eyebrow">WORK DETAILS</span><h2 id="inspectorTitle">作品设置</h2><p id="inspectorDescription" class="muted">从下方描述开始。模型、图标与游戏界面会沿用项目风格。</p></div>
@@ -141,4 +170,4 @@
 <section id="imageLibraryPanel" class="panel image-library" aria-label="项目图片库" hidden><div class="task-tray-heading"><div><span class="eyebrow">YOUR ASSETS</span><h2>项目图片库</h2></div><span class="muted">实际预览 · 保留版本 · 继续制作</span></div><div id="imageAssets" class="cards"></div></section>
 
 <details id="resultDetails"><summary>操作详情</summary><pre id="result">尚未执行操作</pre></details><footer class="studio-footer"><span>你的创作资产，留在你的项目里。</span><a href="https://github.com/316sandon12/prompt-to-scene" target="_blank" rel="noreferrer">Prompt-to-Scene · 开源游戏创作工具</a></footer>
-</main></div><script src="/model_viewer.js" defer></script><script src="/workbench.js" defer></script><script src="/scene_context.js" defer></script><script src="/creations.js" defer></script><script src="/gameplay.js" defer></script><script src="/creative_tasks.js" defer></script></body></html>
+</main></div><script src="/model_viewer.js" defer></script><script src="/workbench.js" defer></script><script src="/scene_context.js" defer></script><script src="/creations.js" defer></script><script src="/gameplay.js" defer></script><script src="/creative_tasks.js" defer></script><script src="/scene_studio.js" defer></script></body></html>
