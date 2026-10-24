@@ -1,6 +1,7 @@
 """Original art benchmarks with related items, native UI and a playable crafting loop."""
 
 from . import (
+    art_directions,
     art_samples,
     background,
     core,
@@ -34,16 +35,14 @@ def catalog(project=None):
     """Inspect the original editable art set and saved installations; no paid service is used."""
     result = {
         "kits": [
-            {
-                "kit_id": "forest_apothecary",
-                "name": "森林药剂师小屋",
-                "assets": list(PARTS),
-                "art_direction": NOTES,
-                "license": "MIT",
-                "play_loop": (
-                    "collect herbs and bottles → craft potion → use to heal → retain progress"
-                ),
-            }
+            dict(
+                kit_id=k,
+                name=v["name"],
+                assets=list(PARTS),
+                art_direction=v["notes"],
+                license="MIT",
+            )
+            for k, v in art_directions.DIRECTIONS.items()
         ]
     }
     if project is not None or registry.read().get("active"):
@@ -69,8 +68,7 @@ def create(
     explicitly adopts the kit palette for future project UI. Existing project lighting and
     controllers are retained; use game-camera review for final appearance.
     """
-    if kit_id != "forest_apothecary":
-        raise ValueError("Choose forest_apothecary")
+    art_directions.settings(kit_id)
     core.asset_id(prefix)
     for kind in PARTS:
         core.asset_id(prefix + "_" + kind + "_model")
@@ -154,17 +152,19 @@ def rule_settings(prefix):
 
 
 def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
-    source = registry.resources() / "examples"
+    spec = art_directions.settings(kit_id)
+    selected = art_directions.catalog(job.project)["selected"]
+    palette = selected["theme"] if selected and selected["kit_id"] == kit_id else None
+    if palette:
+        spec["theme"] = palette
+    labels = dict(zip(PARTS, spec["labels"]))
     engine = registry.resolve(job.project).engine
     root = game_art.root(job.project)
     assets = []
     for kind, (name, local) in PARTS.items():
         asset = prefix + "_" + kind + "_model"
-        job.update(stage="Making apothecary · " + name)
-        script = (
-            source / ("herbalist_potion.py" if kind == "potion" else "forest_apothecary.py")
-        ).read_text(encoding="utf-8")
-        script = "PTS_ASSET_KIND = " + repr(kind) + "\n" + script
+        job.update(stage="Making " + spec["name"] + " · " + labels[kind])
+        script = art_directions.source(kit_id, kind, palette)
         position = [local[0], local[2], -local[1]] if engine == "unity" else local
         position = [a + b for a, b in zip(position, origin)]
         settings = preparation.options(
@@ -189,13 +189,15 @@ def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
                     "license": "MIT",
                     "source": "Prompt-to-Scene original art kit",
                     "art_kit": kit_id,
-                    "art_direction": NOTES,
+                    "art_direction": spec["notes"],
                 },
             ),
         )
         assets.append(dict(asset_id=asset, request_id=result["request_id"], kind=kind))
     if adopt_theme:
-        art_samples.theme(job.project, art_samples.DEFAULT_THEME)
+        art_samples.theme(
+            job.project, {k: v for k, v in spec["theme"].items() if k in art_samples.DEFAULT_THEME}
+        )
     for kind in ("herb", "bottle", "potion"):
         item_id = prefix + "_" + kind
         job.update(stage="Linking matching item and icon · " + kind)
@@ -206,12 +208,10 @@ def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
                 job.project,
                 item_id,
                 model_asset_id=item_id + "_model",
-                name=PARTS[kind][0],
-                description={
-                    "herb": "Fresh sage for the apothecary's remedies.",
-                    "bottle": "A reusable porcelain bottle with brass trim.",
-                    "potion": "Restores 30 health when used.",
-                }[kind],
+                name=labels[kind],
+                description="Restores 30 health."
+                if kind == "potion"
+                else "Crafting material · " + labels[kind],
                 place_pickup=False,
             ),
         )
@@ -220,7 +220,9 @@ def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
         creations.step(
             job,
             "screen_" + kind,
-            lambda: creations.create_ui(job.project, prefix + "_" + kind, kind, items),
+            lambda: creations.create_ui(
+                job.project, prefix + "_" + kind, kind, items, theme=spec["theme"]
+            ),
         )
     if gameplay_enabled:
         for kind, interaction in (
@@ -240,7 +242,9 @@ def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
                 ),
             )
         creations.step(
-            job, "gameplay", lambda: gameplay.configure(job.project, prefix, rule_settings(prefix))
+            job,
+            "gameplay",
+            lambda: gameplay.configure(job.project, prefix, themed_rules(prefix, spec)),
         )
     potion = core.read_optional_json(root / "game-items" / (prefix + "_potion.json"))
     if not adopt_theme and "sample_saved" not in job.state:
@@ -253,10 +257,10 @@ def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
         )
         sample = art_samples.save(
             job.project,
-            "Apothecary material benchmark",
+            spec["name"] + " material benchmark",
             "material",
             preview["path"],
-            NOTES,
+            spec["notes"],
             sample_id=prefix + "_benchmark",
         )
         job.update(sample_saved=sample["sample_id"])
@@ -272,4 +276,19 @@ def run(job, prefix, kit_id, origin, gameplay_enabled, adopt_theme):
         appearance_accepted=False,
     )
     core.atomic_json(root / "art-kits" / (prefix + ".json"), row)
-    return {"stage": "Apothecary set ready · inspect in the game camera", **row}
+    return {"stage": "Art set ready · inspect in the game camera", **row}
+
+
+def themed_rules(prefix, spec):
+    rules = rule_settings(prefix)
+    rules["title"] = spec["name"]
+    labels = spec["labels"]
+    for r in rules["rules"]:
+        r["label"] = {
+            "collect_herb": "Collect " + labels[4],
+            "collect_bottle": "Collect " + labels[5],
+            "craft_potion": "Craft " + labels[6],
+            "brew_at_table": "Craft " + labels[6],
+            "use_potion": "Use " + labels[6] + " (+30 health)",
+        }[r["rule_id"]]
+    return rules

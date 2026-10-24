@@ -1,0 +1,141 @@
+{
+  "date": "2026-10-24",
+  "branch": "codex/continuous-creation-v015",
+  "feature": "Scene reference, reversible previews, scoped repairs, usage requirements and regional art decisions",
+  "python": {
+    "full_suite_before_final_fixes": {
+      "passed": 357,
+      "seconds": 5.3
+    },
+    "after_final_host_changes": {
+      "passed": 97,
+      "seconds": 2.08,
+      "scope": [
+        "test_scene_studio.py",
+        "test_scene_context.py",
+        "test_image_assets.py"
+      ]
+    }
+  },
+  "format_lint": "ruff check . and ruff format --check . passed; git diff --check passed",
+  "browser": {
+    "status": "passed",
+    "runner": "tools/ui_smoke.cjs; installed Chrome; simulated API",
+    "coverage": [
+      "scene reference; model preview/adopt/undo; regional samples",
+      "image sizes, padding and return to exact-version region editor",
+      "usage requirements and regional art profile controls",
+      "all 15 existing tools, gallery/canvas, tasks, project-switch race",
+      "320–1440 px; standalone and self-contained MCP App"
+    ],
+    "screenshots": "Inspected transient UI screenshots; removed after verification. They used simulated API records and existing artwork, not new native generation."
+  },
+  "native": {
+    "unity": {
+      "version": "2022.3.62f3c1",
+      "renderer": "Built-in",
+      "process_exit_code": 0,
+      "status": "passed",
+      "coverage": [
+        "real camera reference and temporary preview pixels",
+        "selected material retained with 48 distant objects",
+        "custom camera culling layer retained by preview mesh",
+        "temporary meshes removed and source visibility restored",
+        "adopt and guarded undo restore source, material and placeholder"
+      ],
+      "captures": [
+        {
+          "stage": "reference",
+          "size": [
+            1024,
+            683
+          ],
+          "sha256": "120479171d2b6f877bafe20a18ab0d3c75251980665d21a961af902549f0c61a"
+        },
+        {
+          "stage": "before",
+          "size": [
+            1024,
+            683
+          ],
+          "sha256": "120479171d2b6f877bafe20a18ab0d3c75251980665d21a961af902549f0c61a"
+        },
+        {
+          "stage": "trial",
+          "size": [
+            1024,
+            683
+          ],
+          "sha256": "a0711687acf0ce77fadb617be3a08c6adbaed31cf7d98129400a42fe63f17a5e"
+        }
+      ]
+    },
+    "unreal": {
+      "version": "5.7.2",
+      "mode": "RenderOffscreen",
+      "process_exit_code": 1,
+      "native_assertions": "passed",
+      "coverage": [
+        "real camera reference and temporary preview pixels",
+        "selected material retained with 48 distant objects",
+        "completion returned after temporary actors/visibility restoration",
+        "adopt, collision visibility restoration and stale undo refusal"
+      ],
+      "startup_errors": [
+        "LogAutomationTest: Error: Condition failed",
+        "LogAutomationTest: Error: Condition failed"
+      ],
+      "whole_process_status": "Not a clean process pass; the cause of startup automation errors is not established. Final run contained no Python assertion errors and logged a normal editor exit.",
+      "captures": [
+        {
+          "stage": "reference",
+          "size": [
+            1024,
+            683
+          ],
+          "sha256": "6335d90255d07f899026f1d882aebf128139d06b80f11c87fe9580f2d0afc6c4"
+        },
+        {
+          "stage": "before",
+          "size": [
+            1024,
+            683
+          ],
+          "sha256": "575dd1ee30abbf103a7961313310b20a3f346eaea86a21a8cce7b14bac268a63"
+        },
+        {
+          "stage": "trial",
+          "size": [
+            1024,
+            683
+          ],
+          "sha256": "92b33b822daeafad569aac995bbb4cb9a5afb2ddb4e9dd5a2b716acef148421f"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "No paid generation, new Blender modeling or aesthetic quality certification performed",
+    "Static upright models only; bounds preflight is not a dynamic collision sweep or navigation check",
+    "Image overlays are flat pixel/layout previews, not native game UI/font/shader rendering",
+    "Only macOS native engines tested; Windows, Unity SRP, custom camera/render pipelines and animated models remain unverified",
+    "No new desktop installer or release; stable downloads remain v0.14.0"
+  ],
+  "cleanup": {
+    "status": "completed",
+    "target": ".local/scene-studio",
+    "kept": [
+      "production code and regression sources",
+      "this compact verification record"
+    ],
+    "task_processes": "Native editor and browser processes have exited; normal project connections do not reference the test roots",
+    "approx_removed_bytes": 518116886,
+    "removed": [
+      "Disposable Unity/UE projects, private connections, logs, native image captures, UI screenshots and Python fixtures under .local/scene-studio",
+      "src/prompt_to_scene/__pycache__/scene_studio.cpython-311.pyc",
+      "src/prompt_to_scene/__pycache__/scene_profiles.cpython-311.pyc",
+      "src/prompt_to_scene/__pycache__/asset_requirements.cpython-311.pyc",
+      "tests/__pycache__/test_scene_studio.cpython-311-pytest-8.4.2.pyc"
+    ]
+  }
+}

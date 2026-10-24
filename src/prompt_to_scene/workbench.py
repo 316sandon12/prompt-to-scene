@@ -34,7 +34,15 @@ def page():
     source = source.replace(
         '<link rel="stylesheet" href="/studio.css">', "<style>" + styles + "</style>"
     )
-    for name in ("model_viewer.js", "workbench.js", "creations.js", "gameplay.js"):
+    for name in (
+        "model_viewer.js",
+        "workbench.js",
+        "scene_context.js",
+        "scene_studio.js",
+        "creations.js",
+        "gameplay.js",
+        "creative_tasks.js",
+    ):
         script = Path(__file__).with_name(name).read_text(encoding="utf-8")
         source = source.replace(
             f'<script src="/{name}" defer></script>', "<script>" + script + "</script>"
@@ -56,6 +64,23 @@ def image(kind, request_id=None, asset_id=None, view="studio"):
         from . import art_samples
 
         path = Path(art_samples.read(None, asset_id, request_id)["path"])
+    elif kind == "scene_reference":
+        from . import scene_context
+
+        reference = scene_context.read(None).get("reference") or {}
+        path = Path(reference.get("path", ""))
+        if path.parent != root / "scene-references":
+            raise ValueError("Capture a scene reference first")
+        if image_assets.digest(path.read_bytes()) != reference["sha256"]:
+            raise ValueError("Scene reference changed; capture it again")
+    elif kind == "scene_trial":
+        from . import scene_studio
+
+        rows = scene_studio.evidence(None, request_id)["images"]
+        chosen = next((r for r in rows if r["stage"] == view), None)
+        if not chosen:
+            raise ValueError("Choose one of this preview's image views")
+        path = Path(chosen["path"])
     elif kind == "reference":
         path = Path(quality.brief(None).get("image", ""))
         if path.parent != root / "references":

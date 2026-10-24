@@ -25,6 +25,12 @@ def submit(project, kind, parameters, asset_id=None):
         "game_item",
         "art_kit",
         "asset_recommendations",
+        "creative_task",
+        "direction_study",
+        "linked_update",
+        "project_adapter",
+        "game_delivery",
+        "scene_trial",
     }:
         raise ValueError("Unknown workflow")
     target = registry.resolve(project)
@@ -120,7 +126,18 @@ def run(path):
     )
 
     job = Job(path)
-    from . import art_kits, asset_recommendations, creations, visual_assets
+    from . import (
+        art_directions,
+        art_kits,
+        asset_recommendations,
+        creations,
+        creative_tasks,
+        delivery,
+        linked_updates,
+        project_adapters,
+        scene_studio,
+        visual_assets,
+    )
 
     try:
         job.check()
@@ -139,7 +156,13 @@ def run(path):
             "visual_asset": visual_assets.run,
             "game_item": creations.run_item,
             "art_kit": art_kits.run,
+            "creative_task": creative_tasks.run,
+            "direction_study": art_directions.run,
+            "linked_update": linked_updates.run,
+            "project_adapter": project_adapters.run,
+            "game_delivery": delivery.run,
             "asset_recommendations": asset_recommendations.run,
+            "scene_trial": scene_studio.run,
         }[job.spec["kind"]](job, **job.spec["parameters"])
         job.update(**result, status="completed", error=None, completed_utc=workflow.now())
     except Exception as error:

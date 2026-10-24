@@ -1,6 +1,14 @@
 # Prompt-to-Scene
 
-**v0.14: coherent art and playable game flows.** An original apothecary set, explicit existing-game adapters, collect/craft/use/save rules, dynamic native inventory and image-backed project asset reuse. [Workflow, examples and limits](docs/GAMEPLAY.zh-CN.md).
+**v0.15 development: from a project request to a playable build.** Durable task plans, three structural art directions, linked updates/undo, native adapter setup, scene travel, save migration and player builds. [Workflow and limits](docs/CONTINUOUS-CREATION.zh-CN.md).
+
+**New studio UI: gallery → creation canvas.** Five primary areas, searchable artwork, a large preview, contextual edit briefs and shared styling across setup and MCP Apps. [Studio guide](docs/STUDIO.zh-CN.md).
+
+**Scene-aware creation:** model and image briefs share measured target bounds, camera settings, intended use and retained scene references. Check imported model dimensions/placement/framing and image aspect/alpha margins against that brief. [Usage and limits](docs/SCENE-CONTEXT.zh-CN.md).
+
+**Scene previews:** capture the selected location and game camera, try temporary model placement, and compare images at game size before adopting. Includes undo, padding/part repairs, usage requirements and regional art samples. [Guide and limits](docs/SCENE-STUDIO.zh-CN.md).
+
+[v0.14 is released](https://github.com/316sandon12/prompt-to-scene/releases/tag/v0.14.0); the stable download remains v0.14 until the next release.
 
 **Build styled props in Blender with your AI, compare real 3D drafts, refine parts, and send the result straight to Unity or Unreal.**
 
@@ -10,9 +18,9 @@ Connect **Codex / DeepSeek Harness → Blender → Unity / Unreal Editor**. Your
 
 > v0.14 supports styled props, linked game items, game images, three native UI templates, interaction, room furnishing and asset organization. Modeling needs Blender; image import and organization need only the engine editor. Image generation uses an available host image tool or an explicitly configured provider.
 
-![Actual model orbit and part picking](docs/images/creations-workbench-v0.13.jpg)
+![v0.15 artwork gallery](docs/images/gallery-v0.15.png)
 
-*Actual retained Blender geometry in the workbench. The connected item includes a matching rendered icon, native data and pickup.*
+*Product UI with simulated project records and retained example artwork. Connection and task statuses are browser-test fixtures.*
 
 ## Install
 

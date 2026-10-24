@@ -5,6 +5,21 @@ description: Create styled Blender models, linked game items, native game UI and
 
 Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose three entrypoints: `game_workflow`, `open_workbench`, `workbench_action`. They share sources, task state, project context and designs. The connected host supplies language understanding and vision; the local app has no separate chat model.
 
+## Project-level tasks and continuous iteration (v0.15)
+
+For a request spanning assets, UI and gameplay, use `task_context(request=..., inspect_scene=true)`.
+Wait for its native scene task and use the actual project context and saved visual samples. Save a
+concrete plan with `save_creative_task`: each step has a unique `id`, supported `action`, exact
+`values` from describe, and a short `reason`. Save only genuinely unresolved decisions in
+`questions`. A changed project invalidates the context token; refresh before revising the plan.
+When the user has asked to complete the work, execute the explained plan with `execute_creative_task`
+without adding a new approval per step. A discussion-only request stops at the plan. Resume the
+same parent after errors; completed native work and synchronous reuse results are retained.
+
+For the new directions, dependency edits, project-system wizard, scene travel, save migration or
+player delivery, read [continuous creation](references/continuous.md). Simple single-asset work
+can still use the direct actions below.
+
 ## One request to a usable game asset
 
 1. Inspect the connected project using `game_workflow(operation="execute", action="context")`. If unconfigured, describe and execute `list_projects` / `connect_project` through the same gateway. Do not switch projects just because another editor is open. Blender is required for model creation, not image/UI artwork; UE needs one restart after bridge installation.
@@ -17,6 +32,39 @@ Use the supplied tools. The installed Codex and DeepSeek Harness plugins expose 
 `game_workflow(operation="search", query="...")` discovers other actions. `describe` returns their contract, `execute` takes `values`. Legacy tools remain callable by their exact name through this gateway. Use the optional workbench for buttons, task cards and real previews. Embedded MCP App support depends on the host; ordinary tools and the local window work without it.
 
 ## Linked items, editable UI and visual iteration
+
+For scene-specific requests, prefer `reference_scene` to capture the selection, measured space,
+nearby material parameters and real game-camera screenshot together. Wait, then
+`save_scene_context(inspection_id=...)` automatically retains the image. Use `capture_scene_context`
+when only fresh parameters are needed. Reuse the saved reference until the scene changes. Then
+`save_scene_context(inspection_id=..., settings=...)`. Save only needed constraints: intended
+use, explicit world-XYZ metre limits, or `fit="fit"` to use the selected blockout's bounds.
+Default reference mode borrows context without copying the target's dimensions. Multiple
+selections/cameras need an explicit choice. With a scene reference, `match_game_style(use_scene=true)`
+returns real pixels for your vision; do not invent visual observations from names/material paths.
+Read `context.scene_context` and call `design_asset` before custom modeling; `produce` and
+`plan_image` retain the same evidence. After importing, `check_scene_fit` with a fresh native
+inspection reports dimensions, placement and approximate camera framing. Image import includes
+display-aspect and transparent-icon-margin checks. Neither result certifies beauty, occlusion or
+gameplay clearance. Keep the original model revision's brief when reviewing it; refresh changed
+scene/target/camera evidence before redesign. Do not stretch or move existing assets silently.
+
+Use `preview_scene_model(asset_id, inspection_id)` to try a static model on a surface or in a
+placeholder; it makes temporary geometry and restores the source after capturing. Read both
+actual images with `scene_preview_images(plan_id)`, then `scene_preview_action` with adopt, undo
+or discard. It checks current versions, poses, gameplay minimum dimensions and reserved space.
+`preview_scene_image` shows a retained image over the scene at its intended pixel size, size
+comparisons and nine-slice/text safety. This is a flat layout preview, not native UI rendering.
+`repair_image_padding` makes a new draft; `repair_scene_part` changes only a named unlocked part;
+`restore_scene_part` refuses unrelated later edits. Do not unlock features merely to pass a check.
+
+Save `asset_requirements` before design: use, minimum size, reserved space, movement and attachment
+points or UI safe area/states. `apply_asset_requirements` configures existing native interaction
+or sockets once dependencies exist. Separate door/lid meshes are required; run the actual game
+to judge motion and input. `save_scene_profile`/`activate_scene_profile` retain each region's
+style/reference and concrete feature locks, clearing old target/camera positions on activation.
+Model/image plans freeze those versions. After successful adoption, `remember_scene_example`
+saves the viewed result with reasons into that region; failed work is never recorded as accepted.
 
 For a usable item (model + matching icon + data + pickup), prefer `create_game_item` over separate
 unrelated model/image tasks. Supply an existing `model_asset_id`, or `model` with one `produce`
@@ -35,10 +83,10 @@ source model; the source is retained. Read `creation_workspace` for actual nativ
 HUD (health + four icon slots), or pause (resume/settings hooks). Supply existing `item_ids`, a
 stable `screen_id`, and `title` on first creation. Text remains native and editable. Existing layout,
 title and event edits are preserved; `update_theme=true` intentionally updates managed colors.
-Inventory contents are a configured item catalog, with example pickup counts in Unity; integrate
-UE pickup ItemData/OnInteracted and UI hooks with the game's inventory/abilities. Settings is an
+Inventory contents are a configured item catalog; `configure_gameplay` provides dynamic
+counts/crafting/use, or bind the game's own inventory through the adapter wizard. Settings is an
 integration hook, not a finished settings system. Demo I / Esc input can be disabled on the native
-component/host. Avoid claiming arbitrary menu generation, save systems or complete gameplay.
+component/host. Avoid claiming arbitrary menu generation or complete game systems beyond these contracts.
 
 Use `view_model` then `model_view_data` for real orbitable source geometry and named part picking.
 Materials are approximate in the workbench; inspect native rendering for final appearance. Clicking

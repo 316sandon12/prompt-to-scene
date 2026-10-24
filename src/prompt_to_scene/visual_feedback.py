@@ -65,6 +65,9 @@ def save(project, request_id, token, observations, accepted=False, preference=""
     if not observations or type(accepted) is not bool:
         raise ValueError("Provide visible observations and a boolean accepted value")
     row = {k: proof[k] for k in ("request_id", "asset_id", "asset_revision", "token", "view")}
+    from . import scene_profiles
+
+    row["profile_id"] = scene_profiles.active(project).get("profile_id")
     row.update(
         observations=observations,
         accepted=accepted,

@@ -99,9 +99,16 @@ def state():
         result["style_match"] = core.read_optional_json(game_art.root(None) / "style-match.json")
         result["layouts"] = compositions.templates(None)
         result["images"] = image_assets.catalog(None)["assets"]
-        from . import creations
+        from . import creations, scene_context, scene_profiles, scene_studio
 
         result["creations"] = creations.catalog(None)
+        result["scene_context"] = scene_context.read(None)
+        result["scene_profiles"] = scene_profiles.catalog(None)
+        result["scene_previews"] = scene_studio.catalog(None)["previews"]
+        result["usage_requirements"] = [
+            core.read_optional_json(p)
+            for p in (game_art.root(None) / "usage-requirements").glob("*.json")
+        ]
         root = core.state_root(target.root)
         jobs = sorted(
             (root / "jobs").glob("*/state.json"), key=lambda p: p.stat().st_mtime, reverse=True
@@ -137,7 +144,7 @@ def state():
             )[:30]:
                 item = core.read_optional_json(path) or {}
                 if (
-                    item.get("operation") in {"develop", "image"}
+                    item.get("operation") in {"develop", "image", "scene_stage"}
                     or item.get("development")
                     or item.get("image")
                 ):
@@ -210,6 +217,9 @@ class Handler(BaseHTTPRequestHandler):
             "/workbench.js",
             "/creations.js",
             "/gameplay.js",
+            "/creative_tasks.js",
+            "/scene_context.js",
+            "/scene_studio.js",
             "/model_viewer.js",
             "/studio.css",
         } and self.headers.get("Host") == "127.0.0.1:" + str(self.server.server_port):
@@ -343,7 +353,7 @@ def main():
 
     start_watcher()
     with Server() as server:
-        url = server.origin + "/#" + server.token
+        url = server.origin + "/workbench#" + server.token
         if os.environ.get("PTS_SETUP_URL_FILE"):
             Path(os.environ["PTS_SETUP_URL_FILE"]).write_text(url)
         if "--no-browser" not in sys.argv:

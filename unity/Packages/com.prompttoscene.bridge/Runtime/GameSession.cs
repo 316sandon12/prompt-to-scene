@@ -22,6 +22,8 @@ namespace PromptToScene
         public bool LastSuccess { get; private set; }
         readonly Dictionary<string, int> quantities = new Dictionary<string, int>();
         readonly HashSet<string> completed = new HashSet<string>();
+        static readonly Dictionary<string, string> Travel = new Dictionary<string, string>();
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)] static void ResetTravel() { Travel.Clear(); }
         float health;
         bool initialized, busy, ownsSave, loadBlocked;
         string savePath;
@@ -32,7 +34,7 @@ namespace PromptToScene
 
         [Serializable] class Progress
         {
-            public int schema = 1;
+            public int schema = 1, version = 1;
             public string flow_id, save_key;
             public float health;
             public ItemQuantity[] inventory;
@@ -52,7 +54,8 @@ namespace PromptToScene
             health = s.initial_health;
             savePath = Path.Combine(Application.persistentDataPath, "PromptToScene", s.save_key + ".json");
             initialized = true;
-            if (File.Exists(savePath)) LoadProgress();
+            if (s.persist_on_travel && Travel.TryGetValue(s.save_key, out var cached)) ApplyProgress(JsonUtility.FromJson<Progress>(cached));
+            else if (File.Exists(savePath)) LoadProgress();
         }
 
         public static GameSession Find(string flowId)
@@ -110,6 +113,7 @@ namespace PromptToScene
                     health = Mathf.Min(MaxHealth, health + rule.heal);
                 }
                 completed.Add(ruleId);
+                RememberTravel();
                 if (definition.settings.autosave) SaveProgress();
                 Feedback(true, rule.label);
                 Notify(() => onRuleCompleted.Invoke(ruleId));
@@ -133,7 +137,7 @@ namespace PromptToScene
             try
             {
                 var progress = new Progress {
-                    flow_id = definition.settings.flow_id, save_key = definition.settings.save_key,
+                    flow_id = definition.settings.flow_id, save_key = definition.settings.save_key, version=definition.settings.save_version,
                     health = health, inventory = quantities.Select(p => new ItemQuantity { item_id = p.Key, quantity = p.Value }).ToArray(),
                     completed = completed.OrderBy(x => x).ToArray()
                 };
@@ -152,17 +156,37 @@ namespace PromptToScene
             try
             {
                 var p = JsonUtility.FromJson<Progress>(File.ReadAllText(savePath));
-                if (p == null || p.schema != 1 || p.save_key != definition.settings.save_key || p.flow_id != definition.settings.flow_id
+                ApplyProgress(p);
+                SaveError = ""; ownsSave = true; loadBlocked = false; Feedback(true, "Progress restored"); Notify(() => Changed?.Invoke()); Notify(() => Restored?.Invoke()); return true;
+            }
+            catch (Exception error) { loadBlocked = true; SaveError = error.Message; Notify(() => onFeedback.Invoke(SaveError)); return false; }
+        }
+        void ApplyProgress(Progress p)
+        {
+                if (p == null || p.schema != 1 || p.version > definition.settings.save_version || p.save_key != definition.settings.save_key || p.flow_id != definition.settings.flow_id
                     || p.inventory == null || p.completed == null || float.IsNaN(p.health) || float.IsInfinity(p.health)
                     || p.inventory.Any(c => c == null || c.quantity < 0 || string.IsNullOrEmpty(c.item_id))
                     || p.inventory.Select(c => c.item_id).Distinct().Count() != p.inventory.Length)
                     throw new InvalidDataException("Invalid save contents; existing progress file retained");
-                quantities.Clear(); foreach (var row in p.inventory) quantities[row.item_id] = row.quantity;
+                var next = p.inventory.ToDictionary(r => r.item_id, r => r.quantity);
+                if (p.version < definition.settings.save_version) foreach (var alias in definition.settings.item_aliases ?? new SaveAlias[0]) {
+                    if (!next.TryGetValue(alias.from_id, out var count)) continue;
+                    int total=checked(count+(next.TryGetValue(alias.to_id,out var other)?other:0));
+                    var item=definition.items.FirstOrDefault(i=>i.itemId==alias.to_id);
+                    if(item==null || total>item.maxStack) throw new InvalidDataException("Save migration exceeds an item stack; existing file retained");
+                    next.Remove(alias.from_id); next[alias.to_id]=total;
+                }
+                var aliases=definition.settings.rule_aliases ?? new SaveAlias[0];
+                if(p.version<definition.settings.save_version) p.completed=p.completed.Select(id=>aliases.FirstOrDefault(a=>a.from_id==id)?.to_id??id).Distinct().ToArray();
+                quantities.Clear(); foreach(var row in next) quantities[row.Key]=row.Value;
                 completed.Clear(); foreach (var id in p.completed) completed.Add(id);
                 health = Mathf.Clamp(p.health, 0, definition.settings.max_health);
-                SaveError = ""; ownsSave = true; loadBlocked = false; Feedback(true, "Progress restored"); Notify(() => Changed?.Invoke()); Notify(() => Restored?.Invoke()); return true;
-            }
-            catch (Exception error) { loadBlocked = true; SaveError = error.Message; Notify(() => onFeedback.Invoke(SaveError)); return false; }
+            RememberTravel();
+        }
+        void RememberTravel()
+        {
+            if(!definition.settings.persist_on_travel) return;
+            Travel[definition.settings.save_key]=JsonUtility.ToJson(new Progress {version=definition.settings.save_version,flow_id=definition.settings.flow_id,save_key=definition.settings.save_key,health=health,inventory=quantities.Select(p=>new ItemQuantity {item_id=p.Key,quantity=p.Value}).ToArray(),completed=completed.ToArray()});
         }
         void OnApplicationPause(bool paused) { if (paused && initialized && definition.settings.autosave && SaveError.Length == 0) SaveProgress(); }
         void OnApplicationQuit() { if (initialized && definition.settings.autosave && (ownsSave || !File.Exists(savePath)) && SaveError.Length == 0) SaveProgress(); }

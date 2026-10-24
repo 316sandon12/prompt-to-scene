@@ -11,7 +11,7 @@ namespace PromptToScene.Editor
 {
     public static class GameplayFlows
     {
-        [Serializable] class AdapterRequest { public string flow_id, target; }
+        [Serializable] class AdapterRequest { public string flow_id, target, expected_revision; }
         [Serializable] class AdapterRow { public string target, name, component; }
         [Serializable] class AdapterList { public string flow_id, bound_target; public AdapterRow[] adapters; }
         static void Id(string value) { if (value == null || !Regex.IsMatch(value, "^[a-z][a-z0-9_-]{0,63}$")) throw new Exception("Invalid gameplay identifier"); }
@@ -25,6 +25,18 @@ namespace PromptToScene.Editor
             if (command.mode == "configure") return Configure(JsonUtility.FromJson<GameFlowSpec>(command.content_json));
             var query = JsonUtility.FromJson<AdapterRequest>(command.content_json); Id(query.flow_id);
             var session = DevelopmentActions.Loaded<GameSession>().SingleOrDefault(s => s.definition && s.definition.settings.flow_id == query.flow_id);
+            if(command.mode=="attach") {
+                var spec=Read<GameFlowSpec>(Record(query.flow_id));
+                if(spec==null||spec.revision!=query.expected_revision) throw new Exception("Flow changed; refresh before attaching");
+                var flow=AssetDatabase.LoadAssetAtPath<GameFlow>(spec.definition_path); if(!flow) throw new Exception("Missing flow definition");
+                if(!session) { var obj=new GameObject(spec.title+" · Gameplay"); session=Undo.AddComponent<GameSession>(obj); session.definition=flow; Undo.RegisterCreatedObjectUndo(obj,"Attach gameplay flow"); }
+                foreach(var rule in spec.rules) {
+                    var interactions=!string.IsNullOrEmpty(rule.asset_id)?DevelopmentActions.Assets(rule.asset_id).Select(a=>a.GetComponent<Interaction>()).Where(x=>x):DevelopmentActions.Loaded<GameItemPickup>().Where(p=>p.item&&p.item.itemId==rule.pickup_id).Select(p=>p.GetComponent<Interaction>()).Where(x=>x);
+                    foreach(var interaction in interactions) {var trigger=interaction.GetComponent<GameplayTrigger>(); if(trigger&&!string.IsNullOrEmpty(trigger.flowId)&&trigger.flowId!=query.flow_id) throw new Exception("Interaction belongs to another flow"); trigger=trigger??Undo.AddComponent<GameplayTrigger>(interaction.gameObject); Undo.RecordObject(trigger,"Attach gameplay trigger");trigger.flowId=query.flow_id;trigger.ruleId=rule.rule_id;EditorUtility.SetDirty(trigger);}
+                }
+                foreach(var screen in DevelopmentActions.Loaded<GameUIScreen>().Where(x=>spec.screen_ids.Contains(x.screenId))) {if(!string.IsNullOrEmpty(screen.flowId)&&screen.flowId!=query.flow_id) throw new Exception("UI belongs to another flow");Undo.RecordObject(screen,"Attach gameplay UI");screen.flowId=query.flow_id;EditorUtility.SetDirty(screen);}
+                EditorSceneManager.MarkSceneDirty(session.gameObject.scene); return Result(spec,"Existing flow attached to this scene");
+            }
             var candidates = DevelopmentActions.Loaded<MonoBehaviour>().Where(c => c is IGameProjectAdapter).ToArray();
             if (command.mode == "bind" || command.mode == "unbind")
             {

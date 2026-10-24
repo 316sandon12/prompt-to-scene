@@ -1,9 +1,44 @@
 import copy
 import socket
+from urllib.parse import urlsplit
 
 import pytest
 
 from prompt_to_scene import design, layout, recipes, registry, setup, styles
+
+
+def test_app_lands_in_gallery_and_retains_the_token(tmp_path, monkeypatch):
+    from prompt_to_scene import intake
+
+    opened = []
+
+    class Server:
+        origin = "http://127.0.0.1:52345"
+        token = "fixture-token"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            pass
+
+        def serve_forever(self):
+            pass
+
+    marker = tmp_path / "url.txt"
+    monkeypatch.setattr(setup, "Server", Server)
+    monkeypatch.setattr(intake, "start_watcher", lambda: None)
+    monkeypatch.setattr(setup.webbrowser, "open", opened.append)
+    monkeypatch.setattr(setup.sys, "argv", ["prompt-to-scene-app"])
+    monkeypatch.setenv("PTS_SETUP_URL_FILE", str(marker))
+    setup.main()
+    assert opened == [marker.read_text()]
+    landing = urlsplit(opened[0])
+    assert landing.path == "/workbench"
+    assert landing.fragment == Server.token
+    monkeypatch.setattr(setup.sys, "argv", ["prompt-to-scene-app", "--no-browser"])
+    setup.main()
+    assert len(opened) == 1
 
 
 @pytest.fixture

@@ -161,9 +161,12 @@ def plan(
     family = core.read_optional_json(directory / "design-family.json")
     style = family["style"] if family else styles.read(project)
     context = game_art.configure(project)
-    from . import art_samples
+    from . import art_samples, asset_requirements, scene_context, scene_profiles
 
     samples = art_samples.context(project, "icon" if kind == "icon" else "ui")
+    scene = scene_context.brief(project)
+    profile = scene_profiles.brief(project)
+    requirements = asset_requirements.save(project, asset_id)
     brief = core.read_optional_json(directory / "art-brief.json") or {}
     paths = (
         reference_paths
@@ -181,8 +184,18 @@ def plan(
         )[:4]
     if not isinstance(paths, list) or len(paths) > 4:
         raise ValueError("Use at most four reference image paths")
+    paths = list(paths)
+    scene_reference = (scene or {}).get("reference")
+    if scene_reference and scene_reference["path"] not in paths:
+        if len(paths) == 4:
+            if reference_paths is not None:
+                raise ValueError(
+                    "Scene context supplies one reference; choose at most three others"
+                )
+            paths = paths[:3]
+        paths.append(scene_reference["path"])
     refs = [read_source(path) for path in paths]
-    preferences = core.read_optional_json(directory / "visual-preferences.json") or []
+    preferences = scene_profiles.preferences(project)
     palette = {}
     for role, linear in style["palette"].items():
         srgb = [12.92 * v if v <= 0.0031308 else 1.055 * v ** (1 / 2.4) - 0.055 for v in linear]
@@ -211,6 +224,20 @@ def plan(
             + str(config["border"])
             + "; use calm straight edges and a stretchable center."
         )
+    if profile:
+        lines.append(
+            "Preserve this region's art decisions: " + json.dumps(profile, ensure_ascii=False)
+        )
+    if requirements["revision"]:
+        lines.append(asset_requirements.guidance(requirements))
+    if scene:
+        lines.append(scene_context.guidance(scene, image=True))
+        if scene_reference:
+            index = paths.index(scene_reference["path"]) + 1
+            lines.append(
+                f"Reference {index} is the scene screenshot: borrow its art direction; "
+                "do not reproduce its background in isolated icons or UI cutouts."
+            )
     plan_id = uuid.uuid4().hex
     folder = owned(directory, "image-plans", plan_id)
     folder.mkdir(parents=True)
@@ -230,6 +257,9 @@ def plan(
         context=context,
         style=style,
         art_samples=samples,
+        scene_context=scene,
+        scene_profile=profile,
+        usage_requirements=requirements,
         palette=palette,
         effective_prompt="\n".join(lines),
         references=references,
@@ -349,6 +379,12 @@ def import_image(
         }
     else:
         image, report = prepare(data, design["settings"])
+    from . import scene_context
+
+    scene_report = scene_context.check_image(image, design)
+    if scene_report:
+        report["scene_fit"] = scene_report
+        report["warnings"].extend(scene_report["warnings"])
     revision = uuid.uuid4().hex
     folder = owned(root(project), "images", asset_id, revision)
     folder.mkdir(parents=True)

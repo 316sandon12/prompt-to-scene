@@ -51,6 +51,7 @@ def main():
                     assert "PTSModelViewer" in resource.contents[0].text
                     assert 'id="creationGallery"' in resource.contents[0].text
                     assert 'id="tab-flows"' in resource.contents[0].text
+                    assert 'id="tab-missions"' in resource.contents[0].text
                     assert (
                         '<link rel="stylesheet" href="/studio.css">'
                         not in resource.contents[0].text
@@ -315,7 +316,12 @@ def main():
                 if child.poll() is not None or time.monotonic() > deadline:
                     raise RuntimeError("Packaged setup failed to launch")
                 time.sleep(0.1)
-            origin, token = (home / "url.txt").read_text().split("/#")
+            from urllib.parse import urlsplit
+
+            landing = urlsplit((home / "url.txt").read_text())
+            origin = landing.scheme + "://" + landing.netloc
+            token = landing.fragment
+            assert landing.path == "/workbench"
             with urllib.request.urlopen(origin) as response:
                 assert b"Prompt-to-Scene" in response.read()
             with urllib.request.urlopen(origin + "/workshop.js") as response:
@@ -325,6 +331,7 @@ def main():
                 ("/workbench", b"qualityButton"),
                 ("/workbench.js", b"ui/initialize"),
                 ("/gameplay.js", b"recommendation_images"),
+                ("/creative_tasks.js", b"save_creative_task"),
                 ("/studio.css", b"--accent:"),
             ):
                 with urllib.request.urlopen(origin + route) as response:

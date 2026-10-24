@@ -21,8 +21,11 @@ namespace PromptToScene.Editor
         public string view, frame_id, review_stage;
         public string object_id;
         public bool snap_to_surface;
+        public bool ignore_noncolliding;
         public string development_json;
         public string image_json;
+        public string scene_json;
+        public string camera_id;
     }
     [Serializable] public class PreviewFrame
     {
@@ -35,6 +38,13 @@ namespace PromptToScene.Editor
         public bool orthographic;
     }
     [Serializable] public class RendererState { public string path; public string[] materials; }
+    [Serializable] public class SceneCamera
+    {
+        public string id, name;
+        public float[] position, right, up, forward;
+        public float aspect, vertical_fov, ortho_height_m, near_m;
+        public bool primary, orthographic, projection_supported;
+    }
     [Serializable] public class SceneObject
     {
         public string id, name, asset_id;
@@ -42,6 +52,7 @@ namespace PromptToScene.Editor
         public float[] position, rotation, quaternion, scale, bounds_min, bounds_max;
         public float[] oriented_min, oriented_max, footprint;
         public RendererState[] renderers;
+        public bool has_collision;
     }
     [Serializable] public class SceneResult
     {
@@ -50,6 +61,9 @@ namespace PromptToScene.Editor
         public string[] created_ids;
         public int changed;
         public AssetMetrics[] metrics;
+        public SceneCamera[] cameras;
+        public MaterialEvidence[] materials;
+        public string reference_camera_id, scene_trial_id;
         public DevelopmentResult development;
         public ImageAssetResult image;
     }
@@ -156,12 +170,34 @@ namespace PromptToScene.Editor
             if (a.color != null && a.color.Any(v => v < 0 || v > 1)) throw new Exception("Invalid color");
         }
 
+        public static SceneCamera[] Cameras()
+        {
+            return Resources.FindObjectsOfTypeAll<Camera>().Where(c => !EditorUtility.IsPersistent(c)
+                && c.gameObject.scene == Scene && c.gameObject.activeInHierarchy && c.enabled).Select(c =>
+            {
+                var expected = c.orthographic
+                    ? Matrix4x4.Ortho(-c.orthographicSize*c.aspect, c.orthographicSize*c.aspect,
+                        -c.orthographicSize, c.orthographicSize, c.nearClipPlane, c.farClipPlane)
+                    : Matrix4x4.Perspective(c.fieldOfView, c.aspect, c.nearClipPlane, c.farClipPlane);
+                return new SceneCamera {
+                    id = SceneLayout.Id(c.gameObject), name = c.name, primary = c == Camera.main,
+                    position = Vec(c.transform.position), right = Vec(c.transform.right),
+                    up = Vec(c.transform.up), forward = Vec(c.transform.forward), aspect = c.aspect,
+                    vertical_fov = c.fieldOfView, orthographic = c.orthographic,
+                    ortho_height_m = c.orthographicSize*2, near_m = c.nearClipPlane,
+                    projection_supported = !c.stereoEnabled && c.rect == new Rect(0,0,1,1)
+                        && Enumerable.Range(0,16).All(i => Mathf.Abs(c.projectionMatrix[i]-expected[i]) < .0001f)
+                };
+            }).ToArray();
+        }
+
         static SceneResult Execute(SceneAction a)
         {
             var result = new SceneResult { request_id = a.request_id, scene = SceneKey };
+            if (a.operation == "scene_stage") return SceneStaging.Execute(a, SceneKey);
             if (a.operation == "image") return ImageAssets.Execute(a);
             if (a.operation == "develop") return DevelopmentActions.Execute(a);
-            if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); return result; }
+            if (a.operation == "inspect") { result.selected = Selected.Select(Describe).ToArray(); result.assets = All.Select(Describe).ToArray(); result.context = SceneLayout.Objects().Select(SceneLayout.Describe).ToArray(); result.selected_context = SceneLayout.Selected(); result.cameras = Cameras(); return result; }
             if (a.operation == "arrange") return SceneLayout.Arrange(a, SceneKey);
             if (a.operation == "select")
             { var obj = SceneLayout.Find(a.object_id); if (obj == null) throw new Exception("Object is no longer loaded");
@@ -187,7 +223,7 @@ namespace PromptToScene.Editor
             if (a.operation == "preview")
             {
                 result.preview = "previews/" + a.request_id + ".png";
-                Capture(targets, Path.Combine(Root, result.preview), a);
+                Capture(targets.Select(t=>t.gameObject).ToArray(), Path.Combine(Root, result.preview), a);
                 return result;
             }
             if (a.operation != "transform" && a.operation != "tint" && a.operation != "ground") throw new Exception("Unknown action");
@@ -273,10 +309,10 @@ namespace PromptToScene.Editor
             }
         }
 
-        static void Capture(AssetIdentity[] objects, string path, SceneAction action)
+        public static void Capture(GameObject[] objects, string path, SceneAction action)
         {
             var renderers = objects.SelectMany(o => o.GetComponentsInChildren<Renderer>()).ToArray();
-            Bounds bounds = renderers[0].bounds;
+            Bounds bounds = renderers.Length > 0 ? renderers[0].bounds : new Bounds(Vector3.zero, Vector3.one);
             foreach (var renderer in renderers.Skip(1)) bounds.Encapsulate(renderer.bounds);
             var cameraObject = new GameObject("Prompt-to-Scene preview") { hideFlags = HideFlags.HideAndDontSave };
             var lightObject = new GameObject("Prompt-to-Scene preview light") { hideFlags = HideFlags.HideAndDontSave };
@@ -293,7 +329,7 @@ namespace PromptToScene.Editor
                 camera.transform.LookAt(bounds.center);
                 if (view == "game")
                 {
-                    var source = Camera.main;
+                    var source = string.IsNullOrEmpty(action.camera_id) ? Camera.main : SceneLayout.Find(action.camera_id)?.GetComponent<Camera>();
                     if (!source || source.gameObject.scene != UnityEngine.SceneManagement.SceneManager.GetActiveScene())
                         throw new Exception("Game review needs the scene's MainCamera. Set its game view, then retry.");
                     camera.CopyFrom(source);

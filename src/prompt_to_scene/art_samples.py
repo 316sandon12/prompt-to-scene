@@ -28,18 +28,24 @@ def theme(project, settings=None):
     current = core.read_optional_json(path) or {"version": "default", **DEFAULT_THEME}
     if settings is None:
         return current
+    result = validate_theme(settings, current)
+    result.update(version=uuid.uuid4().hex, created_utc=workflow.now())
+    core.atomic_json(folder(project) / "themes" / (result["version"] + ".json"), result)
+    core.atomic_json(path, result)
+    return result
+
+
+def validate_theme(settings, base=None):
+    """Validate a local theme without changing the project default."""
     if not isinstance(settings, dict) or settings.keys() - DEFAULT_THEME.keys():
         raise ValueError("Choose theme colors, font_size and spacing")
-    result = {**current, **settings}
+    result = {**DEFAULT_THEME, **(base or {}), **settings}
     for key in ("background", "surface", "accent", "text", "muted"):
         if not isinstance(result[key], str) or not re.fullmatch(r"#[a-fA-F0-9]{6}", result[key]):
             raise ValueError("Theme colors must be #RRGGBB")
     for key, low, high in (("font_size", 14, 40), ("spacing", 4, 32)):
         if type(result[key]) is not int or not low <= result[key] <= high:
             raise ValueError(f"{key} must be an integer in {low}..{high}")
-    result.update(version=uuid.uuid4().hex, created_utc=workflow.now())
-    core.atomic_json(folder(project) / "themes" / (result["version"] + ".json"), result)
-    core.atomic_json(path, result)
     return result
 
 
@@ -70,6 +76,14 @@ def save(project, name, category, source, notes, verdict="accepted", sample_id=N
         created_utc=workflow.now(),
         path=str(directory / "image.png"),
         sha256=image_assets.digest((directory / "image.png").read_bytes()),
+    )
+    from . import scene_profiles
+
+    previous = core.read_optional_json(folder(project) / sample_id / "current.json")
+    result["profile_id"] = (
+        read(project, sample_id).get("profile_id")
+        if previous
+        else scene_profiles.active(project).get("profile_id")
     )
     core.atomic_json(directory / "sample.json", result)
     core.atomic_json(folder(project) / sample_id / "current.json", {"revision": revision})
@@ -113,7 +127,14 @@ def restore(project, sample_id, revision):
 
 
 def context(project, category):
-    rows = [r for r in catalog(project)["samples"] if r["category"] in {category, "material"}][-12:]
+    from . import scene_profiles
+
+    scope = scene_profiles.active(project).get("profile_id")
+    rows = [
+        r
+        for r in catalog(project)["samples"]
+        if r["category"] in {category, "material"} and r.get("profile_id") in {None, scope}
+    ][-12:]
     return {
         "theme": theme(project),
         "samples": [

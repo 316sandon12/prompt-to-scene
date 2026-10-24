@@ -42,7 +42,7 @@ UBlueprint* UPTSTemplateBuilder::BuildGameRuleTemplate(const FString& Path)
 UBlueprint* UPTSTemplateBuilder::BuildGameSaveTemplate(const FString& Path)
 {
  auto* BP=Plain(Path,USaveGame::StaticClass());Var(BP,TEXT("FlowId"),String());Var(BP,TEXT("SaveKey"),String());
- Var(BP,TEXT("Schema"),Int(),TEXT("1"));Var(BP,TEXT("Health"),Float());Var(BP,TEXT("Inventory"),Map(Int()));Var(BP,TEXT("Completed"),Map(Bool()));Compile(BP);return BP;
+ Var(BP,TEXT("Schema"),Int(),TEXT("1"));Var(BP,TEXT("SaveVersion"),Int(),TEXT("1"));Var(BP,TEXT("Health"),Float());Var(BP,TEXT("Inventory"),Map(Int()));Var(BP,TEXT("Completed"),Map(Bool()));Compile(BP);return BP;
 }
 UBlueprint* UPTSTemplateBuilder::BuildProjectAdapterInterface(const FString& Path)
 {
@@ -64,7 +64,7 @@ UBlueprint* UPTSTemplateBuilder::BuildGameSessionTemplate(const FString& Path)
  Var(BP,TEXT("Rules"),Map(Object(RuleClass)));Var(BP,TEXT("UseRules"),Map(String()));Var(BP,TEXT("CraftRules"),Array(String()));
  Var(BP,TEXT("ItemIds"),Array(String()));Var(BP,TEXT("Adapter"),Object(AActor::StaticClass()));
  for(auto Name:{TEXT("Initialized"),TEXT("Busy"),TEXT("SaveBlocked"),TEXT("LastSuccess")})Var(BP,Name,Bool(),TEXT("false"));
- Var(BP,TEXT("Autosave"),Bool(),TEXT("true"));
+ Var(BP,TEXT("Autosave"),Bool(),TEXT("true"));Var(BP,TEXT("PersistOnTravel"),Bool(),TEXT("true"));Var(BP,TEXT("SaveVersion"),Int(),TEXT("1"));Var(BP,TEXT("ItemAliases"),Map(String()));Var(BP,TEXT("RuleAliases"),Map(String()));
  auto Init=Declare(BP,TEXT("Initialize"));auto Sync=Declare(BP,TEXT("RefreshAdapter"));
  auto Check=Declare(BP,TEXT("CanRule"),{{TEXT("RuleId"),String()}},{{TEXT("Allowed"),Bool()}});
  auto Apply=Declare(BP,TEXT("TryRule"),{{TEXT("RuleId"),String()}},{{TEXT("Success"),Bool()}});
@@ -90,11 +90,31 @@ UBlueprint* UPTSTemplateBuilder::BuildGameSessionTemplate(const FString& Path)
   auto* Cast=B.Cast(Prev,B.Out(Load),SaveClass);auto* Data=Cast->GetCastResultPin();
   auto* SameKey=B.Math(TEXT("EqualEqual_StrStr"),B.Field(SaveClass,Data,TEXT("SaveKey")),B.Get(TEXT("SaveKey")));
   auto* SameFlow=B.Math(TEXT("EqualEqual_StrStr"),B.Field(SaveClass,Data,TEXT("FlowId")),B.Get(TEXT("FlowId")));
-  auto* SameSchema=B.Math(TEXT("EqualEqual_IntInt"),B.Field(SaveClass,Data,TEXT("Schema")),B.Num(1));
+  auto* SameSchema=B.Math(TEXT("BooleanAND"),B.Math(TEXT("EqualEqual_IntInt"),B.Field(SaveClass,Data,TEXT("Schema")),B.Num(1)),B.Math(TEXT("LessEqual_IntInt"),B.Field(SaveClass,Data,TEXT("SaveVersion")),B.Get(TEXT("SaveVersion"))));
   auto* Match=B.If(Cast->GetValidCastPin(),B.Math(TEXT("BooleanAND"),B.Math(TEXT("BooleanAND"),SameKey,SameFlow),SameSchema));
   auto* Bad=B.Set(TEXT("SaveBlocked"));B.D(Bad,TEXT("SaveBlocked"),TEXT("true"));B.Exec(Cast->GetInvalidCastPin(),Bad);B.Exec(Match->GetElsePin(),Bad);
   B.Return(Init,B.Assign(B.P(Bad,TEXT("then")),TEXT("SaveError"),TEXT("Existing progress could not be loaded; choose a new save slot or restore it. The file is retained.")));
-  Prev=Match->GetThenPin();for(auto Name:{TEXT("Inventory"),TEXT("Completed"),TEXT("Health")})Prev=B.Assign(Prev,Name,B.Field(SaveClass,Data,Name));
+  auto* NeedsMigration=B.If(Match->GetThenPin(),B.Math(TEXT("Less_IntInt"),B.Field(SaveClass,Data,TEXT("SaveVersion")),B.Get(TEXT("SaveVersion"))));
+  // Keep a pre-migration copy under a separate slot before applying any ID mapping.
+  auto* Backup=B.Call(UGameplayStatics::StaticClass(),TEXT("SaveGameToSlot"));B.L(Data,B.P(Backup,TEXT("SaveGameObject")));
+  auto* Suffix=B.Call(UKismetStringLibrary::StaticClass(),TEXT("Conv_IntToString"));B.L(B.Field(SaveClass,Data,TEXT("SaveVersion")),B.P(Suffix,TEXT("InInt")));
+  auto* BackupKey=B.Math(TEXT("Concat_StrStr"),B.Math(TEXT("Concat_StrStr"),B.Get(TEXT("SaveKey")),B.Str(TEXT("_before_v"))),B.Out(Suffix));B.L(BackupKey,B.P(Backup,TEXT("SlotName")));
+  auto* Backed=B.If(B.Exec(NeedsMigration->GetThenPin(),Backup),B.Out(Backup));B.Exec(Backed->GetElsePin(),Bad);
+  auto* Inv=B.Field(SaveClass,Data,TEXT("Inventory"));auto* Done=B.Field(SaveClass,Data,TEXT("Completed"));
+  auto CheckAliases=B.Keys(Backed->GetThenPin(),B.Get(TEXT("ItemAliases")));
+  auto* Dest=B.Find(B.Get(TEXT("ItemAliases")),CheckAliases.Element);
+  auto* HasOld=B.If(CheckAliases.Body,B.Contains(Inv,CheckAliases.Element));
+  auto* Total=B.Math(TEXT("Add_IntInt"),B.Find(Inv,CheckAliases.Element),B.Find(Inv,Dest));
+  auto* Fits=B.If(HasOld->GetThenPin(),B.Math(TEXT("BooleanAND"),B.Math(TEXT("GreaterEqual_IntInt"),Total,B.Num(0)),B.Math(TEXT("LessEqual_IntInt"),Total,B.Find(B.Get(TEXT("Limits")),Dest))));B.Exec(Fits->GetElsePin(),Bad);
+  auto Migrate=B.Keys(CheckAliases.Done,B.Get(TEXT("ItemAliases")));Dest=B.Find(B.Get(TEXT("ItemAliases")),Migrate.Element);
+  auto* Found=B.If(Migrate.Body,B.Contains(Inv,Migrate.Element));
+  Prev=B.Add(Found->GetThenPin(),Inv,Dest,B.Math(TEXT("Add_IntInt"),B.Find(Inv,Migrate.Element),B.Find(Inv,Dest)));
+  auto* Remove=B.Call(UBlueprintMapLibrary::StaticClass(),TEXT("Map_Remove"));B.L(Inv,B.P(Remove,TEXT("TargetMap")));B.L(Migrate.Element,B.P(Remove,TEXT("Key")));B.Exec(Prev,Remove);
+  auto Flags=B.Keys(Migrate.Done,B.Get(TEXT("RuleAliases")));Dest=B.Find(B.Get(TEXT("RuleAliases")),Flags.Element);
+  auto* HasFlag=B.If(Flags.Body,B.Contains(Done,Flags.Element));Prev=B.Add(HasFlag->GetThenPin(),Done,Dest,B.Lit(TEXT("MakeLiteralBool"),TEXT("true")));
+  Remove=B.Call(UBlueprintMapLibrary::StaticClass(),TEXT("Map_Remove"));B.L(Done,B.P(Remove,TEXT("TargetMap")));B.L(Flags.Element,B.P(Remove,TEXT("Key")));B.Exec(Prev,Remove);
+  auto* Ready=B.Set(TEXT("Health"));B.L(B.Field(SaveClass,Data,TEXT("Health")),B.P(Ready,TEXT("Health")));B.Exec(NeedsMigration->GetElsePin(),Ready);B.Exec(Flags.Done,Ready);
+  Prev=B.P(Ready,TEXT("then"));for(auto Name:{TEXT("Inventory"),TEXT("Completed")})Prev=B.Assign(Prev,Name,B.Field(SaveClass,Data,Name));
   B.Return(Init,B.Exec(Prev,B.Call(BP->SkeletonGeneratedClass,TEXT("RefreshAdapter"))));
  }
  // Validation is read-only: all conditions and stack limits precede any debit.
@@ -144,12 +164,17 @@ UBlueprint* UPTSTemplateBuilder::BuildGameSessionTemplate(const FString& Path)
   G B(BP,Save.Graph);auto* Blocked=B.If(B.P(Save.Entry,TEXT("then")),B.Get(TEXT("SaveBlocked")));B.Return(Save,Blocked->GetThenPin());
   auto* Create=B.Call(UGameplayStatics::StaticClass(),TEXT("CreateSaveGameObject"));B.P(Create,TEXT("SaveGameClass"))->DefaultObject=SaveClass;
   auto* Cast=B.Cast(B.Exec(Blocked->GetElsePin(),Create),B.Out(Create),SaveClass);auto* Data=Cast->GetCastResultPin();auto* Prev=Cast->GetValidCastPin();
-  for(auto Name:{TEXT("FlowId"),TEXT("SaveKey"),TEXT("Health"),TEXT("Inventory"),TEXT("Completed")})Prev=B.SetField(Prev,SaveClass,Data,Name,B.Get(Name));
+  for(auto Name:{TEXT("FlowId"),TEXT("SaveKey"),TEXT("SaveVersion"),TEXT("Health"),TEXT("Inventory"),TEXT("Completed")})Prev=B.SetField(Prev,SaveClass,Data,Name,B.Get(Name));
   auto* Write=B.Call(UGameplayStatics::StaticClass(),TEXT("SaveGameToSlot"));B.L(Data,B.P(Write,TEXT("SaveGameObject")));B.L(B.Get(TEXT("SaveKey")),B.P(Write,TEXT("SlotName")));
   auto* Success=B.If(B.Exec(Prev,Write),B.Out(Write));auto* Clear=B.Assign(Success->GetThenPin(),TEXT("SaveError"),TEXT(""));B.Return(Save,Clear,{{TEXT("Success"),B.Out(Write)}});
   B.Return(Save,B.Assign(Success->GetElsePin(),TEXT("SaveError"),TEXT("Progress could not be saved; check disk access.")));
  }
  auto* EventGraph=FBlueprintEditorUtils::CreateNewGraph(BP,TEXT("EventGraph"),UEdGraph::StaticClass(),UEdGraphSchema_K2::StaticClass());FBlueprintEditorUtils::AddUbergraphPage(BP,EventGraph);
  G E(BP,EventGraph);auto* Begin=E.Node<UK2Node_Event>();Begin->EventReference.SetExternalMember(TEXT("ReceiveBeginPlay"),AActor::StaticClass());Begin->bOverrideFunction=true;Begin->AllocateDefaultPins();E.Exec(E.P(Begin,TEXT("then")),E.Call(BP->SkeletonGeneratedClass,TEXT("Initialize")));
+ // Level travel stores the bridge-owned progress; external game data stays with its adapter.
+ auto* End=E.Node<UK2Node_Event>();End->EventReference.SetExternalMember(TEXT("ReceiveEndPlay"),AActor::StaticClass());End->bOverrideFunction=true;End->AllocateDefaultPins();
+ auto* Travel=E.Math(TEXT("EqualEqual_ByteByte"),E.P(End,TEXT("EndPlayReason")),E.Lit(TEXT("MakeLiteralByte"),TEXT("1")));
+ auto* Persist=E.If(E.P(End,TEXT("then")),E.Math(TEXT("BooleanAND"),E.Get(TEXT("Initialized")),E.Math(TEXT("BooleanAND"),Travel,E.Get(TEXT("PersistOnTravel")))));
+ E.Exec(Persist->GetThenPin(),E.Call(BP->SkeletonGeneratedClass,TEXT("SaveProgress")));
  Compile(BP);return BP;
 }
